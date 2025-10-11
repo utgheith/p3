@@ -8,6 +8,9 @@ all : ${PROGS};
 ${PROGS} : % : Makefile
 	ghc -Wall -Werror $*.hs
 
+format :
+	ormolu -i *.hs
+
 clean :
 	rm -rf *.hi *.o ${PROGS}
 
