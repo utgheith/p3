@@ -28,9 +28,6 @@ class Machine m where
 
     -- Arithmetic and control
     subVal :: V m -> V m -> Env m
-    addVal :: V m -> V m -> Env m
-    timesVal :: V m -> V m -> Env m
-    divideVal :: V m -> V m -> Env m
     selectValue :: V m -> Env m -> Env m -> Env m
 
     -- Type Conversion

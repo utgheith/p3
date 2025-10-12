@@ -45,16 +45,6 @@ instance Machine Simulator where
     subVal :: Integer -> Integer -> Env Simulator
     subVal v1 v2 = return $ Happy (v1 - v2)
 
-    addVal :: Integer -> Integer -> Env Simulator
-    addVal v1 v2 = return $ Happy (v1 + v2)
-
-    timesVal :: Integer -> Integer -> Env Simulator
-    timesVal v1 v2 = return $ Happy (v1 * v2)
-
-    divideVal :: Integer -> Integer -> Env Simulator
-    divideVal v1 v2 = if v2 == 0 then return $ Sad "Cannot divide by 0" else
-        return $ Happy (v1 `div` v2) -- I don't want the actual interpreter to crash
-
     selectValue :: Integer -> Env Simulator -> Env Simulator -> Env Simulator
     selectValue n e1 e2 =
         if n /= 0

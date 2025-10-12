@@ -101,8 +101,8 @@ num = do
         _ -> Nothing
     return $ Const n
 
-parans :: Parser Token Term
-parans = [t | _ <- symbol "(", t <- term, _ <- symbol ")"]
+parens :: Parser Token Term
+parens = [t | _ <- symbol "(", t <- term, _ <- symbol ")"]
 
 funDef :: Parser Token Term
 funDef = [ FunDef name params body | _ <- keyword "fun",
@@ -146,7 +146,7 @@ whileTerm = do
     return $ While cond body
 
 unaryExp :: Parser Token Term
-unaryExp = oneof [assign, ifExpr, block, funDef, minus, num, parans, varDef, varRef, whileTerm]
+unaryExp = oneof [assign, ifExpr, block, funDef, minus, num, parens, varDef, varRef, whileTerm]
 
 ----------- prog ----------
 
