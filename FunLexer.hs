@@ -1,4 +1,4 @@
-module FunLexer (lexer, Token (Num, Ident, Keyword, Symbol)) where
+module FunLexer (lexer, Token (Num, Ident, Keyword, Symbol, Error)) where
 
 import Data.Char (isAlpha, isAlphaNum, isNumber, isSpace)
 import Data.List (unfoldr)
