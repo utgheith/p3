@@ -1,4 +1,6 @@
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE ConstrainedClassMethods #-}
 
 module Small (reduceFully, Machine (..), Result (..), Env) where
 
@@ -45,9 +47,9 @@ data Result a
 ----- The Env monad -----
 
 -- abstract semantics that glue micro-ops together
-type Env m = (Machine m) => S.State m (Result (V m))
+type Env m = S.State m (Result (V m))
 
-premise :: (Machine m) => Env m -> (Term -> Term) -> (V m -> Env m) -> Env m
+premise :: Env m -> (Term -> Term) -> (V m -> Env m) -> Env m
 premise e l r = do
   v <- e
   case v of

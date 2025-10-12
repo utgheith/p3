@@ -1,16 +1,11 @@
-MAIN_FILES = Simulate.hs Main.hs
-PROGS = ${MAIN_FILES:.hs=}
+.PHONY : all test clean
 
-.PHONY: clean ${PROGS}
+all :
+	stack build
 
-all : ${PROGS};
-
-${PROGS} : % : Makefile
-	ghc -Wall -Werror $*.hs
-
-format :
-	ormolu -i *.hs
+test :
+	stack test
 
 clean :
-	rm -rf *.hi *.o ${PROGS}
+	stack clean
 

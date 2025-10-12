@@ -1,4 +1,7 @@
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE InstanceSigs #-}
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE FlexibleContexts #-}
 
 module Main (main) where
 
