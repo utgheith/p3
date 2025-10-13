@@ -1,4 +1,6 @@
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE ConstrainedClassMethods #-}
 
 module Small (reduceFully, Machine(..), Result(..),Env) where
 
@@ -28,9 +30,6 @@ class Machine m where
 
     -- Arithmetic and control
     subVal :: V m -> V m -> Env m
-    addVal :: V m -> V m -> Env m
-    timesVal :: V m -> V m -> Env m
-    divideVal :: V m -> V m -> Env m
     selectValue :: V m -> Env m -> Env m -> Env m
 
     -- Type Conversion
@@ -47,9 +46,10 @@ data Result a = Happy a -- produced an answer
 ----- The Env monad -----
 
 -- abstract semantics that glue micro-ops together
+
 type Env m = (Machine m) => S.State m (Result (V m))
 
-premise :: (Machine m) => Env m -> (Term -> Term) -> (V m -> Env m) -> Env m
+premise :: (Machine m) =>Env m -> (Term -> Term) -> (V m -> Env m) -> Env m
 premise e l r = do
     v <- e
     case v of
@@ -110,32 +110,6 @@ reduce_ (Sub t1 t2) = do
         (\v1 -> premise (reduce t2)
                     (Sub (Literal $ vToInt m v1))
                     (subVal v1))
-
-reduce_ (Add t1 t2) = do
-    m <- S.get
-    premise (reduce t1)
-        (`Add` t2)
-        (\v1 -> premise (reduce t2)
-                    (Add (Literal $ vToInt m v1))
-                    (addVal v1))
-
-reduce_ (Times t1 t2) = do
-    m <- S.get
-    premise (reduce t1)
-        (`Times` t2)
-        (\v1 -> premise (reduce t2)
-                    (Times (Literal $ vToInt m v1))
-                    (timesVal v1))
-
-reduce_ (Divide t1 t2) = do
-    m <- S.get
-    premise (reduce t1)
-        (`Divide` t2)
-        (\v1 -> premise (reduce t2)
-                    (Divide (Literal $ vToInt m v1))
-                    (divideVal v1))
-
-
 
 
 reduce :: (Machine m, Show m) => Term -> Env m

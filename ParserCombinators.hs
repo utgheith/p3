@@ -1,6 +1,6 @@
 {-# LANGUAGE LambdaCase #-}
 
-module ParserCombinators (eof, oneof, opt, Parser, Result, rpt, rptSep, rptDropSep, satisfy, token) where
+module ParserCombinators (eof, oneof, opt, Parser, Result, rpt, rptSep, rptDropSep, satisfy, token, (<|>)) where
 
 import Control.Monad.Except (catchError, throwError)
 import Control.Monad.State.Lazy (StateT, get, put)
