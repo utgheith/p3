@@ -49,7 +49,7 @@ data Result a = Happy a -- produced an answer
 
 type Env m = (Machine m) => S.State m (Result (V m))
 
-premise :: Env m -> (Term -> Term) -> (V m -> Env m) -> Env m
+premise :: (Machine m) =>Env m -> (Term -> Term) -> (V m -> Env m) -> Env m
 premise e l r = do
     v <- e
     case v of
