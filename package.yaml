@@ -26,6 +26,7 @@ dependencies:
 
 ghc-options:
 - -Wall
+- -Werror
 - -Wcompat
 - -Widentities
 - -Wincomplete-record-updates
@@ -33,7 +34,6 @@ ghc-options:
 - -Wmissing-export-lists
 - -Wmissing-home-modules
 - -Wpartial-fields
-- -Wredundant-constraints
 
 library:
   source-dirs: .

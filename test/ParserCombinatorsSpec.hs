@@ -23,9 +23,9 @@ spec = do
 
   describe "token" $ do
     it "consumes the correct token" $ do
-      runStateT (token 1) [1, 2] `shouldBe` Right (1, [2])
+      runStateT (token '1') ['1', '2'] `shouldBe` Right ('1', ['2'])
     it "fails on incorrect token" $ do
-      runStateT (token 1) [2, 1] `shouldBe` Left "expected 1, found [2,1]"
+      runStateT (token '1') ['2', '1'] `shouldBe` Left "expected '1', found \"21\""
 
   describe "<|>" $ do
     it "chooses the first parser if it succeeds" $ do
@@ -42,23 +42,23 @@ spec = do
 
   describe "opt" $ do
     it "returns Just the value if parser succeeds" $ do
-      runStateT (opt (token 1)) [1, 2] `shouldBe` Right (Just 1, [2])
+      runStateT (opt (token '1')) ['1', '2'] `shouldBe` Right (Just '1', ['2'])
     it "returns Nothing if parser fails" $ do
-      runStateT (opt (token 1)) [2, 1] `shouldBe` Right (Nothing, [2, 1])
+      runStateT (opt (token '1')) ['2', '1'] `shouldBe` Right (Nothing, ['2', '1'])
 
   describe "rpt" $ do
     it "parses zero or more occurrences" $ do
-      runStateT (rpt (token 1)) [1, 1, 2] `shouldBe` Right ([1, 1], [2])
-      runStateT (rpt (token 1)) [2, 1, 1] `shouldBe` Right ([], [2, 1, 1])
+      runStateT (rpt (token '1')) ['1', '1', '2'] `shouldBe` Right (['1', '1'], ['2'])
+      runStateT (rpt (token '1')) ['2', '1', '1'] `shouldBe` Right ([], ['2', '1', '1'])
 
   describe "rptSep" $ do
     it "parses zero or more occurrences with a separator" $ do
-      let p = rptSep (token 1) (token 0)
-      runStateT p [1, 0, 1, 2] `shouldBe` Right (Just (1, [(0, 1)]), [2])
-      runStateT p [2, 1, 0] `shouldBe` Right (Nothing, [2, 1, 0])
+      let p = rptSep (token '1') (token '0')
+      runStateT p ['1', '0', '1', '2'] `shouldBe` Right (Just ('1', [('0', '1')]), ['2'])
+      runStateT p ['2', '1', '0'] `shouldBe` Right (Nothing, ['2', '1', '0'])
 
   describe "rptDropSep" $ do
     it "parses zero or more occurrences and drops the separator" $ do
-      let p = rptDropSep (token 1) (token 0)
-      runStateT p [1, 0, 1, 2] `shouldBe` Right ([1, 1], [2])
-      runStateT p [2, 1, 0] `shouldBe` Right ([], [2, 1, 0])
+      let p = rptDropSep (token '1') (token '0')
+      runStateT p ['1', '0', '1', '2'] `shouldBe` Right (['1', '1'], ['2'])
+      runStateT p ['2', '1', '0'] `shouldBe` Right ([], ['2', '1', '0'])

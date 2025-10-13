@@ -47,7 +47,7 @@ data Result a = Happy a -- produced an answer
 
 -- abstract semantics that glue micro-ops together
 
-type Env m = S.State m (Result (V m))
+type Env m = (Machine m) => S.State m (Result (V m))
 
 premise :: Env m -> (Term -> Term) -> (V m -> Env m) -> Env m
 premise e l r = do
