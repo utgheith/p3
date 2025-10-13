@@ -1,3 +1,5 @@
+*.cabal
+.stack-work/
 *.hi
 *.o
 Simulate
