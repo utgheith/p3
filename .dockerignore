@@ -1,0 +1,29 @@
+# Stack build artifacts
+.stack-work/
+*.cabal
+
+# Git
+.git/
+.gitignore
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Nix
+result
+result-*
+.envrc
+.direnv/
+
+# Docs
+*.md
+!README.md
+!CHANGELOG.md
