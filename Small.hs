@@ -108,32 +108,6 @@ reduce_ (Sub t1 t2) = do
                     (Sub (Literal $ vToInt m v1))
                     (subVal v1))
 
-reduce_ (Add t1 t2) = do
-    m <- S.get
-    premise (reduce t1)
-        (`Add` t2)
-        (\v1 -> premise (reduce t2)
-                    (Add (Literal $ vToInt m v1))
-                    (addVal v1))
-
-reduce_ (Times t1 t2) = do
-    m <- S.get
-    premise (reduce t1)
-        (`Times` t2)
-        (\v1 -> premise (reduce t2)
-                    (Times (Literal $ vToInt m v1))
-                    (timesVal v1))
-
-reduce_ (Divide t1 t2) = do
-    m <- S.get
-    premise (reduce t1)
-        (`Divide` t2)
-        (\v1 -> premise (reduce t2)
-                    (Divide (Literal $ vToInt m v1))
-                    (divideVal v1))
-
-
-
 
 reduce :: (Machine m, Show m) => Term -> Env m
 reduce t = do

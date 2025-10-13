@@ -75,13 +75,12 @@ prog = "x" <=> Literal 10 ~
        "y" <=> Literal 29 ~
        "z" <=> Literal 3
 
-
-
 main :: IO ()
 main = do
     let out = reduceFully prog (Simulator M.empty [] [])
     print out
-    let out2 = reduceFully Progs.prog2 (Simulator M.empty [] [])
+    putStrLn "-----------------------------"
+    let out2 = reduceFully Progs.prog (Simulator M.empty [] [])
     print out2
 
 
