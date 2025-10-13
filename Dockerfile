@@ -1,8 +1,8 @@
 # Multi-stage Dockerfile for p3 Haskell project
-# Using GHC 9.8.4 to match Stack LTS 23.0
+# Using GHC 9.6.7 to match Stack LTS 23.0
 
 # Base stage with dependencies
-FROM haskell:9.8-slim AS base
+FROM haskell:9.6.7-slim AS base
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \

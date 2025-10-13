@@ -23,8 +23,8 @@
       perSystem =
         { pkgs, ... }:
         let
-          # Use GHC 9.8.4 to match Stack LTS 23.0
-          hPkgs = pkgs.haskell.packages.ghc98;
+          # Use GHC 9.6.7 to match Stack LTS 23.0
+          hPkgs = pkgs.haskell.packages.ghc967;
 
           # Wrap Stack to work with our Nix integration. We do not want to modify
           # stack.yaml so non-Nix users do not notice anything.
