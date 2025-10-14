@@ -10,4 +10,14 @@ data Term = If Term Term Term
           | Var String
           | While Term Term
           | Write Term
+          | BoolLit Bool
+          | Lt Term Term
+          | Gt Term Term
+          | Lte Term Term
+          | Gte Term Term
+          | Eq Term Term
+          | Neq Term Term
+          | And Term Term
+          | Or Term Term
+          | Not Term
           deriving (Eq, Show)
