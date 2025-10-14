@@ -92,7 +92,7 @@ spec = do
       reduceFully term machine `shouldBe` (Right 42, finalMachine)
 
     it "reduces subtraction" $ do
-      let term = Sub (Literal 10) (Literal 3)
+      let term = BinaryOps Sub (Literal 10) (Literal 3)
       reduceFully term initialMachine `shouldBe` (Right 7, initialMachine)
 
     it "reduces skip" $ do

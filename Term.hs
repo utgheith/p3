@@ -7,6 +7,9 @@ data Term = If Term Term Term
           | Seq Term Term
           | Skip
           | Sub Term Term
+          | Add Term Term
+          | Mul Term Term
+          | Div Term Term
           | Var String
           | While Term Term
           | Write Term

@@ -5,6 +5,7 @@
 module Small (reduceFully, Machine(..), Result(..),Env) where
 
 import qualified Control.Monad.State as S
+-- import Term (Term(..), BinaryOps(..))
 import Term (Term(..))
 import Debug.Trace (trace)
 
@@ -29,7 +30,10 @@ class Machine m where
     outputVal :: V m -> Env m
 
     -- Arithmetic and control
+    addVal :: V m -> V m -> Env m
     subVal :: V m -> V m -> Env m
+    mulVal :: V m -> V m -> Env m
+    divVal :: V m -> V m -> Env m
     selectValue :: V m -> Env m -> Env m -> Env m
 
     -- Type Conversion
@@ -49,7 +53,7 @@ data Result a = Happy a -- produced an answer
 
 type Env m = (Machine m) => S.State m (Result (V m))
 
-premise :: (Machine m) =>Env m -> (Term -> Term) -> (V m -> Env m) -> Env m
+premise :: (Machine m) => Env m -> (Term -> Term) -> (V m -> Env m) -> Env m
 premise e l r = do
     v <- e
     case v of
@@ -110,6 +114,30 @@ reduce_ (Sub t1 t2) = do
         (\v1 -> premise (reduce t2)
                     (Sub (Literal $ vToInt m v1))
                     (subVal v1))
+
+reduce_ (Add t1 t2) = do
+    m <- S.get
+    premise (reduce t1)
+        (`Add` t2)
+        (\v1 -> premise (reduce t2)
+                    (Add (Literal $ vToInt m v1))
+                    (addVal v1))
+
+reduce_ (Mul t1 t2) = do
+    m <- S.get
+    premise (reduce t1)
+        (`Mul` t2)
+        (\v1 -> premise (reduce t2)
+                    (Mul (Literal $ vToInt m v1))
+                    (mulVal v1))
+
+reduce_ (Div t1 t2) = do
+    m <- S.get
+    premise (reduce t1)
+        (`Div` t2)
+        (\v1 -> premise (reduce t2)
+                    (Div (Literal $ vToInt m v1))
+                    (divVal v1))
 
 
 reduce :: (Machine m, Show m) => Term -> Env m
