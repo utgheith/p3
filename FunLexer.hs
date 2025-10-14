@@ -48,4 +48,10 @@ lexer = unfoldr step
     step (c : rest)
       | S.member c symbols =
           Just (Symbol [c], rest)
+    -- comments
+    step ('$' : rest) = let (_, rest2) = span (/= '$') rest in
+        case rest2 of
+            ('$' : rest3) -> step rest3
+            _ -> Just (Error ("Unclosed comment"), "")
+    -- syntax errors
     step s = Just (Error ("Unexpected character: " ++ take 20 s), "")
