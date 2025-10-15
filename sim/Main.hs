@@ -95,11 +95,15 @@ instance Machine Simulator where
 
   eqVal :: Value -> Value -> Env Simulator
   eqVal (IntVal v1) (IntVal v2) = return $ Happy (BoolVal (v1 == v2))
-  eqVal _ _ = return $ Sad "Type error in =="
+  eqVal (BoolVal v1) (BoolVal v2) = return $ Happy (BoolVal (v1 == v2))
+  eqVal (StringVal v1) (StringVal v2) = return $ Happy (BoolVal (v1 == v2))
+  eqVal v1 v2 = return $ Sad $ "Type error in ==: cannot compare " ++ show v1 ++ " and " ++ show v2
 
   neqVal :: Value -> Value -> Env Simulator
   neqVal (IntVal v1) (IntVal v2) = return $ Happy (BoolVal (v1 /= v2))
-  neqVal _ _ = return $ Sad "Type error in !="
+  neqVal (BoolVal v1) (BoolVal v2) = return $ Happy (BoolVal (v1 /= v2))
+  neqVal (StringVal v1) (StringVal v2) = return $ Happy (BoolVal (v1 /= v2))
+  neqVal v1 v2 = return $ Sad $ "Type error in !=: cannot compare " ++ show v1 ++ " and " ++ show v2
 
   andVal :: Value -> Value -> Env Simulator
   andVal (BoolVal v1) (BoolVal v2) = return $ Happy (BoolVal (v1 && v2))
