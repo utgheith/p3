@@ -6,9 +6,8 @@
 
 module FunSyntax (parse, prog, term, Term (Assign, BinaryOp, Block, Call, Const, FunDef, IfThenElse, Negate, VarDef, VarRef, While)) where
 
+import Control.Monad (void)
 import Control.Monad.State.Lazy (runStateT)
--- import Debug.Trace (trace)
-
 import qualified Data.Set as S
 import FunLexer (Token (Ident, Keyword, Num, Symbol), lexer)
 import ParserCombinators (Parser, Result, oneof, opt, rpt, rptDropSep, satisfy, token)
@@ -34,7 +33,7 @@ data Term
 -- succeed if the next token is the given symbol
 symbol :: String -> Parser Token ()
 -- using explicit bind
-symbol s = token (Symbol s) >>= \_ -> return ()
+symbol s = Control.Monad.void (token (Symbol s))
 
 -- succeed if the next token is the given keyword
 keyword :: String -> Parser Token ()

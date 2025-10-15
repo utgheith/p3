@@ -104,7 +104,7 @@ reduce_ (Read x) =
   premise
     inputVal
     id
-    (\v -> setVar x v)
+    (setVar x)
 reduce_ (Write t) = do
   premise
     (reduce t)
@@ -134,42 +134,42 @@ reduce_ (Lt t1 t2) =
   premise
     (reduce t1)
     (`Lt` t2)
-    (\v1 -> premise (reduce t2) (const Skip) (ltVal v1))
+    (premise (reduce t2) (const Skip) . ltVal)
 reduce_ (Gt t1 t2) =
   premise
     (reduce t1)
     (`Gt` t2)
-    (\v1 -> premise (reduce t2) (const Skip) (gtVal v1))
+    (premise (reduce t2) (const Skip) . gtVal)
 reduce_ (Lte t1 t2) =
   premise
     (reduce t1)
     (`Lte` t2)
-    (\v1 -> premise (reduce t2) (const Skip) (lteVal v1))
+    (premise (reduce t2) (const Skip) . lteVal)
 reduce_ (Gte t1 t2) =
   premise
     (reduce t1)
     (`Gte` t2)
-    (\v1 -> premise (reduce t2) (const Skip) (gteVal v1))
+    (premise (reduce t2) (const Skip) . gteVal)
 reduce_ (Eq t1 t2) =
   premise
     (reduce t1)
     (`Eq` t2)
-    (\v1 -> premise (reduce t2) (const Skip) (eqVal v1))
+    (premise (reduce t2) (const Skip) . eqVal)
 reduce_ (Neq t1 t2) =
   premise
     (reduce t1)
     (`Neq` t2)
-    (\v1 -> premise (reduce t2) (const Skip) (neqVal v1))
+    (premise (reduce t2) (const Skip) . neqVal)
 reduce_ (And t1 t2) =
   premise
     (reduce t1)
     (`And` t2)
-    (\v1 -> premise (reduce t2) (const Skip) (andVal v1))
+    (premise (reduce t2) (const Skip) . andVal)
 reduce_ (Or t1 t2) =
   premise
     (reduce t1)
     (`Or` t2)
-    (\v1 -> premise (reduce t2) (const Skip) (orVal v1))
+    (premise (reduce t2) (const Skip) . orVal)
 reduce_ (Not t) =
   premise
     (reduce t)
