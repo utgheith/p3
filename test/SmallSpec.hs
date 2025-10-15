@@ -75,9 +75,13 @@ instance Machine MockMachine where
   gteVal _ _ = return $ Sad "Type error in >="
 
   eqVal (IntVal v1) (IntVal v2) = return $ Happy (BoolVal (v1 == v2))
+  eqVal (BoolVal v1) (BoolVal v2) = return $ Happy (BoolVal (v1 == v2))
+  eqVal (StringVal v1) (StringVal v2) = return $ Happy (BoolVal (v1 == v2))
   eqVal _ _ = return $ Sad "Type error in =="
 
   neqVal (IntVal v1) (IntVal v2) = return $ Happy (BoolVal (v1 /= v2))
+  neqVal (BoolVal v1) (BoolVal v2) = return $ Happy (BoolVal (v1 /= v2))
+  neqVal (StringVal v1) (StringVal v2) = return $ Happy (BoolVal (v1 /= v2))
   neqVal _ _ = return $ Sad "Type error in !="
 
   andVal (BoolVal v1) (BoolVal v2) = return $ Happy (BoolVal (v1 && v2))
@@ -91,16 +95,21 @@ instance Machine MockMachine where
 
   selectValue (BoolVal True) c _ = c
   selectValue (BoolVal False) _ t = t
-  selectValue (IntVal n) c t = if n /= 0 then c else t -- backward compat, remove later
+  selectValue (IntVal n) c t = if n /= 0 then c else t
+  selectValue (StringVal s) c t = if not (null s) then c else t
 
 spec :: Spec
 spec = do
   describe "reduceFully" $ do
     let initialMachine = MockMachine {getMem = M.empty, getInput = [], getOutput = []}
 
-    it "reduces a literal" $ do
+    it "reduces an integer literal" $ do
       let term = Literal 10
       reduceFully term initialMachine `shouldBe` (Right (IntVal 10), initialMachine)
+
+    it "reduces a string literal" $ do
+      let term = StringLiteral "hello"
+      reduceFully term initialMachine `shouldBe` (Right (StringVal "hello"), initialMachine)
 
     it "reduces a variable" $ do
       let term = Var "x"
@@ -118,11 +127,11 @@ spec = do
       reduceFully term initialMachine `shouldBe` (Right (IntVal 5), finalMachine)
 
     it "reduces an if expression (then)" $ do
-      let term = If (Literal 1) (Literal 10) (Literal 20)
+      let term = If (BoolLit True) (Literal 10) (Literal 20)
       reduceFully term initialMachine `shouldBe` (Right (IntVal 10), initialMachine)
 
     it "reduces an if expression (else)" $ do
-      let term = If (Literal 0) (Literal 10) (Literal 20)
+      let term = If (BoolLit False) (Literal 10) (Literal 20)
       reduceFully term initialMachine `shouldBe` (Right (IntVal 20), initialMachine)
 
     it "reduces a while loop" $ do
