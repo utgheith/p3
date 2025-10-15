@@ -2,6 +2,7 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ConstrainedClassMethods #-}
+{-# LANGUAGE InstanceSigs #-}
 
 module SmallSpec (spec) where
 
@@ -46,6 +47,8 @@ instance Machine MockMachine where
   mulVal v1 v2 = return $ Happy (v1 * v2)
   divVal v1 v2 = if v2 == 0 then return $ Sad "Cannot divide by 0" else
         return $ Happy (v1 `div` v2) -- I don't want the actual interpreter to crash
+  modVal v1 v2 = if v2 == 0 then return $ Sad "Cannot mod by 0" else
+        return $ Happy (v1 `mod` v2) -- I don't want the actual interpreter to crash
 
   selectValue v c t = if v /= 0 then c else t
 
@@ -85,7 +88,7 @@ spec = do
       reduceFully term initialMachine `shouldBe` (Right 20, initialMachine)
 
     it "reduces a while loop" $ do
-      let term = Seq (Let "x" (Literal 3)) (While (Var "x") (Let "x" (Sub (Var "x") (Literal 1))))
+      let term = Seq (Let "x" (Literal 3)) (While (Var "x") (Let "x" (BinaryOps Sub (Var "x") (Literal 1))))
       let finalMachine = initialMachine { getMem = M.fromList [("x", 0)] }
       reduceFully term initialMachine `shouldBe` (Right 0, finalMachine)
 
@@ -96,24 +99,32 @@ spec = do
       reduceFully term machine `shouldBe` (Right 42, finalMachine)
 
     it "reduces subtraction" $ do
-      let term = Sub (Literal 10) (Literal 3)
+      let term = BinaryOps Sub (Literal 10) (Literal 3)
       reduceFully term initialMachine `shouldBe` (Right 7, initialMachine)
 
     it "reduces addition" $ do
-      let term = Add (Literal 10) (Literal 3)
+      let term = BinaryOps Add (Literal 10) (Literal 3)
       reduceFully term initialMachine `shouldBe` (Right 13, initialMachine)
 
     it "reduces multiplication" $ do
-      let term = Mul (Literal 10) (Literal 3)
+      let term = BinaryOps Mul (Literal 10) (Literal 3)
       reduceFully term initialMachine `shouldBe` (Right 30, initialMachine)
 
     it "reduces division - nonzero denominator case" $ do
-      let term = Div (Literal 12) (Literal 3)
+      let term = BinaryOps Div (Literal 12) (Literal 3)
       reduceFully term initialMachine `shouldBe` (Right 4, initialMachine)
 
     it "reduces division - zero denominator case" $ do
-      let term = Div (Literal 12) (Literal 0)
+      let term = BinaryOps Div (Literal 12) (Literal 0)
       reduceFully term initialMachine `shouldBe` (Left "Cannot divide by 0", initialMachine)
+
+    it "reduces modulus - nonzero denominator case" $ do
+      let term = BinaryOps Mod (Literal 12) (Literal 3)
+      reduceFully term initialMachine `shouldBe` (Right 0, initialMachine)
+
+    it "reduces modulus - zero denominator case" $ do
+      let term = BinaryOps Mod (Literal 12) (Literal 0)
+      reduceFully term initialMachine `shouldBe` (Left "Cannot mod by 0", initialMachine)
 
     it "reduces skip" $ do
       let term = Skip

@@ -10,7 +10,7 @@ prog =
         (T.Var "x")
         ( T.Seq
             (T.Write (T.Var "x"))
-            (T.Let "x" (T.Sub (T.Var "x") (T.Literal 1)))
+            (T.Let "x" (T.BinaryOps T.Sub (T.Var "x") (T.Literal 1)))
         )
     )
 

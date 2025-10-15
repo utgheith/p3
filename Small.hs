@@ -5,8 +5,8 @@
 module Small (reduceFully, Machine(..), Result(..),Env) where
 
 import qualified Control.Monad.State as S
--- import Term (Term(..), BinaryOps(..))
-import Term (Term(..))
+import Term (Term(..), BinaryOp(..))
+-- import Term (Term(..))
 import Debug.Trace (trace)
 
 ----- The Machine type class -----
@@ -34,6 +34,7 @@ class Machine m where
     subVal :: V m -> V m -> Env m
     mulVal :: V m -> V m -> Env m
     divVal :: V m -> V m -> Env m
+    modVal :: V m -> V m -> Env m
     selectValue :: V m -> Env m -> Env m -> Env m
 
     -- Type Conversion
@@ -107,38 +108,18 @@ reduce_ Skip = do
     m <- S.get
     return $ Happy (intToV m 0)
 
-reduce_ (Sub t1 t2) = do
+reduce_ (BinaryOps op t1 t2) = do
     m <- S.get
     premise (reduce t1)
-        (`Sub` t2)
+        (\t1' -> BinaryOps op t1' t2)
         (\v1 -> premise (reduce t2)
-                    (Sub (Literal $ vToInt m v1))
-                    (subVal v1))
-
-reduce_ (Add t1 t2) = do
-    m <- S.get
-    premise (reduce t1)
-        (`Add` t2)
-        (\v1 -> premise (reduce t2)
-                    (Add (Literal $ vToInt m v1))
-                    (addVal v1))
-
-reduce_ (Mul t1 t2) = do
-    m <- S.get
-    premise (reduce t1)
-        (`Mul` t2)
-        (\v1 -> premise (reduce t2)
-                    (Mul (Literal $ vToInt m v1))
-                    (mulVal v1))
-
-reduce_ (Div t1 t2) = do
-    m <- S.get
-    premise (reduce t1)
-        (`Div` t2)
-        (\v1 -> premise (reduce t2)
-                    (Div (Literal $ vToInt m v1))
-                    (divVal v1))
-
+                    (\t2' -> BinaryOps op (Literal $ vToInt m v1) t2')
+                    (applyBinaryOp op v1)) where
+                            applyBinaryOp Add = addVal
+                            applyBinaryOp Sub = subVal
+                            applyBinaryOp Mul = mulVal
+                            applyBinaryOp Div = divVal
+                            applyBinaryOp Mod = modVal
 
 reduce :: (Machine m, Show m) => Term -> Env m
 reduce t = do

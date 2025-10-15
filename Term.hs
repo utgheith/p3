@@ -1,4 +1,7 @@
-module Term(Term(..)) where
+module Term(Term(..), BinaryOp(..)) where
+
+data BinaryOp = Add | Sub | Mul | Div | Mod
+    deriving (Eq, Show)
 
 data Term = If Term Term Term
           | Let String Term
@@ -6,10 +9,7 @@ data Term = If Term Term Term
           | Read String
           | Seq Term Term
           | Skip
-          | Sub Term Term
-          | Add Term Term
-          | Mul Term Term
-          | Div Term Term
+          | BinaryOps BinaryOp Term Term
           | Var String
           | While Term Term
           | Write Term

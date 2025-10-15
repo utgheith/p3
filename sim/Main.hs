@@ -58,6 +58,10 @@ instance Machine Simulator where
     divVal v1 v2 = if v2 == 0 then return $ Sad "Cannot divide by 0" else
         return $ Happy (v1 `div` v2) -- I don't want the actual interpreter to crash
 
+    modVal :: Integer -> Integer -> Env Simulator
+    modVal v1 v2 = if v2 == 0 then return $ Sad "Cannot mod by 0" else
+        return $ Happy (v1 `mod` v2) -- I don't want the actual interpreter to crash
+
     selectValue :: Integer -> Env Simulator -> Env Simulator -> Env Simulator
     selectValue n e1 e2 =
         if n /= 0
