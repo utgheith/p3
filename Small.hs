@@ -81,6 +81,8 @@ premise e l r = do
 reduce_ :: (Machine m, Show m, V m ~ Value) => Term -> Env m
 reduce_ (Literal n) =
   return $ Happy $ IntVal n
+reduce_ (StringLiteral s) =
+  return $ Happy $ StringVal s
 reduce_ (Var x) =
   getVar x
 reduce_ (Let x t) = do

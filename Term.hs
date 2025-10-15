@@ -7,6 +7,7 @@ data Term
   = If Term Term Term
   | Let String Term
   | Literal Integer
+  | StringLiteral String
   | Read String
   | Seq Term Term
   | Skip
