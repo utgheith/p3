@@ -24,6 +24,9 @@ dependencies:
 - containers
 - mtl
 
+build-tools:
+- ormolu
+
 ghc-options:
 - -Wall
 - -Werror

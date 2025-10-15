@@ -1,12 +1,13 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ConstrainedClassMethods #-}
+{-# LANGUAGE TypeOperators #-}
 
 module Small (reduceFully, Machine(..), Result(..),Env) where
 
 import qualified Control.Monad.State as S
 import Term (Term(..), BinaryOp(..))
--- import Term (Term(..))
+import Value (Value(..))
 import Debug.Trace (trace)
 
 ----- The Machine type class -----
@@ -35,11 +36,22 @@ class Machine m where
     mulVal :: V m -> V m -> Env m
     divVal :: V m -> V m -> Env m
     modVal :: V m -> V m -> Env m
-    selectValue :: V m -> Env m -> Env m -> Env m
 
-    -- Type Conversion
-    intToV :: m -> Integer -> V m
-    vToInt :: m -> V m -> Integer
+    -- Comparison operations (operate on integers, return booleans)
+    ltVal :: V m -> V m -> Env m
+    gtVal :: V m -> V m -> Env m
+    lteVal :: V m -> V m -> Env m
+    gteVal :: V m -> V m -> Env m
+    eqVal :: V m -> V m -> Env m
+    neqVal :: V m -> V m -> Env m
+
+    -- Logical operations (operate on booleans)
+    andVal :: V m -> V m -> Env m
+    orVal :: V m -> V m -> Env m
+    notVal :: V m -> Env m
+
+    -- Control flow - selectValue uses boolean semantics
+    selectValue :: V m -> Env m -> Env m -> Env m
 
 ----- The Result type -----
 
@@ -65,11 +77,10 @@ premise e l r = do
 
 ------ Small-step reduction ------
 
-reduce_ :: (Machine m, Show m) => Term -> Env m
+reduce_ :: (Machine m, Show m, V m ~ Value) => Term -> Env m
 
-reduce_ (Literal n) = do
-    m <- S.get
-    return $ Happy $ intToV m n
+reduce_ (Literal n) =
+    return $ Happy $ IntVal n
 
 reduce_ (Var x) =
     getVar x
@@ -92,11 +103,10 @@ reduce_ (If cond tThen tElse) = do
 reduce_ w@(While cond body) =
     return $ Continue (If cond (Seq body w) Skip)
 
-reduce_ (Read x) = do
-    m <- S.get
+reduce_ (Read x) =
     premise inputVal
         id
-        (\v -> return $ Continue (Let x (Literal $ vToInt m v)))
+        (\v -> setVar x v)
 
 
 reduce_ (Write t) = do
@@ -104,24 +114,71 @@ reduce_ (Write t) = do
         Write
         outputVal
 
-reduce_ Skip = do
-    m <- S.get
-    return $ Happy (intToV m 0)
+reduce_ Skip =
+    return $ Happy (IntVal 0)
 
-reduce_ (BinaryOps op t1 t2) = do
-    m <- S.get
+reduce_ (BinaryOps op t1 t2) =
     premise (reduce t1)
         (\t1' -> BinaryOps op t1' t2)
         (\v1 -> premise (reduce t2)
-                    (\t2' -> BinaryOps op (Literal $ vToInt m v1) t2')
+                    (\t2' -> BinaryOps op (Literal $ IntVal v1) t2')
                     (applyBinaryOp op v1)) where
                             applyBinaryOp Add = addVal
                             applyBinaryOp Sub = subVal
                             applyBinaryOp Mul = mulVal
                             applyBinaryOp Div = divVal
                             applyBinaryOp Mod = modVal
+                            -- Note to Self: Someone Else 
 
-reduce :: (Machine m, Show m) => Term -> Env m
+reduce_ (BoolLit b) =
+    return $ Happy $ BoolVal b
+
+reduce_ (Lt t1 t2) =
+    premise (reduce t1)
+        (`Lt` t2)
+        (\v1 -> premise (reduce t2) (const Skip) (ltVal v1))
+
+reduce_ (Gt t1 t2) =
+    premise (reduce t1)
+        (`Gt` t2)
+        (\v1 -> premise (reduce t2) (const Skip) (gtVal v1))
+
+reduce_ (Lte t1 t2) =
+    premise (reduce t1)
+        (`Lte` t2)
+        (\v1 -> premise (reduce t2) (const Skip) (lteVal v1))
+
+reduce_ (Gte t1 t2) =
+    premise (reduce t1)
+        (`Gte` t2)
+        (\v1 -> premise (reduce t2) (const Skip) (gteVal v1))
+
+reduce_ (Eq t1 t2) =
+    premise (reduce t1)
+        (`Eq` t2)
+        (\v1 -> premise (reduce t2) (const Skip) (eqVal v1))
+
+reduce_ (Neq t1 t2) =
+    premise (reduce t1)
+        (`Neq` t2)
+        (\v1 -> premise (reduce t2) (const Skip) (neqVal v1))
+
+reduce_ (And t1 t2) =
+    premise (reduce t1)
+        (`And` t2)
+        (\v1 -> premise (reduce t2) (const Skip) (andVal v1))
+
+reduce_ (Or t1 t2) =
+    premise (reduce t1)
+        (`Or` t2)
+        (\v1 -> premise (reduce t2) (const Skip) (orVal v1))
+
+reduce_ (Not t) =
+    premise (reduce t)
+        Not
+        notVal
+
+reduce :: (Machine m, Show m, V m ~ Value) => Term -> Env m
 reduce t = do
     e <- S.get
     trace ("Simulating: " ++ show t) () `seq`
@@ -129,7 +186,7 @@ reduce t = do
         reduce_  t
 
 
-reduceFully :: (Machine m, Show m) => Term -> m -> (Either String (V m), m)
+reduceFully :: (Machine m, Show m, V m ~ Value) => Term -> m -> (Either String (V m), m)
 reduceFully term machine =
         case S.runState (reduce term) machine of
             (Sad msg, m) -> (Left msg, m)
