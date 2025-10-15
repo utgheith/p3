@@ -1,9 +1,8 @@
-{-# LANGUAGE LambdaCase #-}
-
-module ParserCombinators (eof, oneof, opt, Parser, Result, rpt, rptSep, rptDropSep, satisfy, token, (<|>)) where
+module ParserCombinators (eof, oneof, opt, Parser, Result, rpt, rptSep, rptDropSep, satisfy, token, tokens, string, (<|>), alt, some, sepBy, sepBy1, between, skip, lookAhead, chainl1, chainr1, parse) where
 
 import Control.Monad.Except (catchError, throwError)
-import Control.Monad.State.Lazy (StateT, get, put)
+import Control.Monad.State.Lazy (StateT, get, put, runStateT)
+import qualified Data.Functor
 
 -- Parse combinators:
 --
@@ -38,15 +37,15 @@ type Parser t = StateT [t] Result
 -- Succeed if there are no more tokens, fail otherwise
 eof :: (Show t) => Parser t ()
 eof = do
-  tokens <- get
-  case tokens of
+  ts <- get
+  case ts of
     [] -> return ()
-    _ -> throwError $ "expected eof but found: " ++ show tokens
+    _ -> throwError $ "expected eof but found: " ++ show ts
 
 satisfy :: (Show t) => (t -> Maybe a) -> Parser t a
 satisfy p = do
-  tokens <- get
-  case tokens of
+  ts <- get
+  case ts of
     [] -> throwError "out of tokens" -- need better error reporting
     (t : rest) -> do
       case p t of
@@ -57,8 +56,8 @@ satisfy p = do
 
 token :: (Show t, Eq t) => t -> Parser t t
 token t = do
-  tokens <- get
-  case tokens of
+  ts <- get
+  case ts of
     [] -> throwError "out of tokens"
     (t' : rest) ->
       if t == t'
@@ -67,21 +66,20 @@ token t = do
           return t
         else throwError ("expected " ++ show t ++ ", found " ++ show (t' : rest))
 
-(<|>) :: Parser t a -> Parser t b -> Parser t (Either a b)
-p1 <|> p2 =
+-- Choice operator: try first parser, if it fails try second
+(<|>) :: Parser t a -> Parser t a -> Parser t a
+p1 <|> p2 = catchError p1 (const p2)
+
+-- Alternative operator that preserves both types
+alt :: Parser t a -> Parser t b -> Parser t (Either a b)
+alt p1 p2 =
   catchError
     (Left <$> p1)
     (\_ -> Right <$> p2)
 
 oneof :: [Parser t a] -> Parser t a
 oneof [] = throwError "no choices left in oneof" -- need better error reporting
-oneof (p : ps) =
-  fmap
-    ( \case
-        (Left a) -> a
-        (Right a) -> a
-    )
-    (p <|> oneof ps)
+oneof (p : ps) = p <|> oneof ps
 
 opt :: Parser t a -> Parser t (Maybe a)
 opt p =
@@ -120,3 +118,80 @@ rptSep p sep =
 
 rptDropSep :: Parser t a -> Parser t b -> Parser t [a]
 rptDropSep p sep = dropSep <$> rptSep p sep
+
+-- One or more repetitions
+some :: Parser t a -> Parser t [a]
+some p = do
+  x <- p
+  xs <- rpt p
+  return (x : xs)
+
+-- Parse zero or more occurrences separated by a separator
+sepBy :: Parser t a -> Parser t sep -> Parser t [a]
+sepBy p sep = sepBy1 p sep <|> return []
+
+-- Parse one or more occurrences separated by a separator
+sepBy1 :: Parser t a -> Parser t sep -> Parser t [a]
+sepBy1 p sep = do
+  x <- p
+  xs <- rpt (sep *> p)
+  return (x : xs)
+
+-- Parse between delimiters
+between :: Parser t open -> Parser t close -> Parser t a -> Parser t a
+between open close p = open *> p <* close
+
+-- Skip/ignore result
+skip :: Parser t a -> Parser t ()
+skip p = p Data.Functor.$> ()
+
+-- Parse with lookahead (don't consume)
+lookAhead :: Parser t a -> Parser t a
+lookAhead p = do
+  ts <- get
+  result <- p
+  put ts
+  return result
+
+-- Left-associative chaining: parses "1 + 2 + 3" as "(1 + 2) + 3"
+chainl1 :: Parser t a -> Parser t (a -> a -> a) -> Parser t a
+chainl1 p op = do
+  x <- p
+  rest x
+  where
+    rest x =
+      ( do
+          f <- op
+          y <- p
+          rest (f x y)
+      )
+        <|> return x
+
+-- Right-associative chaining: parses "1 ^ 2 ^ 3" as "1 ^ (2 ^ 3)"
+chainr1 :: Parser t a -> Parser t (a -> a -> a) -> Parser t a
+chainr1 p op = do
+  x <- p
+  ( do
+      f <- op
+      y <- chainr1 p op
+      return (f x y)
+    )
+    <|> return x
+
+-- Match a specific sequence of tokens
+tokens :: (Show t, Eq t) => [t] -> Parser t [t]
+tokens [] = return []
+tokens (t : ts) = do
+  _ <- token t
+  _ <- tokens ts
+  return (t : ts)
+
+-- Convenient alias for parsing strings
+string :: String -> Parser Char String
+string = tokens
+
+-- Run parser and ensure EOF
+parse :: (Show t) => Parser t a -> [t] -> Result a
+parse p ts = do
+  (result, _) <- runStateT (p <* eof) ts
+  return result
