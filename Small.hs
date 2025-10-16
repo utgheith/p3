@@ -119,7 +119,7 @@ reduce_ (BinaryOps op t1 t2) =
     ( \v1 ->
         premise
           (reduce t2)
-          (\t2' -> BinaryOps op (Literal $ (fromRight (-1) (valueToInt v1))) t2')
+          (BinaryOps op (Literal $ fromRight (-1) (valueToInt v1)))
           (applyBinaryOp op v1)
     )
   where
