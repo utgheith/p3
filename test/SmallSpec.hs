@@ -1,8 +1,7 @@
-
-{-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ConstrainedClassMethods #-}
 {-# LANGUAGE InstanceSigs #-}
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE TypeFamilies #-}
 
 module SmallSpec (spec) where
 
@@ -10,11 +9,11 @@ import qualified Control.Monad.State as S
 import qualified Data.Map as M
 import Small
 import Term
-import Value (Value(..))
 import Test.Hspec
+import Value (Value (..))
 
 -- A mock machine for testing
-data MockMachine = MockMachine { getMem :: M.Map String Value, getInput :: [Value], getOutput :: [Value] } deriving (Show, Eq)
+data MockMachine = MockMachine {getMem :: M.Map String Value, getInput :: [Value], getOutput :: [Value]} deriving (Show, Eq)
 
 instance Machine MockMachine where
   type V MockMachine = Value
@@ -27,22 +26,22 @@ instance Machine MockMachine where
 
   setVar x v = do
     m <- S.get
-    S.put (m { getMem = M.insert x v (getMem m) })
+    S.put (m {getMem = M.insert x v (getMem m)})
     return $ Happy v
 
   inputVal = do
     m <- S.get
     case getInput m of
-      (i:is) -> do
-        S.put (m { getInput = is })
+      (i : is) -> do
+        S.put (m {getInput = is})
         return $ Happy i
       [] -> return $ Sad "end of input"
 
   outputVal v = do
     m <- S.get
-    S.put (m { getOutput = getOutput m ++ [v] })
+    S.put (m {getOutput = getOutput m ++ [v]})
     return $ Happy v
-    
+
   subVal (IntVal v1) (IntVal v2) = return $ Happy (IntVal (v1 - v2))
   subVal _ _ = return $ Sad "Type error in subtraction"
 
@@ -52,12 +51,18 @@ instance Machine MockMachine where
   mulVal (IntVal v1) (IntVal v2) = return $ Happy (IntVal (v1 * v2))
   mulVal _ _ = return $ Sad "Type error in multiplication"
 
-  divVal (IntVal v1) (IntVal v2) = if v2 == 0 then return $ Sad "Cannot divide by 0" else
-      return $ Happy (IntVal (v1 `div` v2)) -- I don't want the actual interpreter to crash
+  divVal (IntVal v1) (IntVal v2) =
+    if v2 == 0
+      then return $ Sad "Cannot divide by 0"
+      else
+        return $ Happy (IntVal (v1 `div` v2)) -- I don't want the actual interpreter to crash
   divVal _ _ = return $ Sad "Type error in division"
 
-  modVal (IntVal v1) (IntVal v2) = if v2 == 0 then return $ Sad "Cannot mod by 0" else
-      return $ Happy (IntVal (v1 `mod` v2)) -- I don't want the actual interpreter to crash
+  modVal (IntVal v1) (IntVal v2) =
+    if v2 == 0
+      then return $ Sad "Cannot mod by 0"
+      else
+        return $ Happy (IntVal (v1 `mod` v2)) -- I don't want the actual interpreter to crash
   modVal _ _ = return $ Sad "Type error in modulus"
 
   ltVal (IntVal v1) (IntVal v2) = return $ Happy (BoolVal (v1 < v2))
@@ -89,12 +94,12 @@ instance Machine MockMachine where
 
   selectValue (BoolVal True) c _ = c
   selectValue (BoolVal False) _ t = t
-  selectValue (IntVal n) c t = if n /= 0 then c else t  -- backward compat, remove later
+  selectValue (IntVal n) c t = if n /= 0 then c else t -- backward compat, remove later
 
 spec :: Spec
 spec = do
   describe "reduceFully" $ do
-    let initialMachine = MockMachine { getMem = M.empty, getInput = [], getOutput = [] }
+    let initialMachine = MockMachine {getMem = M.empty, getInput = [], getOutput = []}
 
     it "reduces a literal" $ do
       let term = Literal 10
@@ -102,17 +107,17 @@ spec = do
 
     it "reduces a variable" $ do
       let term = Var "x"
-      let machine = initialMachine { getMem = M.fromList [("x", IntVal 5)] }
+      let machine = initialMachine {getMem = M.fromList [("x", IntVal 5)]}
       reduceFully term machine `shouldBe` (Right (IntVal 5), machine)
 
     it "reduces a let expression" $ do
       let term = Seq (Let "x" (Literal 5)) (Var "x")
-      let finalMachine = initialMachine { getMem = M.fromList [("x", IntVal 5)] }
+      let finalMachine = initialMachine {getMem = M.fromList [("x", IntVal 5)]}
       reduceFully term initialMachine `shouldBe` (Right (IntVal 5), finalMachine)
 
     it "reduces a sequence" $ do
       let term = Seq (Let "x" (Literal 5)) (Var "x")
-      let finalMachine = initialMachine { getMem = M.fromList [("x", IntVal 5)] }
+      let finalMachine = initialMachine {getMem = M.fromList [("x", IntVal 5)]}
       reduceFully term initialMachine `shouldBe` (Right (IntVal 5), finalMachine)
 
     it "reduces an if expression (then)" $ do
@@ -125,13 +130,13 @@ spec = do
 
     it "reduces a while loop" $ do
       let term = Seq (Let "x" (Literal 3)) (While (Var "x") (Let "x" (BinaryOps Sub (Var "x") (Literal 1))))
-      let finalMachine = initialMachine { getMem = M.fromList [("x", IntVal 0)] }
+      let finalMachine = initialMachine {getMem = M.fromList [("x", IntVal 0)]}
       reduceFully term initialMachine `shouldBe` (Right (IntVal 0), finalMachine)
 
     it "reduces read and write" $ do
       let term = Seq (Read "x") (Write (Var "x"))
-      let machine = initialMachine { getInput = [IntVal 42] }
-      let finalMachine = machine { getMem = M.fromList [("x", IntVal 42)], getOutput = [IntVal 42], getInput = [] }
+      let machine = initialMachine {getInput = [IntVal 42]}
+      let finalMachine = machine {getMem = M.fromList [("x", IntVal 42)], getOutput = [IntVal 42], getInput = []}
       reduceFully term machine `shouldBe` (Right (IntVal 42), finalMachine)
 
     it "reduces subtraction" $ do

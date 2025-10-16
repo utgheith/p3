@@ -1,8 +1,7 @@
-
 module ParserCombinatorsSpec (spec) where
 
-import ParserCombinators
 import Control.Monad.State.Lazy (runStateT)
+import ParserCombinators
 import Test.Hspec
 
 spec :: Spec
