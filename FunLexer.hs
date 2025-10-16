@@ -13,7 +13,7 @@ data Token
   deriving (Show, Eq)
 
 symbols :: S.Set Char
-symbols = S.fromList "-*+(){}=,"
+symbols = S.fromList "-*+/(){}=,><!|&"
 
 keywords :: S.Set String
 keywords =
