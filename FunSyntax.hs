@@ -4,13 +4,14 @@
 
 {-# HLINT ignore "Use <$>" #-}
 
-module FunSyntax (parse, prog, term, Term (Assign, BinaryOp, Block, Call, Const, FunDef, IfThenElse, Negate, VarDef, VarRef, While)) where
+module FunSyntax (parse, prog, term, Term (Assign, BinaryOp, Block, Call, Const, ConstString, FunDef, IfThenElse, Negate, VarDef, VarRef, While)) where
 
+import qualified Control.Monad as M
 import Control.Monad.State.Lazy (runStateT)
 -- import Debug.Trace (trace)
 
 import qualified Data.Set as S
-import FunLexer (Token (Ident, Keyword, Num, Symbol), lexer)
+import FunLexer (Token (Ident, Keyword, Num, StringLiteral, Symbol), lexer)
 import ParserCombinators (Parser, Result, oneof, opt, rpt, rptDropSep, satisfy, token)
 
 data Term
@@ -19,6 +20,7 @@ data Term
   | Block [Term]
   | Call Term [Term]
   | Const Integer
+  | ConstString String
   | FunDef String [String] Term
   | IfThenElse Term Term (Maybe Term)
   | Negate Term
@@ -34,7 +36,7 @@ data Term
 -- succeed if the next token is the given symbol
 symbol :: String -> Parser Token ()
 -- using explicit bind
-symbol s = token (Symbol s) >>= \_ -> return ()
+symbol s = M.void (token (Symbol s))
 
 -- succeed if the next token is the given keyword
 keyword :: String -> Parser Token ()
@@ -100,6 +102,13 @@ num = do
     _ -> Nothing
   return $ Const n
 
+string :: Parser Token Term
+string = do
+  s <- satisfy $ \case
+    StringLiteral s -> Just s
+    _ -> Nothing
+  return $ ConstString s
+
 parens :: Parser Token Term
 parens = [t | _ <- symbol "(", t <- term, _ <- symbol ")"]
 
@@ -141,7 +150,7 @@ whileTerm = do
   return $ While cond body
 
 unaryExp :: Parser Token Term
-unaryExp = oneof [assign, ifExpr, block, funDef, minus, num, parens, varDef, varRef, whileTerm]
+unaryExp = oneof [assign, ifExpr, block, funDef, minus, num, string, parens, varDef, varRef, whileTerm]
 
 ----------- prog ----------
 

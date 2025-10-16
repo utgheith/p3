@@ -1,4 +1,4 @@
-module Main(main) where
+module Main (main) where
 
 import FunSyntax (parse, prog)
 import ParserCombinators (eof)
@@ -10,4 +10,4 @@ main = do
         t <- prog
         _ <- eof
         return t
-  print $ r
+  print r

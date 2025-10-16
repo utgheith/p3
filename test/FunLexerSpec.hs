@@ -1,5 +1,3 @@
-
-
 module FunLexerSpec (spec) where
 
 import FunLexer
@@ -34,4 +32,3 @@ spec = do
 
     it "handles an unexpected character" $ do
       lexer "@" `shouldBe` [Error "Unexpected character: @"]
-

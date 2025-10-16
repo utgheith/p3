@@ -1,8 +1,9 @@
-
 module ParserCombinatorsSpec (spec) where
 
-import ParserCombinators
 import Control.Monad.State.Lazy (runStateT)
+import Data.Char (isDigit)
+import Data.Functor (($>))
+import ParserCombinators
 import Test.Hspec
 
 spec :: Spec
@@ -126,26 +127,26 @@ spec = do
 
   describe "chainl1" $ do
     it "parses left-associative expressions" $ do
-      let num = satisfy (\c -> if c >= '0' && c <= '9' then Just (fromEnum c - fromEnum '0') else Nothing)
-      let plus = token '+' *> return (+)
+      let num = satisfy (\c -> if isDigit c then Just (fromEnum c - fromEnum '0') else Nothing)
+      let plus = token '+' $> (+)
       let p = chainl1 num plus
       runStateT p ['1', '+', '2', '+', '3'] `shouldBe` Right (6, [])
     it "handles single value without operators" $ do
-      let num = satisfy (\c -> if c >= '0' && c <= '9' then Just (fromEnum c - fromEnum '0') else Nothing)
-      let plus = token '+' *> return (+)
+      let num = satisfy (\c -> if isDigit c then Just (fromEnum c - fromEnum '0') else Nothing)
+      let plus = token '+' $> (+)
       let p = chainl1 num plus
       runStateT p ['5'] `shouldBe` Right (5, [])
 
   describe "chainr1" $ do
     it "parses right-associative expressions" $ do
-      let num = satisfy (\c -> if c >= '0' && c <= '9' then Just (fromEnum c - fromEnum '0') else Nothing)
-      let minus = token '-' *> return (-)
+      let num = satisfy (\c -> if isDigit c then Just (fromEnum c - fromEnum '0') else Nothing)
+      let minus = token '-' $> (-)
       let p = chainr1 num minus
       -- 5 - 3 - 1 should be parsed as 5 - (3 - 1) = 3
       runStateT p ['5', '-', '3', '-', '1'] `shouldBe` Right (3, [])
     it "handles single value without operators" $ do
-      let num = satisfy (\c -> if c >= '0' && c <= '9' then Just (fromEnum c - fromEnum '0') else Nothing)
-      let minus = token '-' *> return (-)
+      let num = satisfy (\c -> if isDigit c then Just (fromEnum c - fromEnum '0') else Nothing)
+      let minus = token '-' $> (-)
       let p = chainr1 num minus
       runStateT p ['5'] `shouldBe` Right (5, [])
 
