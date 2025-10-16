@@ -1,8 +1,9 @@
-module Value (Value(..), valueToInt, valueToBool, isIntVal, isBoolVal, extractInt, extractBool) where
+module Value (Value (..), valueToInt, valueToBool, isIntVal, isBoolVal, extractInt, extractBool) where
 
-data Value = IntVal Integer
-           | BoolVal Bool
-           deriving (Eq, Show)
+data Value
+  = IntVal Integer
+  | BoolVal Bool
+  deriving (Eq, Show)
 
 valueToInt :: Value -> Either String Integer
 valueToInt (IntVal n) = Right n
