@@ -26,6 +26,9 @@ spec = do
     it "lexes a symbol" $ do
       lexer "=" `shouldBe` [Symbol "="]
 
+    it "lexes a multi-character symbol" $ do
+      lexer "<=" `shouldBe` [Symbol "<="]
+
     it "lexes a simple expression" $ do
       lexer "var x = 1" `shouldBe` [Keyword "var", Ident "x", Symbol "=", Num 1]
 
