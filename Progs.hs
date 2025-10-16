@@ -16,7 +16,7 @@ prog =
   While
     (Var "x")
     ( Write (Var "x") ~
-      "x" <=> Sub (Var "x") (Literal 1)
+      "x" <=> BinaryOps Sub (Var "x") (Literal 1)
     )
 
 prog2 :: Term
@@ -37,5 +37,5 @@ prog3 =
   While
     (Gt (Var "y") (Literal 0))
     ( Write (Var "y") ~
-      "y" <=> Sub (Var "y") (Literal 1)
+      "y" <=> BinaryOps Sub (Var "y") (Literal 1)
     )

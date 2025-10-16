@@ -6,8 +6,9 @@
 module Small (reduceFully, Machine(..), Result(..),Env) where
 
 import qualified Control.Monad.State as S
-import Term (Term(..))
-import Value (Value(..))
+import Data.Either
+import Term (Term(..), BinaryOp(..))
+import Value (Value(..), valueToInt)
 import Debug.Trace (trace)
 
 ----- The Machine type class -----
@@ -30,8 +31,12 @@ class Machine m where
     inputVal :: Env m
     outputVal :: V m -> Env m
 
-    -- Arithmetic operations
+    -- Arithmetic and control
+    addVal :: V m -> V m -> Env m
     subVal :: V m -> V m -> Env m
+    mulVal :: V m -> V m -> Env m
+    divVal :: V m -> V m -> Env m
+    modVal :: V m -> V m -> Env m
 
     -- Comparison operations (operate on integers, return booleans)
     ltVal :: V m -> V m -> Env m
@@ -62,7 +67,7 @@ data Result a = Happy a -- produced an answer
 
 type Env m = (Machine m) => S.State m (Result (V m))
 
-premise :: (Machine m) =>Env m -> (Term -> Term) -> (V m -> Env m) -> Env m
+premise :: (Machine m) => Env m -> (Term -> Term) -> (V m -> Env m) -> Env m
 premise e l r = do
     v <- e
     case v of
@@ -113,10 +118,17 @@ reduce_ (Write t) = do
 reduce_ Skip =
     return $ Happy (IntVal 0)
 
-reduce_ (Sub t1 t2) =
+reduce_ (BinaryOps op t1 t2) =
     premise (reduce t1)
-        (`Sub` t2)
-        (\v1 -> premise (reduce t2) (const Skip) (subVal v1))
+        (\t1' -> BinaryOps op t1' t2)
+        (\v1 -> premise (reduce t2)
+                    (\t2' -> BinaryOps op (Literal $ (fromRight (-1) (valueToInt v1))) t2')
+                    (applyBinaryOp op v1)) where
+                            applyBinaryOp Add = addVal
+                            applyBinaryOp Sub = subVal
+                            applyBinaryOp Mul = mulVal
+                            applyBinaryOp Div = divVal
+                            applyBinaryOp Mod = modVal
 
 reduce_ (BoolLit b) =
     return $ Happy $ BoolVal b
@@ -165,7 +177,6 @@ reduce_ (Not t) =
     premise (reduce t)
         Not
         notVal
-
 
 reduce :: (Machine m, Show m, V m ~ Value) => Term -> Env m
 reduce t = do

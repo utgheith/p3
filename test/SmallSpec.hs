@@ -2,6 +2,7 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ConstrainedClassMethods #-}
+{-# LANGUAGE InstanceSigs #-}
 
 module SmallSpec (spec) where
 
@@ -41,9 +42,23 @@ instance Machine MockMachine where
     m <- S.get
     S.put (m { getOutput = getOutput m ++ [v] })
     return $ Happy v
-
+    
   subVal (IntVal v1) (IntVal v2) = return $ Happy (IntVal (v1 - v2))
   subVal _ _ = return $ Sad "Type error in subtraction"
+
+  addVal (IntVal v1) (IntVal v2) = return $ Happy (IntVal (v1 + v2))
+  addVal _ _ = return $ Sad "Type error in addition"
+
+  mulVal (IntVal v1) (IntVal v2) = return $ Happy (IntVal (v1 * v2))
+  mulVal _ _ = return $ Sad "Type error in multiplication"
+
+  divVal (IntVal v1) (IntVal v2) = if v2 == 0 then return $ Sad "Cannot divide by 0" else
+      return $ Happy (IntVal (v1 `div` v2)) -- I don't want the actual interpreter to crash
+  divVal _ _ = return $ Sad "Type error in division"
+
+  modVal (IntVal v1) (IntVal v2) = if v2 == 0 then return $ Sad "Cannot mod by 0" else
+      return $ Happy (IntVal (v1 `mod` v2)) -- I don't want the actual interpreter to crash
+  modVal _ _ = return $ Sad "Type error in modulus"
 
   ltVal (IntVal v1) (IntVal v2) = return $ Happy (BoolVal (v1 < v2))
   ltVal _ _ = return $ Sad "Type error in <"
@@ -109,7 +124,7 @@ spec = do
       reduceFully term initialMachine `shouldBe` (Right (IntVal 20), initialMachine)
 
     it "reduces a while loop" $ do
-      let term = Seq (Let "x" (Literal 3)) (While (Var "x") (Let "x" (Sub (Var "x") (Literal 1))))
+      let term = Seq (Let "x" (Literal 3)) (While (Var "x") (Let "x" (BinaryOps Sub (Var "x") (Literal 1))))
       let finalMachine = initialMachine { getMem = M.fromList [("x", IntVal 0)] }
       reduceFully term initialMachine `shouldBe` (Right (IntVal 0), finalMachine)
 
@@ -120,8 +135,32 @@ spec = do
       reduceFully term machine `shouldBe` (Right (IntVal 42), finalMachine)
 
     it "reduces subtraction" $ do
-      let term = Sub (Literal 10) (Literal 3)
+      let term = BinaryOps Sub (Literal 10) (Literal 3)
       reduceFully term initialMachine `shouldBe` (Right (IntVal 7), initialMachine)
+
+    it "reduces addition" $ do
+      let term = BinaryOps Add (Literal 10) (Literal 3)
+      reduceFully term initialMachine `shouldBe` (Right (IntVal 13), initialMachine)
+
+    it "reduces multiplication" $ do
+      let term = BinaryOps Mul (Literal 10) (Literal 3)
+      reduceFully term initialMachine `shouldBe` (Right (IntVal 30), initialMachine)
+
+    it "reduces division - nonzero denominator case" $ do
+      let term = BinaryOps Div (Literal 12) (Literal 3)
+      reduceFully term initialMachine `shouldBe` (Right (IntVal 4), initialMachine)
+
+    it "reduces division - zero denominator case" $ do
+      let term = BinaryOps Div (Literal 12) (Literal 0)
+      reduceFully term initialMachine `shouldBe` (Left "Cannot divide by 0", initialMachine)
+
+    it "reduces modulus - nonzero denominator case" $ do
+      let term = BinaryOps Mod (Literal 12) (Literal 3)
+      reduceFully term initialMachine `shouldBe` (Right (IntVal 0), initialMachine)
+
+    it "reduces modulus - zero denominator case" $ do
+      let term = BinaryOps Mod (Literal 12) (Literal 0)
+      reduceFully term initialMachine `shouldBe` (Left "Cannot mod by 0", initialMachine)
 
     it "reduces skip" $ do
       let term = Skip
