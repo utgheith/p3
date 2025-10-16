@@ -1,12 +1,12 @@
 name: Ormolu Check
 
-    on:
+on:
       push:
         branches: [ main ]
       pull_request:
         branches: [ main ]
 
-    jobs:
+jobs:
       format-check:
         runs-on: ubuntu-latest
         steps:
