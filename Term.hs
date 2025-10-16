@@ -5,6 +5,7 @@ data BinaryOp = Add | Sub | Mul | Div | Mod
 
 data Term
   = If Term Term Term
+  | Try Term Term
   | Let String Term
   | Literal Integer
   | StringLiteral String

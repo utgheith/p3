@@ -181,3 +181,17 @@ spec = do
       let term = BinaryOps Sub (Literal 10) (StringLiteral "hello")
       let (result, _) = reduceFully term initialMachine
       result `shouldBe` Left "Type error in subtraction"
+
+    it "try catch runs try statement if no error" $ do
+      let term = Try (Literal 1) (Literal 2)
+      reduceFully term initialMachine `shouldBe` (Right (IntVal 1), initialMachine)
+
+    it "try catch runs catch statement if error" $ do
+      let term = Try (BinaryOps Div (Literal 1) (Literal 0)) (Literal 2)
+      reduceFully term initialMachine `shouldBe` (Right (IntVal 2), initialMachine)
+
+    it "try catch errors if both try and catch statements produce errors" $ do
+      let term = Try (BinaryOps Div (Literal 1) (Literal 0)) (BinaryOps Div (Literal 1) (Literal 0))
+      reduceFully term initialMachine `shouldBe` (Left "Cannot divide by 0", initialMachine)
+
+
