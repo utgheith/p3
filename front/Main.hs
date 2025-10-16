@@ -10,4 +10,4 @@ main = do
         t <- prog
         _ <- eof
         return t
-  print $ r
+  print r

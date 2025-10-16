@@ -37,7 +37,7 @@ instance Machine Simulator where
       (x : xs) -> do
         S.put (Simulator m xs out)
         return $ Happy x
-      [] -> return $ Sad $ "Input stream is empty"
+      [] -> return $ Sad "Input stream is empty"
 
   outputVal :: Value -> Env Simulator
   outputVal val = do

@@ -2,16 +2,22 @@
 
 # p3
 
-To test:
+To test (checked for all pull requests):
 
 ```
     make test
 ```
 
-To format:
+To format (enforced on pull requests):
 
 ```
     make format
+```
+
+To check style:
+
+```
+    make lint
 ```
 
 

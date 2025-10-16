@@ -11,6 +11,9 @@ test :
 format :
 	stack exec -- ormolu -i ${HS_FILES}
 
+lint :
+	stack exec -- hlint ${HS_FILES}
+
 clean :
 	stack clean
 
