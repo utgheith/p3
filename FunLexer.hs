@@ -49,8 +49,9 @@ lexer = unfoldr step
       | S.member c symbols =
           Just (Symbol [c], rest)
     -- comments
-    step ('$' : rest) = let (_, rest2) = span (/= '$') rest in
-        case rest2 of
+    step ('$' : rest) =
+      let (_, rest2) = span (/= '$') rest
+       in case rest2 of
             ('$' : rest3) -> step rest3
             _ -> Just (Error ("Unclosed comment"), "")
     -- syntax errors

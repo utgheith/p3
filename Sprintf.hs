@@ -19,5 +19,6 @@ sprintf (c : rest) args = c : sprintf rest args
 -- Infix version of string formatting, like in Python.
 -- Example: "%s:%s:%s" % [show 2, show 2, show 4] = "'2' + '2' = '4'"
 infixl 7 %
+
 (%) :: [Char] -> [[Char]] -> [Char]
 (%) = sprintf

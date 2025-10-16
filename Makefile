@@ -1,3 +1,5 @@
+HS_FILES = ${shell find . -path './.*' -prune -o \( -name '*.hs' -print \)}
+
 .PHONY : all test clean
 
 all :
@@ -5,6 +7,9 @@ all :
 
 test :
 	stack test
+
+format :
+	stack exec -- ormolu -i ${HS_FILES}
 
 clean :
 	stack clean
