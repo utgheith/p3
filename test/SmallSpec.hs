@@ -178,6 +178,6 @@ spec = do
       reduceFully term initialMachine `shouldBe` (Right (IntVal 0), initialMachine)
 
     it "returns a Sad result for a type error" $ do
-      let term = Sub (Literal 10) (StringLiteral "hello")
+      let term = BinaryOps Sub (Literal 10) (StringLiteral "hello")
       let (result, _) = reduceFully term initialMachine
       result `shouldBe` Left "Type error in subtraction"

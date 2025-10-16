@@ -76,6 +76,7 @@ instance Machine Simulator where
   selectValue (BoolVal True) e1 _ = e1
   selectValue (BoolVal False) _ e2 = e2
   selectValue (IntVal n) e1 e2 = if n /= 0 then e1 else e2 -- backward compat
+  selectValue (StringVal s) e1 e2 = if not (null s) then e1 else e2
 
   ltVal :: Value -> Value -> Env Simulator
   ltVal (IntVal v1) (IntVal v2) = return $ Happy (BoolVal (v1 < v2))
