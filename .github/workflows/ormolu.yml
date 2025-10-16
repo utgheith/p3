@@ -1,3 +1,13 @@
+name: Formatting workflow
+
+on:
+  - push:
+      branches:
+        - '**'
+  - pull-request:
+      branches:
+        - '**'
+      
 jobs:
   ormolu:
     runs-on: ubuntu-20.04
