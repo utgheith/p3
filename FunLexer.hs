@@ -13,7 +13,7 @@ data Token
   deriving (Show, Eq)
 
 symbols :: S.Set Char
-symbols = S.fromList "-*+/(){}=,><!|&"
+symbols = S.fromList "-*+/(){}=,><!"
 
 keywords :: S.Set String
 keywords =
@@ -44,7 +44,13 @@ lexer = unfoldr step
       | isAlpha c =
           let (var, rest) = span isAlphaNum s
            in Just (if S.member var keywords then Keyword var else Ident var, rest)
-    -- symbols
+    -- multi-character symbols
+    step ('<' : '=' : rest) = Just (Symbol "<=", rest)
+    step ('>' : '=' : rest) = Just (Symbol ">=", rest)
+    step ('=' : '=' : rest) = Just (Symbol "==", rest)
+    step ('|' : '|' : rest) = Just (Symbol "||", rest)
+    step ('&' : '&' : rest) = Just (Symbol "&&", rest)
+    -- single-character symbols
     step (c : rest)
       | S.member c symbols =
           Just (Symbol [c], rest)
