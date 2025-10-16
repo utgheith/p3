@@ -78,8 +78,7 @@ alt p1 p2 =
     (\_ -> Right <$> p2)
 
 oneof :: [Parser t a] -> Parser t a
-oneof [] = throwError "no choices left in oneof" -- need better error reporting
-oneof (p : ps) = p <|> oneof ps
+oneof = foldr (<|>) (throwError "no choices left in oneof")
 
 opt :: Parser t a -> Parser t (Maybe a)
 opt p =
