@@ -1,16 +1,16 @@
 name: Formatting workflow
 
 on:
-  - push:
-      branches:
-        - '**'
-  - pull-request:
-      branches:
-        - '**'
-      
+  push:
+    branches:
+      - '**'
+  pull_request:
+    branches:
+      - '**'
+
 jobs:
   ormolu:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
       - uses: haskell-actions/run-ormolu@v14
@@ -21,4 +21,3 @@ jobs:
         if: ${{ always() }}
         with:
           commit_message: automated ormolu commit
-

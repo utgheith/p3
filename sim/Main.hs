@@ -62,16 +62,14 @@ instance Machine Simulator where
   divVal (IntVal v1) (IntVal v2) =
     if v2 == 0
       then return $ Sad "Cannot divide by 0"
-      else
-        return $ Happy (IntVal (v1 `div` v2)) -- I don't want the actual interpreter to crash
+      else return $ Happy (IntVal (v1 `div` v2)) -- I don't want the actual interpreter to crash
   divVal _ _ = return $ Sad "Type error in division"
 
   modVal :: Value -> Value -> Env Simulator
   modVal (IntVal v1) (IntVal v2) =
     if v2 == 0
       then return $ Sad "Cannot mod by 0"
-      else
-        return $ Happy (IntVal (v1 `mod` v2)) -- I don't want the actual interpreter to crash
+      else return $ Happy (IntVal (v1 `mod` v2)) -- I don't want the actual interpreter to crash
   modVal _ _ = return $ Sad "Type error in modulus"
 
   selectValue :: Value -> Env Simulator -> Env Simulator -> Env Simulator
