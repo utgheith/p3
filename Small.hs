@@ -6,8 +6,9 @@
 module Small (reduceFully, Machine(..), Result(..),Env) where
 
 import qualified Control.Monad.State as S
+import Data.Either
 import Term (Term(..), BinaryOp(..))
-import Value (Value(..))
+import Value (Value(..), valueToInt)
 import Debug.Trace (trace)
 
 ----- The Machine type class -----
@@ -121,14 +122,13 @@ reduce_ (BinaryOps op t1 t2) =
     premise (reduce t1)
         (\t1' -> BinaryOps op t1' t2)
         (\v1 -> premise (reduce t2)
-                    (\t2' -> BinaryOps op (Literal $ IntVal v1) t2')
+                    (\t2' -> BinaryOps op (Literal $ (fromRight (-1) (valueToInt v1))) t2')
                     (applyBinaryOp op v1)) where
                             applyBinaryOp Add = addVal
                             applyBinaryOp Sub = subVal
                             applyBinaryOp Mul = mulVal
                             applyBinaryOp Div = divVal
                             applyBinaryOp Mod = modVal
-                            -- Note to Self: Someone Else 
 
 reduce_ (BoolLit b) =
     return $ Happy $ BoolVal b

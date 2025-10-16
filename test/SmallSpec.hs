@@ -43,24 +43,19 @@ instance Machine MockMachine where
     S.put (m { getOutput = getOutput m ++ [v] })
     return $ Happy v
     
-  subVal :: Value -> Value -> Env Simulator
   subVal (IntVal v1) (IntVal v2) = return $ Happy (IntVal (v1 - v2))
   subVal _ _ = return $ Sad "Type error in subtraction"
 
-  addVal :: Value -> Value -> Env Simulator
   addVal (IntVal v1) (IntVal v2) = return $ Happy (IntVal (v1 + v2))
   addVal _ _ = return $ Sad "Type error in addition"
 
-  mulVal :: Value -> Value -> Env Simulator
   mulVal (IntVal v1) (IntVal v2) = return $ Happy (IntVal (v1 * v2))
   mulVal _ _ = return $ Sad "Type error in multiplication"
 
-  divVal :: Value -> Value -> Env Simulator
   divVal (IntVal v1) (IntVal v2) = if v2 == 0 then return $ Sad "Cannot divide by 0" else
       return $ Happy (IntVal (v1 `div` v2)) -- I don't want the actual interpreter to crash
   divVal _ _ = return $ Sad "Type error in division"
 
-  modVal :: Value -> Value -> Env Simulator
   modVal (IntVal v1) (IntVal v2) = if v2 == 0 then return $ Sad "Cannot mod by 0" else
       return $ Happy (IntVal (v1 `mod` v2)) -- I don't want the actual interpreter to crash
   modVal _ _ = return $ Sad "Type error in modulus"

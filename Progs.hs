@@ -37,5 +37,5 @@ prog3 =
   While
     (Gt (Var "y") (Literal 0))
     ( Write (Var "y") ~
-      "y" <=> Sub (Var "y") (Literal 1)
+      "y" <=> BinaryOps Sub (Var "y") (Literal 1)
     )
