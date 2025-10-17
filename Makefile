@@ -9,10 +9,10 @@ test :
 	stack test
 
 format :
-	stack exec -- ormolu -i ${HS_FILES}
+	stack install ormolu && stack exec -- ormolu -i ${HS_FILES}
 
 lint :
-	stack exec -- hlint ${HS_FILES}
+	stack install hlint && stack exec -- hlint ${HS_FILES}
 
 clean :
 	stack clean
