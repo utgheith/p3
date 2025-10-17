@@ -100,6 +100,12 @@ reduce_ (If cond tThen tElse) = do
     (reduce cond)
     (\cond' -> If cond' tThen tElse)
     (\v -> selectValue v (return $ Continue tThen) (return $ Continue tElse))
+reduce_ (Try tTry tCatch) = do
+  vTry <- (reduce tTry)
+  case vTry of
+    Continue tTry' -> return $ Continue (Try tTry' tCatch)
+    Happy n -> return $ Happy n
+    Sad _ -> return $ Continue tCatch
 reduce_ w@(While cond body) =
   return $ Continue (If cond (Seq body w) Skip)
 reduce_ (Read x) =
