@@ -9,7 +9,7 @@ test :
 	stack test
 
 format :
-	stack install ormolu && stack exec -- ormolu -i ${HS_FILES}
+	stack exec -- which ormolu > /dev/null 2>&1 || stack install ormolu ; stack exec -- ormolu -i ${HS_FILES}
 
 lint :
 	stack install hlint && stack exec -- hlint ${HS_FILES}
