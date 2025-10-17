@@ -1,4 +1,4 @@
-module Sprintf (sprintf, (%)) where
+module Sprintf (sprintf, (%), (<<)) where
 
 -- An alternative to list append (++) for string formatting in prints
 -- (for example, for error messages).
@@ -21,3 +21,9 @@ sprintf (c : rest) args = c : sprintf rest args
 infixl 7 %
 (%) :: [Char] -> [[Char]] -> [Char]
 (%) = sprintf
+
+-- Infix operator to convert terms with Show instances into strings.
+-- Example: "%s:%s:%s" % 2 << 2 << 4 << [] = "'2' + '2' = '4'"
+infixr 8 <<
+(<<) :: (Show a) => a -> [[Char]] -> [[Char]]
+(<<) a l = (show a) : l

@@ -2,6 +2,7 @@
 
 module ParserCombinators (eof, oneof, opt, Parser, Result, rpt, rptSep, rptDropSep, satisfy, token, (<|>)) where
 
+import Control.Monad ((>=>))
 import Control.Monad.Except (catchError, throwError)
 import Control.Monad.State.Lazy (StateT, get, put)
 
@@ -43,29 +44,23 @@ eof = do
     [] -> return ()
     _ -> throwError $ "expected eof but found: " ++ show tokens
 
-satisfy :: (Show t) => (t -> Maybe a) -> Parser t a
-satisfy p = do
+satisfy_ :: (Show t) => [Char] -> (t -> Maybe a) -> Parser t a
+satisfy_ msg p = do
   tokens <- get
   case tokens of
-    [] -> throwError "out of tokens" -- need better error reporting
+    [] -> throwError "out of tokens"
     (t : rest) -> do
       case p t of
         Just a -> do
           put rest
           return a
-        Nothing -> throwError $ "failed to satisfy predicate at " ++ show (t : rest)
+        Nothing -> throwError $ msg ++ show (t : rest)
+
+satisfy :: (Show t) => (t -> Maybe a) -> Parser t a
+satisfy = satisfy_ "failed to satisfy predicate at "
 
 token :: (Show t, Eq t) => t -> Parser t t
-token t = do
-  tokens <- get
-  case tokens of
-    [] -> throwError "out of tokens"
-    (t' : rest) ->
-      if t == t'
-        then do
-          put rest
-          return t
-        else throwError ("expected " ++ show t ++ ", found " ++ show (t' : rest))
+token t = satisfy_ ("expected " ++ show t ++ ", found ") (\t' -> if t == t' then Just t else Nothing)
 
 (<|>) :: Parser t a -> Parser t b -> Parser t (Either a b)
 p1 <|> p2 =
@@ -119,4 +114,4 @@ rptSep p sep =
     (const $ return Nothing)
 
 rptDropSep :: Parser t a -> Parser t b -> Parser t [a]
-rptDropSep p sep = dropSep <$> rptSep p sep
+rptDropSep = curry ((uncurry rptSep) >=> (return . dropSep))
