@@ -1,4 +1,4 @@
-module FunLexer (lexer, Token (Num, Ident, Keyword, Symbol, Error)) where
+module FunLexer (lexer, Token (Num, Ident, Keyword, Symbol, StringLiteral, Error)) where
 
 import Data.Char (isAlpha, isAlphaNum, isNumber, isSpace)
 import Data.List (unfoldr)
@@ -9,11 +9,12 @@ data Token
   | Ident String
   | Keyword String
   | Symbol String
+  | StringLiteral String
   | Error String
   deriving (Show, Eq)
 
 symbols :: S.Set Char
-symbols = S.fromList "-*+(){}=,"
+symbols = S.fromList "-*+/(){}=,><!"
 
 keywords :: S.Set String
 keywords =
@@ -44,14 +45,27 @@ lexer = unfoldr step
       | isAlpha c =
           let (var, rest) = span isAlphaNum s
            in Just (if S.member var keywords then Keyword var else Ident var, rest)
-    -- symbols
+    -- string literals
+    step ('"' : rest) =
+      let (str, rest2) = span (/= '"') rest
+       in case rest2 of
+            ('"' : rest3) -> Just (StringLiteral str, rest3)
+            _ -> Just (Error "Unclosed string literal", "")
+    -- multi-character symbols
+    step ('<' : '=' : rest) = Just (Symbol "<=", rest)
+    step ('>' : '=' : rest) = Just (Symbol ">=", rest)
+    step ('=' : '=' : rest) = Just (Symbol "==", rest)
+    step ('|' : '|' : rest) = Just (Symbol "||", rest)
+    step ('&' : '&' : rest) = Just (Symbol "&&", rest)
+    -- single-character symbols
     step (c : rest)
       | S.member c symbols =
           Just (Symbol [c], rest)
     -- comments
-    step ('$' : rest) = let (_, rest2) = span (/= '$') rest in
-        case rest2 of
+    step ('$' : rest) =
+      let (_, rest2) = span (/= '$') rest
+       in case rest2 of
             ('$' : rest3) -> step rest3
-            _ -> Just (Error ("Unclosed comment"), "")
+            _ -> Just (Error "Unclosed comment", "")
     -- syntax errors
     step s = Just (Error ("Unexpected character: " ++ take 20 s), "")

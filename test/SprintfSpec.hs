@@ -11,9 +11,9 @@ spec = do
     it "handles double percents" $ do
       sprintf "%%%%" [] `shouldBe` "%%"
     it "substitutes words correctly" $ do
-      sprintf 
-        "a %s is a %s in the %s of %s" 
-        ["", "", "image", "I"] 
+      sprintf
+        "a %s is a %s in the %s of %s"
+        ["", "", "image", "I"]
         `shouldBe` "a  is a  in the image of I"
   describe "the percent operator" $ do
     it "does sprintf" $ do
