@@ -1,193 +1,167 @@
-{-# LANGUAGE ConstrainedClassMethods #-}
 {-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE TypeOperators #-}
 
-module Small (reduceFully, Machine (..), Result (..), Env) where
+module Small
+  ( Step (..),
+    MachineOps (..),
+    stepOnce,
+    reduceFully,
+  )
+where
 
-import qualified Control.Monad.State as S
-import Data.Either
-import Debug.Trace (trace)
-import Term (BinaryOp (..), Term (..))
-import Value (Value (..), valueToInt)
+import Control.Monad.State (StateT, runStateT)
+import Control.Monad.Trans.Class (lift)
+import Term (BinaryOp (..), Term (..), TermF (..), paraTermM)
+import Value (Value (..))
 
------ The Machine type class -----
-
--- The micro-ops that a machine must support
--- Allow an implementation to define its own semantics
-
-class Machine m where
-  type V m -- The value type for this machine
-  -- Uses associated an associated type family for the value type
-  -- This requires the TypeFamilies extension
-  -- The way you read the type signature is:
-  --    for any type m that is an instance of Machine, there is an associated type (V m)
-
-  -- Get and set variables
-  getVar :: String -> Env m
-  setVar :: String -> V m -> Env m
-
-  -- I/O
-  inputVal :: Env m
-  outputVal :: V m -> Env m
-
-  -- Arithmetic and control
-  addVal :: V m -> V m -> Env m
-  subVal :: V m -> V m -> Env m
-  mulVal :: V m -> V m -> Env m
-  divVal :: V m -> V m -> Env m
-  modVal :: V m -> V m -> Env m
-
-  -- Comparison operations (operate on integers, return booleans)
-  ltVal :: V m -> V m -> Env m
-  gtVal :: V m -> V m -> Env m
-  lteVal :: V m -> V m -> Env m
-  gteVal :: V m -> V m -> Env m
-  eqVal :: V m -> V m -> Env m
-  neqVal :: V m -> V m -> Env m
-
-  -- Logical operations (operate on booleans)
-  andVal :: V m -> V m -> Env m
-  orVal :: V m -> V m -> Env m
-  notVal :: V m -> Env m
-
-  -- Control flow - selectValue uses boolean semantics
-  selectValue :: V m -> Env m -> Env m -> Env m
-
------ The Result type -----
-
-data Result a
-  = Happy a -- produced an answer
-  | Continue Term -- need to keep going
-  | Sad String -- error
+data Step a
+  = Done a
+  | Continue Term
   deriving (Eq, Show)
 
------ The Env monad -----
+type Exec state = StateT state (Either String)
 
--- abstract semantics that glue micro-ops together
+data MachineOps state = MachineOps
+  { machineGetVar :: String -> Exec state Value,
+    machineSetVar :: String -> Value -> Exec state Value,
+    machineInput :: Exec state Value,
+    machineOutput :: Value -> Exec state Value,
+    machineAdd :: Value -> Value -> Exec state Value,
+    machineSub :: Value -> Value -> Exec state Value,
+    machineMul :: Value -> Value -> Exec state Value,
+    machineDiv :: Value -> Value -> Exec state Value,
+    machineMod :: Value -> Value -> Exec state Value,
+    machineLt :: Value -> Value -> Exec state Value,
+    machineGt :: Value -> Value -> Exec state Value,
+    machineLte :: Value -> Value -> Exec state Value,
+    machineGte :: Value -> Value -> Exec state Value,
+    machineEq :: Value -> Value -> Exec state Value,
+    machineNeq :: Value -> Value -> Exec state Value,
+    machineAnd :: Value -> Value -> Exec state Value,
+    machineOr :: Value -> Value -> Exec state Value,
+    machineNot :: Value -> Exec state Value
+  }
 
-type Env m = S.State m (Result (V m))
+stepOnce ::
+  MachineOps state ->
+  Term ->
+  state ->
+  (Either String (Step Value), state)
+stepOnce ops term initialState =
+  case runStateT (paraTermM (smallStepAlg ops) term) initialState of
+    Left err -> (Left err, initialState)
+    Right (result, newState) -> (Right result, newState)
 
-premise :: Env m -> (Term -> Term) -> (V m -> Env m) -> Env m
-premise e l r = do
-  v <- e
-  case v of
-    Continue t' -> return $ Continue (l t')
-    Happy n -> r n
-    Sad _ -> return v
-
------- Small-step reduction ------
-
-reduce_ :: (Machine m, Show m, V m ~ Value) => Term -> Env m
-reduce_ (Literal n) =
-  return $ Happy $ IntVal n
-reduce_ (StringLiteral s) =
-  return $ Happy $ StringVal s
-reduce_ (Var x) =
-  getVar x
-reduce_ (Let x t) = do
-  premise
-    (reduce t)
-    (Let x)
-    (setVar x)
-reduce_ (Seq t1 t2) = do
-  premise
-    (reduce t1)
-    (`Seq` t2)
-    (\_ -> return $ Continue t2)
-reduce_ (If cond tThen tElse) = do
-  premise
-    (reduce cond)
-    (\cond' -> If cond' tThen tElse)
-    (\v -> selectValue v (return $ Continue tThen) (return $ Continue tElse))
-reduce_ w@(While cond body) =
-  return $ Continue (If cond (Seq body w) Skip)
-reduce_ (Read x) =
-  premise
-    inputVal
-    id
-    (setVar x)
-reduce_ (Write t) = do
-  premise
-    (reduce t)
-    Write
-    outputVal
-reduce_ Skip =
-  return $ Happy (IntVal 0)
-reduce_ (BinaryOps op t1 t2) =
-  premise
-    (reduce t1)
-    (\t1' -> BinaryOps op t1' t2)
-    ( \v1 ->
-        premise
-          (reduce t2)
-          (BinaryOps op (Literal $ fromRight (-1) (valueToInt v1)))
-          (applyBinaryOp op v1)
-    )
+reduceFully ::
+  MachineOps state ->
+  Term ->
+  state ->
+  (Either String Value, state)
+reduceFully ops = go
   where
-    applyBinaryOp Add = addVal
-    applyBinaryOp Sub = subVal
-    applyBinaryOp Mul = mulVal
-    applyBinaryOp Div = divVal
-    applyBinaryOp Mod = modVal
-reduce_ (BoolLit b) =
-  return $ Happy $ BoolVal b
-reduce_ (Lt t1 t2) =
-  premise
-    (reduce t1)
-    (`Lt` t2)
-    (premise (reduce t2) (const Skip) . ltVal)
-reduce_ (Gt t1 t2) =
-  premise
-    (reduce t1)
-    (`Gt` t2)
-    (premise (reduce t2) (const Skip) . gtVal)
-reduce_ (Lte t1 t2) =
-  premise
-    (reduce t1)
-    (`Lte` t2)
-    (premise (reduce t2) (const Skip) . lteVal)
-reduce_ (Gte t1 t2) =
-  premise
-    (reduce t1)
-    (`Gte` t2)
-    (premise (reduce t2) (const Skip) . gteVal)
-reduce_ (Eq t1 t2) =
-  premise
-    (reduce t1)
-    (`Eq` t2)
-    (premise (reduce t2) (const Skip) . eqVal)
-reduce_ (Neq t1 t2) =
-  premise
-    (reduce t1)
-    (`Neq` t2)
-    (premise (reduce t2) (const Skip) . neqVal)
-reduce_ (And t1 t2) =
-  premise
-    (reduce t1)
-    (`And` t2)
-    (premise (reduce t2) (const Skip) . andVal)
-reduce_ (Or t1 t2) =
-  premise
-    (reduce t1)
-    (`Or` t2)
-    (premise (reduce t2) (const Skip) . orVal)
-reduce_ (Not t) =
-  premise
-    (reduce t)
-    Not
-    notVal
+    go currentTerm currentState =
+      case runStateT (paraTermM (smallStepAlg ops) currentTerm) currentState of
+        Left err -> (Left err, currentState)
+        Right (Done value, newState) -> (Right value, newState)
+        Right (Continue nextTerm, newState) -> go nextTerm newState
 
-reduce :: (Machine m, Show m, V m ~ Value) => Term -> Env m
-reduce t = do
-  e <- S.get
-  trace ("Simulating: " ++ show t) () `seq`
-    trace ("     Machine: " ++ show e) () `seq`
-      reduce_ t
+smallStepAlg ::
+  MachineOps state ->
+  TermF (Term, Exec state (Step Value)) ->
+  Exec state (Step Value)
+smallStepAlg ops termF =
+  case termF of
+    LiteralF n -> pure (Done (IntVal n))
+    StringLiteralF s -> pure (Done (StringVal s))
+    BoolLitF b -> pure (Done (BoolVal b))
+    VarF name -> doneFrom (machineGetVar ops name)
+    LetF name (_, evaluateBound) -> do
+      boundResult <- evaluateBound
+      case boundResult of
+        Continue next -> pure (Continue (Let name next))
+        Done value -> doneFrom (machineSetVar ops name value)
+    SeqF (_, evaluateFirst) (secondTerm, _) -> do
+      firstResult <- evaluateFirst
+      case firstResult of
+        Continue next -> pure (Continue (Seq next secondTerm))
+        Done _ -> pure (Continue secondTerm)
+    IfF (_, evaluateCond) (thenTerm, _) (elseTerm, _) -> do
+      condResult <- evaluateCond
+      case condResult of
+        Continue nextCond -> pure (Continue (If nextCond thenTerm elseTerm))
+        Done value ->
+          case truthy value of
+            Right True -> pure (Continue thenTerm)
+            Right False -> pure (Continue elseTerm)
+            Left msg -> lift (Left msg)
+    WhileF (condTerm, _) (bodyTerm, _) ->
+      pure (Continue (If condTerm (Seq bodyTerm (While condTerm bodyTerm)) Skip))
+    ReadF name -> do
+      inputValue <- machineInput ops
+      doneFrom (machineSetVar ops name inputValue)
+    WriteF (_, evaluateTerm) -> do
+      result <- evaluateTerm
+      case result of
+        Continue next -> pure (Continue (Write next))
+        Done value -> doneFrom (machineOutput ops value)
+    SkipF -> pure (Done (IntVal 0))
+    BinaryOpsF op left right ->
+      binaryStep (BinaryOps op) left right (numericOp op)
+    LtF left right ->
+      binaryStep Lt left right (machineLt ops)
+    GtF left right ->
+      binaryStep Gt left right (machineGt ops)
+    LteF left right ->
+      binaryStep Lte left right (machineLte ops)
+    GteF left right ->
+      binaryStep Gte left right (machineGte ops)
+    EqF left right ->
+      binaryStep Eq left right (machineEq ops)
+    NeqF left right ->
+      binaryStep Neq left right (machineNeq ops)
+    AndF left right ->
+      binaryStep And left right (machineAnd ops)
+    OrF left right ->
+      binaryStep Or left right (machineOr ops)
+    NotF (_, evaluateTerm) -> do
+      result <- evaluateTerm
+      case result of
+        Continue next -> pure (Continue (Not next))
+        Done value -> doneFrom (machineNot ops value)
+  where
+    numericOp opType =
+      case opType of
+        Add -> machineAdd ops
+        Sub -> machineSub ops
+        Mul -> machineMul ops
+        Div -> machineDiv ops
+        Mod -> machineMod ops
 
-reduceFully :: (Machine m, Show m, V m ~ Value) => Term -> m -> (Either String (V m), m)
-reduceFully term machine =
-  case S.runState (reduce term) machine of
-    (Sad msg, m) -> (Left msg, m)
-    (Continue t, m) -> reduceFully t m
-    (Happy n, m) -> (Right n, m)
+    doneFrom :: Exec state Value -> Exec state (Step Value)
+    doneFrom action = Done <$> action
+
+    binaryStep ::
+      (Term -> Term -> Term) ->
+      (Term, Exec state (Step Value)) ->
+      (Term, Exec state (Step Value)) ->
+      (Value -> Value -> Exec state Value) ->
+      Exec state (Step Value)
+    binaryStep rebuild (_originalLeft, evaluateLeft) (rightTerm, evaluateRight) apply = do
+      leftResult <- evaluateLeft
+      case leftResult of
+        Continue nextLeft -> pure (Continue (rebuild nextLeft rightTerm))
+        Done leftValue -> do
+          rightResult <- evaluateRight
+          case rightResult of
+            Continue nextRight ->
+              pure (Continue (rebuild (quoteValue leftValue) nextRight))
+            Done rightValue -> doneFrom (apply leftValue rightValue)
+
+quoteValue :: Value -> Term
+quoteValue (IntVal n) = Literal n
+quoteValue (BoolVal b) = BoolLit b
+quoteValue (StringVal s) = StringLiteral s
+
+truthy :: Value -> Either String Bool
+truthy (BoolVal b) = Right b
+truthy (IntVal n) = Right (n /= 0)
+truthy (StringVal s) = Right (not (null s))
