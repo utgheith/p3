@@ -105,7 +105,7 @@ assign = [Assign name expr | name <- ident, _ <- symbol "=", expr <- term]
 
 -- We can use monad comprehensions (GHC extension) to make parsers more concise
 minus :: Parser Token Term
-minus = [Negate e | e <- symbol "-" >> unaryExp]
+minus = [Negate e | _ <- symbol "-", e <- unaryExp]
 
 num :: Parser Token Term
 num = [Const n | n <- isNum]
@@ -118,7 +118,7 @@ parens = [t | t <- between (symbol "(") (symbol ")") term]
 
 funDef :: Parser Token Term
 funDef =
-  [FunDef name params body | name <- keyword "fun" >> ident, params <- between (symbol "(") (symbol ")") (rptDropSep ident (symbol ",")), body <- term]
+  [FunDef name params body | _ <- keyword "fun", name <- ident, params <- between (symbol "(") (symbol ")") (rptDropSep ident (symbol ",")), body <- term]
 
 varRef :: Parser Token Term
 varRef = VarRef <$> ident
@@ -127,13 +127,13 @@ block :: Parser Token Term
 block = [Block ts | ts <- between (symbol "{") (symbol "}") (rpt term)]
 
 ifExpr :: Parser Token Term
-ifExpr = [IfThenElse cond thenTerm elseTerm | cond <- keyword "if" >> term, thenTerm <- term, elseTerm <- opt (keyword "else" >> term)]
+ifExpr = [IfThenElse cond thenTerm elseTerm | _ <- keyword "if", cond <- term, thenTerm <- term, elseTerm <- opt (keyword "else" >> term)]
 
 varDef :: Parser Token Term
-varDef = [VarDef name expr | name <- keyword "var" >> ident, expr <- opt $ symbol "=" >> term]
+varDef = [VarDef name expr | _ <- keyword "var", name <- ident, expr <- opt $ symbol "=" >> term]
 
 whileTerm :: Parser Token Term
-whileTerm = [While cond body | cond <- keyword "while" >> term, body <- term]
+whileTerm = [While cond body | _ <- keyword "while", cond <- term, body <- term]
 
 unaryExp :: Parser Token Term
 unaryExp = oneof [assign, ifExpr, block, funDef, minus, num, string, parens, varDef, varRef, whileTerm]
