@@ -177,6 +177,25 @@ reduce_ (Not t) =
     (reduce t)
     Not
     notVal
+reduce_ (Fun x t) =
+  -- very minimal closure, for right now we are ignoring the captured environment since im not worrying about scoping for now
+  return $ Happy (ClosureVal x t [])
+reduce_ (App tf ta) =
+  premise
+    (reduce tf)
+    (`App` ta)
+    (premise (reduce ta) (App tf) . apply)
+
+apply :: (Machine m, Show m, V m ~ Value) => Value -> Value -> Env m
+apply (ClosureVal x body _caps) arg = do
+  m0 <- S.get -- save the current machine state
+  let (_resSet, m1) = S.runState (setVar x arg) m0
+  let (res, _m2) = reduceFully body m1
+  S.put m0 -- restore the machine state
+  case res of
+    Left msg -> return $ Sad msg
+    Right v -> return $ Happy v
+apply _ _ = return $ Sad "attempt to call a non-function"
 
 reduce :: (Machine m, Show m, V m ~ Value) => Term -> Env m
 reduce t = do
