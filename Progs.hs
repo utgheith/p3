@@ -28,16 +28,16 @@ prog3 :: Term
 prog3 =
   "x" <=> Literal 10
     ~ "y" <=> Literal 5
-    ~ Write (Gt (Var "x") (Var "y"))
-    ~ Write (Lt (Var "x") (Var "y"))
-    ~ Write (Eq (Var "x") (Var "y"))
-    ~ Write (Neq (Var "x") (Var "y"))
-    ~ Write (And (Gt (Var "x") (Var "y")) (Neq (Var "x") (Var "y")))
-    ~ Write (Or (Lt (Var "x") (Var "y")) (Gt (Var "x") (Var "y")))
-    ~ Write (Not (Lt (Var "x") (Var "y")))
-    ~ If (Gt (Var "x") (Var "y")) (Write (Literal 100)) (Write (Literal 200))
+    ~ Write (BinaryOps Gt (Var "x") (Var "y"))
+    ~ Write (BinaryOps Lt (Var "x") (Var "y"))
+    ~ Write (BinaryOps Eq (Var "x") (Var "y"))
+    ~ Write (BinaryOps Neq (Var "x") (Var "y"))
+    ~ Write (BinaryOps And (BinaryOps Gt (Var "x") (Var "y")) (BinaryOps Neq (Var "x") (Var "y")))
+    ~ Write (BinaryOps Or (BinaryOps Lt (Var "x") (Var "y")) (BinaryOps Gt (Var "x") (Var "y")))
+    ~ Write (UnaryOps Not (BinaryOps Lt (Var "x") (Var "y")))
+    ~ If (BinaryOps Gt (Var "x") (Var "y")) (Write (Literal 100)) (Write (Literal 200))
     ~ While
-      (Gt (Var "y") (Literal 0))
+      (BinaryOps Gt (Var "y") (Literal 0))
       ( Write (Var "y")
           ~ "y" <=> BinaryOps Sub (Var "y") (Literal 1)
       )
