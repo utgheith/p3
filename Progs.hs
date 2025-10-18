@@ -1,21 +1,4 @@
-module Progs (
-    prog
-  , prog2
-  , prog3
-  , progLiteral
-  , progVar
-  , progLet
-  , progSeq
-  , progIf
-  , progWhile
-  , progRead
-  , progCompare
-  , progLogic
-  , progBinaryOps
-  , progWrite
-  , progSkip
-  , progFull
-  ) where
+module Progs (prog, prog2, prog3) where
 
 import Term
 

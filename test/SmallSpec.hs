@@ -239,9 +239,10 @@ spec = do
 
     it "reduces while loop with complex condition" $ do
       let term = Seq (Let "x" (Literal 5))
-                    (While (And (Gt (Var "x") (Literal 0))
-                               (Lt (Var "x") (Literal 10)))
-                          (Let "x" (BinaryOps Add (Var "x") (Literal 1))))
+                    (Seq (While (And (Gt (Var "x") (Literal 0))
+                                   (Lt (Var "x") (Literal 10)))
+                              (Let "x" (BinaryOps Add (Var "x") (Literal 1))))
+                        (Var "x"))
       let finalMachine = initialMachine {getMem = M.fromList [("x", IntVal 10)]}
       reduceFully term initialMachine `shouldBe` (Right (IntVal 10), finalMachine)
 
