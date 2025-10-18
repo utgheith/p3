@@ -8,7 +8,7 @@ module Small (reduceFully, Machine (..), Result (..), Env) where
 import qualified Control.Monad.State as S
 import Data.Either
 import Debug.Trace (trace)
-import Term (BinaryOp (..), Term (..))
+import Term (BinaryOp (..), Term (..), UnaryOp (..))
 import Value (Value (..), valueToInt)
 
 ----- The Machine type class -----
@@ -37,6 +37,7 @@ class Machine m where
   mulVal :: V m -> V m -> Env m
   divVal :: V m -> V m -> Env m
   modVal :: V m -> V m -> Env m
+  negVal :: V m -> Env m
 
   -- Comparison operations (operate on integers, return booleans)
   ltVal :: V m -> V m -> Env m
@@ -130,53 +131,24 @@ reduce_ (BinaryOps op t1 t2) =
     applyBinaryOp Mul = mulVal
     applyBinaryOp Div = divVal
     applyBinaryOp Mod = modVal
+    applyBinaryOp Lt = ltVal
+    applyBinaryOp Gt = gtVal
+    applyBinaryOp Lte = lteVal
+    applyBinaryOp Gte = gteVal
+    applyBinaryOp Eq = eqVal
+    applyBinaryOp Neq = neqVal
+    applyBinaryOp And = andVal
+    applyBinaryOp Or = orVal
 reduce_ (BoolLit b) =
   return $ Happy $ BoolVal b
-reduce_ (Lt t1 t2) =
-  premise
-    (reduce t1)
-    (`Lt` t2)
-    (premise (reduce t2) (const Skip) . ltVal)
-reduce_ (Gt t1 t2) =
-  premise
-    (reduce t1)
-    (`Gt` t2)
-    (premise (reduce t2) (const Skip) . gtVal)
-reduce_ (Lte t1 t2) =
-  premise
-    (reduce t1)
-    (`Lte` t2)
-    (premise (reduce t2) (const Skip) . lteVal)
-reduce_ (Gte t1 t2) =
-  premise
-    (reduce t1)
-    (`Gte` t2)
-    (premise (reduce t2) (const Skip) . gteVal)
-reduce_ (Eq t1 t2) =
-  premise
-    (reduce t1)
-    (`Eq` t2)
-    (premise (reduce t2) (const Skip) . eqVal)
-reduce_ (Neq t1 t2) =
-  premise
-    (reduce t1)
-    (`Neq` t2)
-    (premise (reduce t2) (const Skip) . neqVal)
-reduce_ (And t1 t2) =
-  premise
-    (reduce t1)
-    (`And` t2)
-    (premise (reduce t2) (const Skip) . andVal)
-reduce_ (Or t1 t2) =
-  premise
-    (reduce t1)
-    (`Or` t2)
-    (premise (reduce t2) (const Skip) . orVal)
-reduce_ (Not t) =
+reduce_ (UnaryOps op t) =
   premise
     (reduce t)
-    Not
-    notVal
+    (UnaryOps op)
+    (applyUnaryOp op)
+  where
+    applyUnaryOp Neg = negVal
+    applyUnaryOp Not = notVal
 
 reduce :: (Machine m, Show m, V m ~ Value) => Term -> Env m
 reduce t = do
