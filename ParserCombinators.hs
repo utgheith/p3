@@ -1,6 +1,5 @@
 module ParserCombinators (eof, oneof, opt, Parser, Result, rpt, rptSep, rptDropSep, satisfy, token, tokens, string, (<|>), alt, some, sepBy, sepBy1, between, skip, lookAhead, chainl1, chainr1, parse) where
 
-import Control.Monad ((>=>))
 import Control.Monad.Except (catchError, throwError)
 import Control.Monad.State.Lazy (StateT, get, put, runStateT)
 import qualified Data.Functor
@@ -43,12 +42,6 @@ eof = do
     [] -> return ()
     _ -> throwError $ "expected eof but found: " ++ show ts
 
-satisfy_ :: (Show t) => [Char] -> (t -> Maybe a) -> Parser t a
-satisfy_ msg p = do
-  tokens <- get
-  case tokens of
-    [] -> throwError "out of tokens"
-
 satisfy :: (Show t) => (t -> Maybe a) -> Parser t a
 satisfy p = do
   ts <- get
@@ -59,10 +52,7 @@ satisfy p = do
         Just a -> do
           put rest
           return a
-        Nothing -> throwError $ msg ++ show (t : rest)
-
-satisfy :: (Show t) => (t -> Maybe a) -> Parser t a
-satisfy = satisfy_ "failed to satisfy predicate at "
+        Nothing -> throwError $ "failed to satisfy predicate at " ++ show (t : rest)
 
 token :: (Show t, Eq t) => t -> Parser t t
 token t = do
