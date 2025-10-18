@@ -25,4 +25,7 @@ data Term
   | And Term Term
   | Or Term Term
   | Not Term
+  | TupleTerm Term Term
+  | TupleEnd
+--   | AccessTuple Term Term
   deriving (Eq, Show)

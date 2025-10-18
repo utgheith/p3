@@ -9,7 +9,7 @@ import qualified Control.Monad.State as S
 import Data.Either
 import Debug.Trace (trace)
 import Term (BinaryOp (..), Term (..))
-import Value (Value (..), valueToInt)
+import Value (Value (..), valueToInt, valueToTuple)
 
 ----- The Machine type class -----
 
@@ -177,6 +177,18 @@ reduce_ (Not t) =
     (reduce t)
     Not
     notVal
+reduce_ (TupleTerm t next) =
+  premise
+    (reduce t)
+    (\term' -> TupleTerm term' next)
+    ( \v1 ->
+        premise
+          (reduce next)
+          (\term' -> TupleTerm term' next)
+          (\v2 -> return $ Happy (Tuple ((v1) : (fromRight ([]) (valueToTuple v2)))))
+    )
+reduce_ (TupleEnd) =
+    return $ Happy $ Tuple []
 
 reduce :: (Machine m, Show m, V m ~ Value) => Term -> Env m
 reduce t = do

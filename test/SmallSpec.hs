@@ -97,6 +97,7 @@ instance Machine MockMachine where
   selectValue (BoolVal False) _ t = t
   selectValue (IntVal n) c t = if n /= 0 then c else t
   selectValue (StringVal s) c t = if not (null s) then c else t
+  selectValue (Tuple l) c t = if not (null l) then c else t
 
 spec :: Spec
 spec = do
@@ -181,3 +182,8 @@ spec = do
       let term = BinaryOps Sub (Literal 10) (StringLiteral "hello")
       let (result, _) = reduceFully term initialMachine
       result `shouldBe` Left "Type error in subtraction"
+
+    it "reduces a Tuple" $ do
+      let term = TupleTerm (Literal 10) (TupleTerm (StringLiteral "hello") (TupleTerm (BoolLit True) TupleEnd))
+      let (result, _) = reduceFully term initialMachine
+      result `shouldBe` Right (Tuple [IntVal 10, StringVal "hello", BoolVal True])
