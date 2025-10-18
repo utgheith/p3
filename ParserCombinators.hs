@@ -48,6 +48,7 @@ satisfy_ msg p = do
   tokens <- get
   case tokens of
     [] -> throwError "out of tokens"
+
 satisfy :: (Show t) => (t -> Maybe a) -> Parser t a
 satisfy p = do
   ts <- get
