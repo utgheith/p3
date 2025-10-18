@@ -155,13 +155,8 @@ reduce_ (Fun x t) =
 reduce_ (App tf ta) =
   premise
     (reduce tf)
-    (\tf' -> App tf' ta)
-    ( \vf ->
-        premise
-          (reduce ta)
-          (\ta' -> App tf ta')
-          (\va -> apply vf va)
-    )
+    (`App` ta)
+    (premise (reduce ta) (App tf) . apply)
 
 apply :: (Machine m, Show m, V m ~ Value) => Value -> Value -> Env m
 apply (ClosureVal x body _caps) arg = do
