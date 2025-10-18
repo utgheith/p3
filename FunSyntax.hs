@@ -101,7 +101,7 @@ binaryExp (ops : rest) = do
 ------------------- unary operators  -------------------
 
 assign :: Parser Token Term
-assign = [Assign name expr | name <- ident, expr <- symbol "=" >> term]
+assign = [Assign name expr | name <- ident, _ <- symbol "=", expr <- term]
 
 -- We can use monad comprehensions (GHC extension) to make parsers more concise
 minus :: Parser Token Term
