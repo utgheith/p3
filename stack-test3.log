@@ -1,0 +1,347 @@
+Stack has not been tested with GHC versions above 9.4, and using 9.6.7, this may fail
+Stack has not been tested with Cabal versions above 3.8, but version 3.10.3.0 was found, this may fail
+p3> test (suite: p3-test)
+
+
+FunLexer
+  lexer
+    handles an empty string [✔]
+    handles whitespace [✔]
+    lexes a number [✔]
+    lexes an identifier [✔]
+    lexes a keyword [✔]
+    lexes a symbol [✔]
+    lexes a multi-character symbol [✔]
+    lexes a simple expression [✔]
+    handles an unexpected character [✔]
+ParserCombinators
+  eof
+    succeeds on empty input [✔]
+    fails on non-empty input [✔]
+  satisfy
+    succeeds when predicate is met [✔]
+    fails when predicate is not met [✔]
+  token
+    consumes the correct token [✔]
+    fails on incorrect token [✔]
+  <|>
+    chooses the first parser if it succeeds [✔]
+    chooses the second parser if the first fails [✔]
+  alt
+    returns Left if the first parser succeeds [✔]
+    returns Right if the first parser fails and second succeeds [✔]
+  oneof
+    picks the first successful parser [✔]
+  opt
+    returns Just the value if parser succeeds [✔]
+    returns Nothing if parser fails [✔]
+  rpt
+    parses zero or more occurrences [✔]
+  rptSep
+    parses zero or more occurrences with a separator [✔]
+  rptDropSep
+    parses zero or more occurrences and drops the separator [✔]
+  some
+    parses one or more occurrences [✔]
+    fails if no occurrences found [✔]
+  sepBy
+    parses zero or more occurrences separated by a separator [✔]
+  sepBy1
+    parses one or more occurrences separated by a separator [✔]
+    fails if no occurrences found [✔]
+  between
+    parses content between delimiters [✔]
+  skip
+    ignores the result of a parser [✔]
+  lookAhead
+    parses without consuming input [✔]
+  parse
+    runs parser and ensures EOF [✔]
+    fails if input remains after parsing [✔]
+  chainl1
+    parses left-associative expressions [✔]
+    handles single value without operators [✔]
+  chainr1
+    parses right-associative expressions [✔]
+    handles single value without operators [✔]
+  tokens
+    matches a sequence of tokens [✔]
+    fails if sequence doesn't match [✔]
+    succeeds on empty sequence [✔]
+  string
+    matches a string [✔]
+    fails if string doesn't match [✔]
+Small
+  reduceFully
+Simulating: Literal 10
+     Machine: MockMachine {getMem = fromList [], getInput = [], getOutput = []}
+    reduces an integer literal [✔]
+Simulating: StringLiteral "hello"
+     Machine: MockMachine {getMem = fromList [], getInput = [], getOutput = []}
+    reduces a string literal [✔]
+Simulating: Var "x"
+     Machine: MockMachine {getMem = fromList [("x",IntVal 5)], getInput = [], getOutput = []}
+    reduces a variable [✔]
+Simulating: Seq (Let "x" (Literal 5)) (Var "x")
+     Machine: MockMachine {getMem = fromList [], getInput = [], getOutput = []}
+Simulating: Let "x" (Literal 5)
+     Machine: MockMachine {getMem = fromList [], getInput = [], getOutput = []}
+Simulating: Literal 5
+     Machine: MockMachine {getMem = fromList [], getInput = [], getOutput = []}
+Simulating: Var "x"
+     Machine: MockMachine {getMem = fromList [("x",IntVal 5)], getInput = [], getOutput = []}
+    reduces a let expression [✔]
+Simulating: Seq (Let "x" (Literal 5)) (Var "x")
+     Machine: MockMachine {getMem = fromList [], getInput = [], getOutput = []}
+Simulating: Let "x" (Literal 5)
+     Machine: MockMachine {getMem = fromList [], getInput = [], getOutput = []}
+Simulating: Literal 5
+     Machine: MockMachine {getMem = fromList [], getInput = [], getOutput = []}
+Simulating: Var "x"
+     Machine: MockMachine {getMem = fromList [("x",IntVal 5)], getInput = [], getOutput = []}
+    reduces a sequence [✔]
+Simulating: If (BoolLit True) (Literal 10) (Literal 20)
+     Machine: MockMachine {getMem = fromList [], getInput = [], getOutput = []}
+Simulating: BoolLit True
+     Machine: MockMachine {getMem = fromList [], getInput = [], getOutput = []}
+Simulating: Literal 10
+     Machine: MockMachine {getMem = fromList [], getInput = [], getOutput = []}
+    reduces an if expression (then) [✔]
+Simulating: If (BoolLit False) (Literal 10) (Literal 20)
+     Machine: MockMachine {getMem = fromList [], getInput = [], getOutput = []}
+Simulating: BoolLit False
+     Machine: MockMachine {getMem = fromList [], getInput = [], getOutput = []}
+Simulating: Literal 20
+     Machine: MockMachine {getMem = fromList [], getInput = [], getOutput = []}
+    reduces an if expression (else) [✔]
+Simulating: Seq (Let "x" (Literal 3)) (While (Var "x") (Let "x" (BinaryOps Sub (Var "x") (Literal 1))))
+     Machine: MockMachine {getMem = fromList [], getInput = [], getOutput = []}
+Simulating: Let "x" (Literal 3)
+     Machine: MockMachine {getMem = fromList [], getInput = [], getOutput = []}
+Simulating: Literal 3
+     Machine: MockMachine {getMem = fromList [], getInput = [], getOutput = []}
+Simulating: While (Var "x") (Let "x" (BinaryOps Sub (Var "x") (Literal 1)))
+     Machine: MockMachine {getMem = fromList [("x",IntVal 3)], getInput = [], getOutput = []}
+Simulating: If (Var "x") (Seq (Let "x" (BinaryOps Sub (Var "x") (Literal 1))) (While (Var "x") (Let "x" (BinaryOps Sub (Var "x") (Literal 1))))) Skip
+     Machine: MockMachine {getMem = fromList [("x",IntVal 3)], getInput = [], getOutput = []}
+Simulating: Var "x"
+     Machine: MockMachine {getMem = fromList [("x",IntVal 3)], getInput = [], getOutput = []}
+Simulating: Seq (Let "x" (BinaryOps Sub (Var "x") (Literal 1))) (While (Var "x") (Let "x" (BinaryOps Sub (Var "x") (Literal 1))))
+     Machine: MockMachine {getMem = fromList [("x",IntVal 3)], getInput = [], getOutput = []}
+Simulating: Let "x" (BinaryOps Sub (Var "x") (Literal 1))
+     Machine: MockMachine {getMem = fromList [("x",IntVal 3)], getInput = [], getOutput = []}
+Simulating: BinaryOps Sub (Var "x") (Literal 1)
+     Machine: MockMachine {getMem = fromList [("x",IntVal 3)], getInput = [], getOutput = []}
+Simulating: Var "x"
+     Machine: MockMachine {getMem = fromList [("x",IntVal 3)], getInput = [], getOutput = []}
+Simulating: Literal 1
+     Machine: MockMachine {getMem = fromList [("x",IntVal 3)], getInput = [], getOutput = []}
+Simulating: While (Var "x") (Let "x" (BinaryOps Sub (Var "x") (Literal 1)))
+     Machine: MockMachine {getMem = fromList [("x",IntVal 2)], getInput = [], getOutput = []}
+Simulating: If (Var "x") (Seq (Let "x" (BinaryOps Sub (Var "x") (Literal 1))) (While (Var "x") (Let "x" (BinaryOps Sub (Var "x") (Literal 1))))) Skip
+     Machine: MockMachine {getMem = fromList [("x",IntVal 2)], getInput = [], getOutput = []}
+Simulating: Var "x"
+     Machine: MockMachine {getMem = fromList [("x",IntVal 2)], getInput = [], getOutput = []}
+Simulating: Seq (Let "x" (BinaryOps Sub (Var "x") (Literal 1))) (While (Var "x") (Let "x" (BinaryOps Sub (Var "x") (Literal 1))))
+     Machine: MockMachine {getMem = fromList [("x",IntVal 2)], getInput = [], getOutput = []}
+Simulating: Let "x" (BinaryOps Sub (Var "x") (Literal 1))
+     Machine: MockMachine {getMem = fromList [("x",IntVal 2)], getInput = [], getOutput = []}
+Simulating: BinaryOps Sub (Var "x") (Literal 1)
+     Machine: MockMachine {getMem = fromList [("x",IntVal 2)], getInput = [], getOutput = []}
+Simulating: Var "x"
+     Machine: MockMachine {getMem = fromList [("x",IntVal 2)], getInput = [], getOutput = []}
+Simulating: Literal 1
+     Machine: MockMachine {getMem = fromList [("x",IntVal 2)], getInput = [], getOutput = []}
+Simulating: While (Var "x") (Let "x" (BinaryOps Sub (Var "x") (Literal 1)))
+     Machine: MockMachine {getMem = fromList [("x",IntVal 1)], getInput = [], getOutput = []}
+Simulating: If (Var "x") (Seq (Let "x" (BinaryOps Sub (Var "x") (Literal 1))) (While (Var "x") (Let "x" (BinaryOps Sub (Var "x") (Literal 1))))) Skip
+     Machine: MockMachine {getMem = fromList [("x",IntVal 1)], getInput = [], getOutput = []}
+Simulating: Var "x"
+     Machine: MockMachine {getMem = fromList [("x",IntVal 1)], getInput = [], getOutput = []}
+Simulating: Seq (Let "x" (BinaryOps Sub (Var "x") (Literal 1))) (While (Var "x") (Let "x" (BinaryOps Sub (Var "x") (Literal 1))))
+     Machine: MockMachine {getMem = fromList [("x",IntVal 1)], getInput = [], getOutput = []}
+Simulating: Let "x" (BinaryOps Sub (Var "x") (Literal 1))
+     Machine: MockMachine {getMem = fromList [("x",IntVal 1)], getInput = [], getOutput = []}
+Simulating: BinaryOps Sub (Var "x") (Literal 1)
+     Machine: MockMachine {getMem = fromList [("x",IntVal 1)], getInput = [], getOutput = []}
+Simulating: Var "x"
+     Machine: MockMachine {getMem = fromList [("x",IntVal 1)], getInput = [], getOutput = []}
+Simulating: Literal 1
+     Machine: MockMachine {getMem = fromList [("x",IntVal 1)], getInput = [], getOutput = []}
+Simulating: While (Var "x") (Let "x" (BinaryOps Sub (Var "x") (Literal 1)))
+     Machine: MockMachine {getMem = fromList [("x",IntVal 0)], getInput = [], getOutput = []}
+Simulating: If (Var "x") (Seq (Let "x" (BinaryOps Sub (Var "x") (Literal 1))) (While (Var "x") (Let "x" (BinaryOps Sub (Var "x") (Literal 1))))) Skip
+     Machine: MockMachine {getMem = fromList [("x",IntVal 0)], getInput = [], getOutput = []}
+Simulating: Var "x"
+     Machine: MockMachine {getMem = fromList [("x",IntVal 0)], getInput = [], getOutput = []}
+Simulating: Skip
+     Machine: MockMachine {getMem = fromList [("x",IntVal 0)], getInput = [], getOutput = []}
+    reduces a while loop [✔]
+Simulating: Seq (Read "x") (Write (Var "x"))
+     Machine: MockMachine {getMem = fromList [], getInput = [IntVal 42], getOutput = []}
+Simulating: Read "x"
+     Machine: MockMachine {getMem = fromList [], getInput = [IntVal 42], getOutput = []}
+Simulating: Write (Var "x")
+     Machine: MockMachine {getMem = fromList [("x",IntVal 42)], getInput = [], getOutput = []}
+Simulating: Var "x"
+     Machine: MockMachine {getMem = fromList [("x",IntVal 42)], getInput = [], getOutput = []}
+    reduces read and write [✔]
+Simulating: BinaryOps Sub (Literal 10) (Literal 3)
+     Machine: MockMachine {getMem = fromList [], getInput = [], getOutput = []}
+Simulating: Literal 10
+     Machine: MockMachine {getMem = fromList [], getInput = [], getOutput = []}
+Simulating: Literal 3
+     Machine: MockMachine {getMem = fromList [], getInput = [], getOutput = []}
+    reduces subtraction [✔]
+Simulating: BinaryOps Add (Literal 10) (Literal 3)
+     Machine: MockMachine {getMem = fromList [], getInput = [], getOutput = []}
+Simulating: Literal 10
+     Machine: MockMachine {getMem = fromList [], getInput = [], getOutput = []}
+Simulating: Literal 3
+     Machine: MockMachine {getMem = fromList [], getInput = [], getOutput = []}
+    reduces addition [✔]
+Simulating: BinaryOps Mul (Literal 10) (Literal 3)
+     Machine: MockMachine {getMem = fromList [], getInput = [], getOutput = []}
+Simulating: Literal 10
+     Machine: MockMachine {getMem = fromList [], getInput = [], getOutput = []}
+Simulating: Literal 3
+     Machine: MockMachine {getMem = fromList [], getInput = [], getOutput = []}
+    reduces multiplication [✔]
+Simulating: BinaryOps Div (Literal 12) (Literal 3)
+     Machine: MockMachine {getMem = fromList [], getInput = [], getOutput = []}
+Simulating: Literal 12
+     Machine: MockMachine {getMem = fromList [], getInput = [], getOutput = []}
+Simulating: Literal 3
+     Machine: MockMachine {getMem = fromList [], getInput = [], getOutput = []}
+    reduces division - nonzero denominator case [✔]
+Simulating: BinaryOps Div (Literal 12) (Literal 0)
+     Machine: MockMachine {getMem = fromList [], getInput = [], getOutput = []}
+Simulating: Literal 12
+     Machine: MockMachine {getMem = fromList [], getInput = [], getOutput = []}
+Simulating: Literal 0
+     Machine: MockMachine {getMem = fromList [], getInput = [], getOutput = []}
+    reduces division - zero denominator case [✔]
+Simulating: BinaryOps Mod (Literal 12) (Literal 3)
+     Machine: MockMachine {getMem = fromList [], getInput = [], getOutput = []}
+Simulating: Literal 12
+     Machine: MockMachine {getMem = fromList [], getInput = [], getOutput = []}
+Simulating: Literal 3
+     Machine: MockMachine {getMem = fromList [], getInput = [], getOutput = []}
+    reduces modulus - nonzero denominator case [✔]
+Simulating: BinaryOps Mod (Literal 12) (Literal 0)
+     Machine: MockMachine {getMem = fromList [], getInput = [], getOutput = []}
+Simulating: Literal 12
+     Machine: MockMachine {getMem = fromList [], getInput = [], getOutput = []}
+Simulating: Literal 0
+     Machine: MockMachine {getMem = fromList [], getInput = [], getOutput = []}
+    reduces modulus - zero denominator case [✔]
+Simulating: Skip
+     Machine: MockMachine {getMem = fromList [], getInput = [], getOutput = []}
+    reduces skip [✔]
+Simulating: BinaryOps Sub (Literal 10) (StringLiteral "hello")
+     Machine: MockMachine {getMem = fromList [], getInput = [], getOutput = []}
+Simulating: Literal 10
+     Machine: MockMachine {getMem = fromList [], getInput = [], getOutput = []}
+Simulating: StringLiteral "hello"
+     Machine: MockMachine {getMem = fromList [], getInput = [], getOutput = []}
+    returns a Sad result for a type error [✔]
+Simulating: App (Fun "x" (BinaryOps Add (Var "x") (Literal 1))) (Literal 41)
+     Machine: MockMachine {getMem = fromList [], getInput = [], getOutput = []}
+Simulating: Fun "x" (BinaryOps Add (Var "x") (Literal 1))
+     Machine: MockMachine {getMem = fromList [], getInput = [], getOutput = []}
+Simulating: Literal 41
+     Machine: MockMachine {getMem = fromList [], getInput = [], getOutput = []}
+Simulating: BinaryOps Add (Var "x") (Literal 1)
+     Machine: MockMachine {getMem = fromList [("x",IntVal 41)], getInput = [], getOutput = []}
+Simulating: Var "x"
+     Machine: MockMachine {getMem = fromList [("x",IntVal 41)], getInput = [], getOutput = []}
+Simulating: Literal 1
+     Machine: MockMachine {getMem = fromList [("x",IntVal 41)], getInput = [], getOutput = []}
+    applies a simple function [✘]
+Simulating: App (App (Fun "x" (Fun "y" (BinaryOps Add (Var "x") (Var "y")))) (Literal 2)) (Literal 3)
+     Machine: MockMachine {getMem = fromList [], getInput = [], getOutput = []}
+Simulating: App (Fun "x" (Fun "y" (BinaryOps Add (Var "x") (Var "y")))) (Literal 2)
+     Machine: MockMachine {getMem = fromList [], getInput = [], getOutput = []}
+Simulating: Fun "x" (Fun "y" (BinaryOps Add (Var "x") (Var "y")))
+     Machine: MockMachine {getMem = fromList [], getInput = [], getOutput = []}
+Simulating: Literal 2
+     Machine: MockMachine {getMem = fromList [], getInput = [], getOutput = []}
+Simulating: App (Fun "y" (BinaryOps Add (Var "x") (Var "y"))) (Literal 3)
+     Machine: MockMachine {getMem = fromList [("x",IntVal 2)], getInput = [], getOutput = []}
+Simulating: Fun "y" (BinaryOps Add (Var "x") (Var "y"))
+     Machine: MockMachine {getMem = fromList [("x",IntVal 2)], getInput = [], getOutput = []}
+Simulating: Literal 3
+     Machine: MockMachine {getMem = fromList [("x",IntVal 2)], getInput = [], getOutput = []}
+Simulating: BinaryOps Add (Var "x") (Var "y")
+     Machine: MockMachine {getMem = fromList [("x",IntVal 2),("y",IntVal 3)], getInput = [], getOutput = []}
+Simulating: Var "x"
+     Machine: MockMachine {getMem = fromList [("x",IntVal 2),("y",IntVal 3)], getInput = [], getOutput = []}
+Simulating: Var "y"
+     Machine: MockMachine {getMem = fromList [("x",IntVal 2),("y",IntVal 3)], getInput = [], getOutput = []}
+    supports nested function application (multi-arg via currying) [✘]
+Simulating: Seq (Let "y" (Literal 5)) (Seq (Let "f" (Fun "x" (BinaryOps Add (Var "x") (Var "y")))) (Seq (Let "y" (Literal 100)) (App (Var "f") (Literal 1))))
+     Machine: MockMachine {getMem = fromList [], getInput = [], getOutput = []}
+Simulating: Let "y" (Literal 5)
+     Machine: MockMachine {getMem = fromList [], getInput = [], getOutput = []}
+Simulating: Literal 5
+     Machine: MockMachine {getMem = fromList [], getInput = [], getOutput = []}
+Simulating: Seq (Let "f" (Fun "x" (BinaryOps Add (Var "x") (Var "y")))) (Seq (Let "y" (Literal 100)) (App (Var "f") (Literal 1)))
+     Machine: MockMachine {getMem = fromList [("y",IntVal 5)], getInput = [], getOutput = []}
+Simulating: Let "f" (Fun "x" (BinaryOps Add (Var "x") (Var "y")))
+     Machine: MockMachine {getMem = fromList [("y",IntVal 5)], getInput = [], getOutput = []}
+Simulating: Fun "x" (BinaryOps Add (Var "x") (Var "y"))
+     Machine: MockMachine {getMem = fromList [("y",IntVal 5)], getInput = [], getOutput = []}
+Simulating: Seq (Let "y" (Literal 100)) (App (Var "f") (Literal 1))
+     Machine: MockMachine {getMem = fromList [("f",ClosureVal "x" (BinaryOps Add (Var "x") (Var "y")) []),("y",IntVal 5)], getInput = [], getOutput = []}
+Simulating: Let "y" (Literal 100)
+     Machine: MockMachine {getMem = fromList [("f",ClosureVal "x" (BinaryOps Add (Var "x") (Var "y")) []),("y",IntVal 5)], getInput = [], getOutput = []}
+Simulating: Literal 100
+     Machine: MockMachine {getMem = fromList [("f",ClosureVal "x" (BinaryOps Add (Var "x") (Var "y")) []),("y",IntVal 5)], getInput = [], getOutput = []}
+Simulating: App (Var "f") (Literal 1)
+     Machine: MockMachine {getMem = fromList [("f",ClosureVal "x" (BinaryOps Add (Var "x") (Var "y")) []),("y",IntVal 100)], getInput = [], getOutput = []}
+Simulating: Var "f"
+     Machine: MockMachine {getMem = fromList [("f",ClosureVal "x" (BinaryOps Add (Var "x") (Var "y")) []),("y",IntVal 100)], getInput = [], getOutput = []}
+Simulating: Literal 1
+     Machine: MockMachine {getMem = fromList [("f",ClosureVal "x" (BinaryOps Add (Var "x") (Var "y")) []),("y",IntVal 100)], getInput = [], getOutput = []}
+Simulating: BinaryOps Add (Var "x") (Var "y")
+     Machine: MockMachine {getMem = fromList [("f",ClosureVal "x" (BinaryOps Add (Var "x") (Var "y")) []),("x",IntVal 1),("y",IntVal 100)], getInput = [], getOutput = []}
+Simulating: Var "x"
+     Machine: MockMachine {getMem = fromList [("f",ClosureVal "x" (BinaryOps Add (Var "x") (Var "y")) []),("x",IntVal 1),("y",IntVal 100)], getInput = [], getOutput = []}
+Simulating: Var "y"
+     Machine: MockMachine {getMem = fromList [("f",ClosureVal "x" (BinaryOps Add (Var "x") (Var "y")) []),("x",IntVal 1),("y",IntVal 100)], getInput = [], getOutput = []}
+    demonstrates dynamic scoping for free vars (current semantics) [✔]
+Sprintf
+  sprintf
+    acts as the identity when given no format specifiers [✔]
+    handles  [✔]
+    substitutes words correctly [✔]
+
+Failures:
+
+  test/SmallSpec.hs:188:39: 
+  1) Small.reduceFully applies a simple function
+       expected: (Right (IntVal 42),MockMachine {getMem = fromList [], getInput = [], getOutput = []})
+        but got: (Right (IntVal 42),MockMachine {getMem = fromList [("x",IntVal 41)], getInput = [], getOutput = []})
+
+  To rerun use: --match "/Small/reduceFully/applies a simple function/" --seed 1008446534
+
+  test/SmallSpec.hs:193:39: 
+  2) Small.reduceFully supports nested function application (multi-arg via currying)
+       expected: (Right (IntVal 5),MockMachine {getMem = fromList [], getInput = [], getOutput = []})
+        but got: (Right (IntVal 5),MockMachine {getMem = fromList [("x",IntVal 2),("y",IntVal 3)], getInput = [], getOutput = []})
+
+  To rerun use: --match "/Small/reduceFully/supports nested function application (multi-arg via currying)/" --seed 1008446534
+
+Randomized with seed 1008446534
+
+Finished in 0.0127 seconds
+68 examples, 2 failures
+
+p3> Test suite p3-test failed
+
+Error: [S-7282]
+       Stack failed to execute the build plan.
+       
+       While executing the build plan, Stack encountered the following errors:
+       
+       TestSuiteFailure (PackageIdentifier {pkgName = PackageName "p3", pkgVersion = mkVersion [0,1,0,0]}) (fromList [("p3-test",Just (ExitFailure 1))]) Nothing ""

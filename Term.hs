@@ -25,4 +25,6 @@ data Term
   | And Term Term
   | Or Term Term
   | Not Term
+  | Fun String Term
+  | App Term Term
   deriving (Eq, Show)
