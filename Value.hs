@@ -25,19 +25,19 @@ valueToInt :: Value -> Either String Integer
 valueToInt (IntVal n) = Right n
 valueToInt (BoolVal _) = Left "Type error: expected integer, got boolean"
 valueToInt (StringVal _) = Left "Type error: expected integer, got string"
-valueToInt (ClosureVal _ _ _) = Left "Type error: expected integer, got function"
+valueToInt (ClosureVal {}) = Left "Type error: expected integer, got function"
 
 valueToBool :: Value -> Either String Bool
 valueToBool (BoolVal b) = Right b
 valueToBool (IntVal _) = Left "Type error: expected boolean, got integer"
 valueToBool (StringVal _) = Left "Type error: expected boolean, got string"
-valueToBool (ClosureVal _ _ _) = Left "Type error: expected boolean, got function"
+valueToBool (ClosureVal {}) = Left "Type error: expected boolean, got function"
 
 valueToString :: Value -> Either String String
 valueToString (StringVal s) = Right s
 valueToString (IntVal _) = Left "Type error: expected string, got integer"
 valueToString (BoolVal _) = Left "Type error: expected string, got boolean"
-valueToString (ClosureVal _ _ _) = Left "Type error: expected string, got function"
+valueToString (ClosureVal {}) = Left "Type error: expected string, got function"
 
 isIntVal :: Value -> Bool
 isIntVal (IntVal _) = True

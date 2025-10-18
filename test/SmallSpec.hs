@@ -97,7 +97,7 @@ instance Machine MockMachine where
   selectValue (BoolVal False) _ t = t
   selectValue (IntVal n) c t = if n /= 0 then c else t
   selectValue (StringVal s) c t = if not (null s) then c else t
-  selectValue (ClosureVal _ _ _) _ _ = return $ Sad "Type error in select"
+  selectValue (ClosureVal {}) _ _ = return $ Sad "Type error in select"
 
 spec :: Spec
 spec = do
