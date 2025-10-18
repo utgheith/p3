@@ -43,12 +43,6 @@ eof = do
     [] -> return ()
     _ -> throwError $ "expected eof but found: " ++ show ts
 
-satisfy_ :: (Show t) => [Char] -> (t -> Maybe a) -> Parser t a
-satisfy_ msg p = do
-  tokens <- get
-  case tokens of
-    [] -> throwError "out of tokens"
-
 satisfy :: (Show t) => (t -> Maybe a) -> Parser t a
 satisfy p = do
   ts <- get
@@ -60,9 +54,6 @@ satisfy p = do
           put rest
           return a
         Nothing -> throwError $ msg ++ show (t : rest)
-
-satisfy :: (Show t) => (t -> Maybe a) -> Parser t a
-satisfy = satisfy_ "failed to satisfy predicate at "
 
 token :: (Show t, Eq t) => t -> Parser t t
 token t = do
