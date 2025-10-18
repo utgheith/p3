@@ -26,5 +26,6 @@ infixl 7 %
 -- Infix operator to convert terms with Show instances into strings.
 -- Example: "%s:%s:%s" % 2 << 2 << 4 << [] = "'2' + '2' = '4'"
 infixr 8 <<
+
 (<<) :: (Show a) => a -> [[Char]] -> [[Char]]
-(<<) a l = (show a) : l
+(<<) a l = show a : l

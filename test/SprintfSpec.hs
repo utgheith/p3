@@ -26,7 +26,6 @@ spec = do
     it "converts triples" $ do
       "a" << "b" << "c" << [] `shouldBe` ["\"a\"", "\"b\"", "\"c\""]
     it "shows numbers" $ do
-      (1::Int) << (0::Int) << (2::Int) << (4::Int) << [] `shouldBe` ["1", "0", "2", "4"]
+      (1 :: Int) << (0 :: Int) << (2 :: Int) << (4 :: Int) << [] `shouldBe` ["1", "0", "2", "4"]
     it "works with sprintf" $ do
-       "%s number %s" % "project" << (3 :: Int) << [] `shouldBe` "\"project\" number 3" 
-  
+      "%s number %s" % "project" << (3 :: Int) << [] `shouldBe` "\"project\" number 3"
