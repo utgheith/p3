@@ -165,10 +165,10 @@ reduce_ (App tf ta) =
 
 apply :: (Machine m, Show m, V m ~ Value) => Value -> Value -> Env m
 apply (ClosureVal x body _caps) arg = do
-  m0 <- S.get
+  m0 <- S.get -- save the current machine state
   let (_resSet, m1) = S.runState (setVar x arg) m0
   let (res, _m2) = reduceFully body m1
-  S.put m0
+  S.put m0 -- restore the machine state
   case res of
     Left msg -> return $ Sad msg
     Right v -> return $ Happy v
