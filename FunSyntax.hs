@@ -12,7 +12,7 @@ import Control.Monad.State.Lazy (runStateT)
 
 import qualified Data.Set as S
 import FunLexer (Token (Ident, Keyword, Num, StringLiteral, Symbol), lexer)
-import ParserCombinators (Parser, Result, oneof, opt, rpt, rptDropSep, satisfy, token)
+import ParserCombinators (Parser, Result, between, oneof, opt, rpt, rptDropSep, satisfy, token)
 
 data Term
   = Assign String Term
@@ -52,9 +52,24 @@ ident = satisfy $ \case
   _ -> Nothing
 
 -- symbol
+-- succeed if the next token is a symbol satisfying the given predicate
 checkSymbol :: (String -> Bool) -> Parser Token String
 checkSymbol predicate = satisfy $ \case
   Symbol s | predicate s -> Just s
+  _ -> Nothing
+
+-- isNum
+-- succeed if the next token is a number, returning its value
+isNum :: Parser Token Integer
+isNum = satisfy $ \case
+  Num n -> Just n
+  _ -> Nothing
+
+-- isString
+-- succeed if the next token is a string literal, returning its value
+isString :: Parser Token String
+isString = satisfy $ \case
+  StringLiteral s -> Just s
   _ -> Nothing
 
 ----------
@@ -78,10 +93,7 @@ binaryExp (ops : rest) = do
 
   -- find the longest sequence of (op, subexpression) at this precedence level
   -- then combine them left to right
-  rhss <- rpt $ do
-    op <- checkSymbol (`S.member` ops)
-    rhs <- term
-    return (op, rhs)
+  rhss <- rpt [(op, rhs) | op <- checkSymbol (`S.member` ops), rhs <- term]
 
   -- combine results left to right
   return $ foldl (\acc (op, rhs) -> BinaryOp op acc rhs) lhs rhss
@@ -89,65 +101,39 @@ binaryExp (ops : rest) = do
 ------------------- unary operators  -------------------
 
 assign :: Parser Token Term
-assign = [Assign name expr | name <- ident, _ <- symbol "=", expr <- term]
+assign = [Assign name expr | name <- ident, expr <- symbol "=" >> term]
 
 -- We can use monad comprehensions (GHC extension) to make parsers more concise
 minus :: Parser Token Term
-minus = [Negate e | _ <- symbol "-", e <- unaryExp]
+minus = [Negate e | e <- symbol "-" >> unaryExp]
 
 num :: Parser Token Term
-num = do
-  n <- satisfy $ \case
-    Num n -> Just n
-    _ -> Nothing
-  return $ Const n
+num = [Const n | n <- isNum]
 
 string :: Parser Token Term
-string = do
-  s <- satisfy $ \case
-    StringLiteral s -> Just s
-    _ -> Nothing
-  return $ ConstString s
+string = [ConstString s | s <- isString]
 
 parens :: Parser Token Term
-parens = [t | _ <- symbol "(", t <- term, _ <- symbol ")"]
+parens = [t | t <- between (symbol "(") (symbol ")") term]
 
 funDef :: Parser Token Term
 funDef =
-  [ FunDef name params body | _ <- keyword "fun", name <- ident, _ <- symbol "(", params <- rptDropSep ident (symbol ","), _ <- symbol ")", body <- term
-  ]
+  [FunDef name params body | name <- keyword "fun" >> ident, params <- between (symbol "(") (symbol ")") (rptDropSep ident (symbol ",")), body <- term]
 
 varRef :: Parser Token Term
 varRef = VarRef <$> ident
 
 block :: Parser Token Term
-block = do
-  _ <- token $ Symbol "{"
-  ts <- rpt term
-  _ <- token $ Symbol "}"
-  return $ Block ts
+block = [Block ts | ts <- between (symbol "{") (symbol "}") (rpt term)]
 
 ifExpr :: Parser Token Term
-ifExpr = do
-  _ <- keyword "if"
-  cond <- term
-  thenTerm <- term
-  elseTerm <- opt $ keyword "else" >> term
-  return $ IfThenElse cond thenTerm elseTerm
+ifExpr = [IfThenElse cond thenTerm elseTerm | cond <- keyword "if" >> term, thenTerm <- term, elseTerm <- opt (keyword "else" >> term)]
 
 varDef :: Parser Token Term
-varDef = do
-  _ <- keyword "var"
-  name <- ident
-  expr <- opt $ symbol "=" >> term
-  return $ VarDef name expr
+varDef = [VarDef name expr | name <- keyword "var" >> ident, expr <- opt $ symbol "=" >> term]
 
 whileTerm :: Parser Token Term
-whileTerm = do
-  _ <- keyword "while"
-  cond <- term
-  body <- term
-  return $ While cond body
+whileTerm = [While cond body | cond <- keyword "while" >> term, body <- term]
 
 unaryExp :: Parser Token Term
 unaryExp = oneof [assign, ifExpr, block, funDef, minus, num, string, parens, varDef, varRef, whileTerm]
@@ -155,7 +141,7 @@ unaryExp = oneof [assign, ifExpr, block, funDef, minus, num, string, parens, var
 ----------- prog ----------
 
 prog :: Parser Token Term
-prog = Block <$> rpt term
+prog = [Block terms | terms <- rpt term]
 
 ----------- parse ----------
 
