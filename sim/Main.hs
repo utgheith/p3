@@ -145,3 +145,29 @@ main = do
   putStrLn "Testing booleans and comparisons:"
   let out3 = reduceFully Progs.prog3 (Simulator M.empty [] [])
   print out3
+
+  let tests =
+        [ ("progLiteral",    Progs.progLiteral)
+        , ("progVar",        Progs.progVar)
+        , ("progLet",        Progs.progLet)
+        , ("progSeq",        Progs.progSeq)
+        , ("progIf",         Progs.progIf)
+        , ("progWhile",      Progs.progWhile)
+        , ("progRead",       Progs.progRead)
+        , ("progCompare",    Progs.progCompare)
+        , ("progLogic",      Progs.progLogic)
+        , ("progBinaryOps",  Progs.progBinaryOps)
+        , ("progWrite",      Progs.progWrite)
+        , ("progSkip",       Progs.progSkip)
+        , ("progFull",       Progs.progFull)
+        ]
+  mapM_ runUnitTest tests
+
+
+runUnitTest :: (String, Term) -> IO ()
+runUnitTest (name, program) = do
+  putStrLn $ "\n--- Running " ++ name ++ " ---"
+  let (result, finalState) = reduceFully program (Simulator M.empty [] [])
+  print result
+  print finalState
+
