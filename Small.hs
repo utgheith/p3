@@ -178,6 +178,7 @@ reduce_ (Not t) =
     Not
     notVal
 reduce_ (Fun x t) =
+  -- very minimal closure, for right now we are ignoring the captured environment since im not worrying about scoping for now
   return $ Happy (ClosureVal x t [])
 reduce_ (App tf ta) =
   premise
