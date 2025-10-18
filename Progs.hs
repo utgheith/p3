@@ -41,5 +41,3 @@ prog3 =
       ( Write (Var "y")
           ~ "y" <=> BinaryOps Sub (Var "y") (Literal 1)
       )
-
-
