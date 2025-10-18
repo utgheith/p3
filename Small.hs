@@ -177,18 +177,33 @@ reduce_ (Not t) =
     (reduce t)
     Not
     notVal
-reduce_ (TupleTerm t next) =
-  premise
-    (reduce t)
-    (\term' -> TupleTerm term' next)
-    ( \v1 ->
-        premise
-          (reduce next)
-          (\term' -> TupleTerm term' next)
-          (\v2 -> return $ Happy (Tuple ((v1) : (fromRight ([]) (valueToTuple v2)))))
-    )
-reduce_ (TupleEnd) =
-    return $ Happy $ Tuple []
+reduce_ (TupleTerm elements) =
+  case elements of
+    (x:xs) ->
+      premise
+        (reduce x)
+        (\term' -> TupleTerm $ term' : xs)
+        ( \v1 ->
+          premise
+            (reduce $ TupleTerm xs)
+            (\term' ->
+              case term' of
+                TupleTerm xs' -> TupleTerm (x : xs')
+                _ -> error "TupleTerm recursion somehow returned a non TupleTerm continuation"
+            )
+            (\v2 -> return $ Happy $ Tuple $ v1 : (fromRight [] $ valueToTuple v2))
+        ) 
+    [] -> return $ Happy $ Tuple []
+-- reduce_ (AccessTuple t i) =
+--   premise
+--     (reduce t)
+--     (\term' -> AccessTuple term' i)
+--     ( \v1 ->
+--         premise
+--           (reduce i)
+--           (\term' -> AccessTuple t term')
+--           (\v2 -> return $ Happy )
+--     )
 
 reduce :: (Machine m, Show m, V m ~ Value) => Term -> Env m
 reduce t = do

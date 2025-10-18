@@ -184,6 +184,6 @@ spec = do
       result `shouldBe` Left "Type error in subtraction"
 
     it "reduces a Tuple" $ do
-      let term = TupleTerm (Literal 10) (TupleTerm (StringLiteral "hello") (TupleTerm (BoolLit True) TupleEnd))
+      let term = TupleTerm [(Literal 10), (StringLiteral "hello"), (BoolLit True)]
       let (result, _) = reduceFully term initialMachine
       result `shouldBe` Right (Tuple [IntVal 10, StringVal "hello", BoolVal True])
