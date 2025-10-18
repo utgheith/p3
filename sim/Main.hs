@@ -72,6 +72,9 @@ instance Machine Simulator where
       else return $ Happy (IntVal (v1 `mod` v2)) -- I don't want the actual interpreter to crash
   modVal _ _ = return $ Sad "Type error in modulus"
 
+  negVal (IntVal v) = return $ Happy (IntVal (-v))
+  negVal _ = return $ Sad "Type error in neg"
+
   selectValue :: Value -> Env Simulator -> Env Simulator -> Env Simulator
   selectValue (BoolVal True) e1 _ = e1
   selectValue (BoolVal False) _ e2 = e2
