@@ -84,6 +84,8 @@ reduce_ (Literal n) =
   return $ Happy $ IntVal n
 reduce_ (StringLiteral s) =
   return $ Happy $ StringVal s
+reduce_ Nil =
+  return $ Happy $ ListVal []
 reduce_ (Var x) =
   getVar x
 reduce_ (Let x t) = do
@@ -139,6 +141,10 @@ reduce_ (BinaryOps op t1 t2) =
     applyBinaryOp Neq = neqVal
     applyBinaryOp And = andVal
     applyBinaryOp Or = orVal
+    applyBinaryOp Cons = \v1 v2 ->
+      case v2 of
+        ListVal xs -> return $ Happy $ ListVal (v1 : xs)
+        _ -> return $ Happy $ ListVal (v1 : [v2])
 reduce_ (BoolLit b) =
   return $ Happy $ BoolVal b
 reduce_ (UnaryOps op t) =
@@ -149,6 +155,27 @@ reduce_ (UnaryOps op t) =
   where
     applyUnaryOp Neg = negVal
     applyUnaryOp Not = notVal
+    applyUnaryOp Head = \v -> case v of
+      ListVal (x : _) -> return $ Happy x
+      ListVal [] -> return $ Sad $ "head called on empty list"
+      _ -> return $ Sad $ "Type error: head called on non-list"
+    applyUnaryOp Tail = \v -> case v of
+      ListVal (_ : xs) -> return $ Happy $ ListVal xs
+      ListVal [] -> return $ Sad $ "tail called on empty list"
+      _ -> return $ Sad $ "Type error: tail called on non-list"
+    applyUnaryOp Length = \v -> case v of
+      ListVal xs -> return $ Happy $ IntVal (fromIntegral (length xs))
+      StringVal s -> return $ Happy $ IntVal (fromIntegral (length s))
+      BoolVal _ -> return $ Happy $ IntVal 1
+      IntVal n ->
+        let m = abs n in
+        let digits = if m == 0
+                     then 1
+                     else (floor (logBase 10 (fromIntegral m :: Double)) :: Integer) + 1
+         in return $ Happy $ IntVal digits
+    applyUnaryOp IsNil = \v -> case v of
+      ListVal [] -> return (Happy (BoolVal True))
+      _ -> return (Happy (BoolVal False))
 
 reduce :: (Machine m, Show m, V m ~ Value) => Term -> Env m
 reduce t = do

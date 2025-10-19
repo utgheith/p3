@@ -1,9 +1,9 @@
 module Term (Term (..), BinaryOp (..), UnaryOp (..)) where
 
-data BinaryOp = Add | Sub | Mul | Div | Mod | Lt | Gt | Lte | Gte | Eq | Neq | And | Or
+data BinaryOp = Add | Sub | Mul | Div | Mod | Lt | Gt | Lte | Gte | Eq | Neq | And | Or | Cons
   deriving (Eq, Show)
 
-data UnaryOp = Neg | Not
+data UnaryOp = Neg | Not | Head | Tail | IsNil | Length
   deriving (Eq, Show)
 
 data Term
@@ -20,4 +20,5 @@ data Term
   | While Term Term
   | Write Term
   | BoolLit Bool
+  | Nil
   deriving (Eq, Show)

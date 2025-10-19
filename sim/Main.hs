@@ -80,6 +80,7 @@ instance Machine Simulator where
   selectValue (BoolVal False) _ e2 = e2
   selectValue (IntVal n) e1 e2 = if n /= 0 then e1 else e2 -- backward compat
   selectValue (StringVal s) e1 e2 = if not (null s) then e1 else e2
+  selectValue (ListVal xs) e1 e2 = if not (null xs) then e1 else e2
 
   ltVal :: Value -> Value -> Env Simulator
   ltVal (IntVal v1) (IntVal v2) = return $ Happy (BoolVal (v1 < v2))
@@ -101,12 +102,14 @@ instance Machine Simulator where
   eqVal (IntVal v1) (IntVal v2) = return $ Happy (BoolVal (v1 == v2))
   eqVal (BoolVal v1) (BoolVal v2) = return $ Happy (BoolVal (v1 == v2))
   eqVal (StringVal v1) (StringVal v2) = return $ Happy (BoolVal (v1 == v2))
+  eqVal (ListVal v1) (ListVal v2) = return $ Happy (BoolVal (v1 == v2))
   eqVal v1 v2 = return $ Sad $ "Type error in ==: cannot compare " ++ show v1 ++ " and " ++ show v2
 
   neqVal :: Value -> Value -> Env Simulator
   neqVal (IntVal v1) (IntVal v2) = return $ Happy (BoolVal (v1 /= v2))
   neqVal (BoolVal v1) (BoolVal v2) = return $ Happy (BoolVal (v1 /= v2))
   neqVal (StringVal v1) (StringVal v2) = return $ Happy (BoolVal (v1 /= v2))
+  neqVal (ListVal v1) (ListVal v2) = return $ Happy (BoolVal (v1 /= v2))
   neqVal v1 v2 = return $ Sad $ "Type error in !=: cannot compare " ++ show v1 ++ " and " ++ show v2
 
   andVal :: Value -> Value -> Env Simulator

@@ -81,11 +81,13 @@ instance Machine MockMachine where
   eqVal (IntVal v1) (IntVal v2) = return $ Happy (BoolVal (v1 == v2))
   eqVal (BoolVal v1) (BoolVal v2) = return $ Happy (BoolVal (v1 == v2))
   eqVal (StringVal v1) (StringVal v2) = return $ Happy (BoolVal (v1 == v2))
+  eqVal (ListVal v1) (ListVal v2) = return $ Happy (BoolVal (v1 == v2))
   eqVal _ _ = return $ Sad "Type error in =="
 
   neqVal (IntVal v1) (IntVal v2) = return $ Happy (BoolVal (v1 /= v2))
   neqVal (BoolVal v1) (BoolVal v2) = return $ Happy (BoolVal (v1 /= v2))
   neqVal (StringVal v1) (StringVal v2) = return $ Happy (BoolVal (v1 /= v2))
+  neqVal (ListVal v1) (ListVal v2) = return $ Happy (BoolVal (v1 /= v2))
   neqVal _ _ = return $ Sad "Type error in !="
 
   andVal (BoolVal v1) (BoolVal v2) = return $ Happy (BoolVal (v1 && v2))
@@ -101,6 +103,7 @@ instance Machine MockMachine where
   selectValue (BoolVal False) _ t = t
   selectValue (IntVal n) c t = if n /= 0 then c else t
   selectValue (StringVal s) c t = if not (null s) then c else t
+  selectValue (ListVal xs) c t = if not (null xs) then c else t
 
 spec :: Spec
 spec = do
@@ -286,3 +289,53 @@ spec = do
               )
       let finalMachine = initialMachine {getMem = M.fromList [("x", IntVal 10), ("y", IntVal 5)]}
       reduceFully term initialMachine `shouldBe` (Right (IntVal 15), finalMachine)
+
+    -- List operations
+    it "reduces nil to an empty list" $ do
+      let term = Nil
+      reduceFully term initialMachine `shouldBe` (Right (ListVal []), initialMachine)
+
+    it "constructs a list with cons" $ do
+      let term = BinaryOps Cons (Literal 1) Nil
+      reduceFully term initialMachine `shouldBe` (Right (ListVal [IntVal 1]), initialMachine)
+
+    it "constructs a two-element list with cons" $ do
+      let term = BinaryOps Cons (Literal 1) (BinaryOps Cons (Literal 2) Nil)
+      reduceFully term initialMachine `shouldBe` (Right (ListVal [IntVal 1, IntVal 2]), initialMachine)
+
+    it "head returns the first element of a nonempty list" $ do
+      let term = UnaryOps Head (BinaryOps Cons (Literal 1) (BinaryOps Cons (Literal 2) Nil))
+      reduceFully term initialMachine `shouldBe` (Right (IntVal 1), initialMachine)
+
+    it "tail returns a nonempty list without the first element" $ do
+      let term = UnaryOps Tail (BinaryOps Cons (Literal 1) (BinaryOps Cons (Literal 2) Nil))
+      reduceFully term initialMachine `shouldBe` (Right (ListVal [IntVal 2]), initialMachine)
+
+    it "isnil returns True for empty list and False otherwise" $ do
+      reduceFully (UnaryOps IsNil Nil) initialMachine `shouldBe` (Right (BoolVal True), initialMachine)
+      reduceFully (UnaryOps IsNil (BinaryOps Cons (Literal 1) Nil)) initialMachine `shouldBe` (Right (BoolVal False), initialMachine)
+
+    it "length works for lists, strings, integers and booleans" $ do
+      -- lists
+      reduceFully (UnaryOps Length Nil) initialMachine `shouldBe` (Right (IntVal 0), initialMachine)
+      reduceFully (UnaryOps Length (BinaryOps Cons (Literal 1) (BinaryOps Cons (Literal 2) Nil))) initialMachine `shouldBe` (Right (IntVal 2), initialMachine)
+      -- strings
+      reduceFully (UnaryOps Length (StringLiteral "hello")) initialMachine `shouldBe` (Right (IntVal 5), initialMachine)
+      -- integers
+      reduceFully (UnaryOps Length (Literal 0)) initialMachine `shouldBe` (Right (IntVal 1), initialMachine)
+      reduceFully (UnaryOps Length (Literal 9)) initialMachine `shouldBe` (Right (IntVal 1), initialMachine)
+      reduceFully (UnaryOps Length (Literal 10)) initialMachine `shouldBe` (Right (IntVal 2), initialMachine)
+      reduceFully (UnaryOps Length (Literal (-123))) initialMachine `shouldBe` (Right (IntVal 3), initialMachine)
+      -- booleans
+      reduceFully (UnaryOps Length (BoolLit True)) initialMachine `shouldBe` (Right (IntVal 1), initialMachine)
+      reduceFully (UnaryOps Length (BoolLit False)) initialMachine `shouldBe` (Right (IntVal 1), initialMachine)
+
+    it "compares lists for equality and inequality; lists are only equal if they have the same length and are equal elementwise" $ do
+      let l1 = BinaryOps Cons (Literal 1) (BinaryOps Cons (Literal 2) Nil)
+      let l2 = BinaryOps Cons (Literal 1) (BinaryOps Cons (Literal 2) Nil)
+      let l3 = BinaryOps Cons (Literal 2) (BinaryOps Cons (Literal 1) Nil)
+      let l4 = BinaryOps Cons (Literal 1) (BinaryOps Cons (Literal 2) (BinaryOps Cons (Literal 3) Nil))
+      reduceFully (BinaryOps Eq l1 l2) initialMachine `shouldBe` (Right (BoolVal True), initialMachine)
+      reduceFully (BinaryOps Eq l1 l3) initialMachine `shouldBe` (Right (BoolVal False), initialMachine)
+      reduceFully (BinaryOps Neq l1 l3) initialMachine `shouldBe` (Right (BoolVal True), initialMachine)
+      reduceFully (BinaryOps Eq l1 l4) initialMachine `shouldBe` (Right (BoolVal False), initialMachine)
