@@ -102,6 +102,8 @@ instance Machine Simulator where
   selectValue (StringVal s) e1 e2 = if not (null s) then e1 else e2
   selectValue (Tuple l) e1 e2 = if not (null l) then e1 else e2
   selectValue (ClosureVal {}) _ _ = return $ Sad "Type error in select"
+  selectValue (Dictionary _) _ _ = return $ Sad "Type error in select"
+
 
   ltVal :: Value -> Value -> Env Simulator
   ltVal (IntVal v1) (IntVal v2) = return $ Happy (BoolVal (v1 < v2))

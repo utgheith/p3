@@ -21,6 +21,7 @@ data Term
   | Write Term
   | BoolLit Bool
   | TupleTerm [Term]
+  | NewDictionary
   | AccessTuple Term Term
   | SetTuple String Term Term
   | Fun [String] Term

@@ -6,6 +6,7 @@
 module Small (reduceFully, Machine (..), Result (..), Env) where
 
 import qualified Control.Monad.State as S
+import qualified Data.Map as M
 import Data.Either
 import Debug.Trace (trace)
 import Term (BinaryOp (..), Term (..), UnaryOp (..))
@@ -206,6 +207,8 @@ reduce_ (SetTuple name terms val) =
               (\val' -> setTupleValue name terms' val')
         )
     _ -> error "SetTuple should only have tuple term as second argument"
+reduce_ (NewDictionary) =
+  return $ Happy $ Dictionary M.empty
 
 reduceArgsAndApply :: (Machine m, Show m, V m ~ Value) => Term -> [Term] -> Value -> Env m
 reduceArgsAndApply tf args funVal =

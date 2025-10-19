@@ -154,6 +154,7 @@ instance Machine MockMachine where
   selectValue (StringVal s) c t = if not (null s) then c else t
   selectValue (Tuple l) c t = if not (null l) then c else t
   selectValue (ClosureVal {}) _ _ = return $ Sad "Type error in select"
+  selectValue (Dictionary _) _ _ = return $ Sad "Type error in select"
 
 spec :: Spec
 spec = do
