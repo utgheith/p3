@@ -461,3 +461,12 @@ spec = do
     it "reduces inequality comparison" $ do
       let term = BinaryOps Neq (Literal 5) (Literal 10)
       reduceFully term initialMachine `shouldBe` (Right (BoolVal True), initialMachine)
+
+    it "selectRandom can select first term" $ do 
+      let term = ConcurSeq (Literal 1) (Literal 2)
+      reduceFully term initialMachine `shouldBe` (Right (IntVal 1), initialMachine)
+
+    it "ConcurSeq allows both terms to clobber state" $ do
+      let term = ConcurSeq (Let "x" (Literal 3)) (Let "y" (Literal 5))
+      let finalMachine = initialMachine {getMem = scopeFromList [("x", IntVal 3), ("y", IntVal 5)]}
+      reduceFully term initialMachine `shouldBe` (Right (IntVal 3), finalMachine)
