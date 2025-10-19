@@ -328,11 +328,25 @@ spec = do
       reduceFully term initialMachine `shouldBe` (Right (IntVal 99), machine)
 
     -- Variable Capture Tests
-    it "captures environment for functions" $ do
+    it "captures environment for zero-argument functions" $ do
+      let f0 = Fun [] (Var "outside")
+      let f1 = Fun ["y"] (Seq (Let "outside" (Literal 99)) f0)
+      let term = Seq (Let "outside" (Literal 1)) (ApplyFun (ApplyFun f1 [Literal 0]) [])
+      let machine = initialMachine {getMem = scopeFromList [("outside", IntVal 1)]}
+      reduceFully term initialMachine `shouldBe` (Right (IntVal 99), machine)
+
+    it "captures environment for odd-argument functions" $ do
       let f0 = Fun ["x"] (Var "outside") -- Created inside of f1.
       let f1 = Fun ["y"] (Seq (Let "outside" (Literal 99)) f0)
       -- (f1(0))(0) -> f0(0), where outside refers to the 99 captured in f1.
       let term = Seq (Let "outside" (Literal 1)) (ApplyFun (ApplyFun f1 [Literal 0]) [Literal 0])
+      let machine = initialMachine {getMem = scopeFromList [("outside", IntVal 1)]}
+      reduceFully term initialMachine `shouldBe` (Right (IntVal 99), machine)
+
+    it "captures environment for even-argument functions" $ do
+      let f0 = Fun ["x", "z"] (Var "outside")
+      let f1 = Fun ["y"] (Seq (Let "outside" (Literal 99)) f0)
+      let term = Seq (Let "outside" (Literal 1)) (ApplyFun (ApplyFun f1 [Literal 0]) [Literal 0, Literal 0])
       let machine = initialMachine {getMem = scopeFromList [("outside", IntVal 1)]}
       reduceFully term initialMachine `shouldBe` (Right (IntVal 99), machine)
 
