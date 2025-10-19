@@ -11,31 +11,7 @@ import qualified Progs
 import Small (Env, Machine (..), Result (..), reduceFully)
 import Term (Term (..))
 import Value (Value (..))
-
-data Scope = Scope (M.Map String Value) (Maybe Scope)
-  deriving (Eq, Show)
-
-lookupScope :: String -> Scope -> Maybe Value
-lookupScope name (Scope m parent) =
-  case M.lookup name m of
-    Just v -> Just v
-    Nothing ->
-      case parent of
-        Just p -> lookupScope name p -- Look in parent scope.
-        Nothing -> Nothing
-
-insertScope :: String -> Value -> Scope -> Scope
-insertScope name val (Scope m parent) = Scope (M.insert name val m) parent -- Insert into inner scope.
-
-getAllBindings :: Scope -> [(String, Value)]
-getAllBindings (Scope m parent) =
-  let rest = case parent of
-        Just p -> getAllBindings p
-        Nothing -> []
-   in M.toList (M.union m (M.fromList rest)) -- Keep bindings in inner scopes.
-
-emptyScope :: Scope
-emptyScope = Scope M.empty Nothing
+import Scope (Scope (..), emptyScope, getAllBindings, insertScope, lookupScope)
 
 data Simulator = Simulator Scope [Value] [Value] deriving (Eq, Show)
 
