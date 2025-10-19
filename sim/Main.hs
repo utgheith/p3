@@ -77,6 +77,7 @@ instance Machine Simulator where
   selectValue (BoolVal False) _ e2 = e2
   selectValue (IntVal n) e1 e2 = if n /= 0 then e1 else e2 -- backward compat
   selectValue (StringVal s) e1 e2 = if not (null s) then e1 else e2
+  selectValue (Tuple l) e1 e2 = if not (null l) then e1 else e2
 
   ltVal :: Value -> Value -> Env Simulator
   ltVal (IntVal v1) (IntVal v2) = return $ Happy (BoolVal (v1 < v2))
@@ -117,6 +118,10 @@ instance Machine Simulator where
   notVal :: Value -> Env Simulator
   notVal (BoolVal v) = return $ Happy (BoolVal (not v))
   notVal _ = return $ Sad "Type error in !"
+
+  getTupleValue :: Value -> Value -> Env Simulator
+  getTupleValue (Tuple (x : xs)) (IntVal pos) = if pos == 0 then return (Happy x) else getTupleValue (Tuple xs) (IntVal (pos - 1))
+  getTupleValue _ _ = return $ Sad "Tuple Lookup Bad Input"
 
 infixl 1 ~
 

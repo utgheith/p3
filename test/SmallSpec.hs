@@ -93,10 +93,14 @@ instance Machine MockMachine where
   notVal (BoolVal v) = return $ Happy (BoolVal (not v))
   notVal _ = return $ Sad "Type error in !"
 
+  getTupleValue (Tuple (x : xs)) (IntVal pos) = if pos == 0 then return (Happy x) else getTupleValue (Tuple xs) (IntVal (pos - 1))
+  getTupleValue _ _ = return $ Sad "Tuple Lookup Bad Input"
+
   selectValue (BoolVal True) c _ = c
   selectValue (BoolVal False) _ t = t
   selectValue (IntVal n) c t = if n /= 0 then c else t
   selectValue (StringVal s) c t = if not (null s) then c else t
+  selectValue (Tuple l) c t = if not (null l) then c else t
 
 spec :: Spec
 spec = do
@@ -181,3 +185,13 @@ spec = do
       let term = BinaryOps Sub (Literal 10) (StringLiteral "hello")
       let (result, _) = reduceFully term initialMachine
       result `shouldBe` Left "Type error in subtraction"
+
+    it "reduces a Tuple" $ do
+      let term = TupleTerm [(Literal 10), (StringLiteral "hello"), (BoolLit True)]
+      let (result, _) = reduceFully term initialMachine
+      result `shouldBe` Right (Tuple [IntVal 10, StringVal "hello", BoolVal True])
+
+    it "access a Tuple" $ do
+      let term = AccessTuple (TupleTerm [(Literal 10), (StringLiteral "hello"), (BoolLit True)]) (Literal 1)
+      let (result, _) = reduceFully term initialMachine
+      result `shouldBe` Right (StringVal "hello")

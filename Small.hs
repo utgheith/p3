@@ -9,7 +9,7 @@ import qualified Control.Monad.State as S
 import Data.Either
 import Debug.Trace (trace)
 import Term (BinaryOp (..), Term (..))
-import Value (Value (..), valueToInt)
+import Value (Value (..), valueToInt, valueToTuple)
 
 ----- The Machine type class -----
 
@@ -50,6 +50,8 @@ class Machine m where
   andVal :: V m -> V m -> Env m
   orVal :: V m -> V m -> Env m
   notVal :: V m -> Env m
+
+  getTupleValue :: V m -> V m -> Env m
 
   -- Control flow - selectValue uses boolean semantics
   selectValue :: V m -> Env m -> Env m -> Env m
@@ -177,6 +179,33 @@ reduce_ (Not t) =
     (reduce t)
     Not
     notVal
+reduce_ (TupleTerm elements) =
+  case elements of
+    (x : xs) ->
+      premise
+        (reduce x)
+        (\term' -> TupleTerm $ term' : xs)
+        ( \v1 ->
+            premise
+              (reduce $ TupleTerm xs)
+              ( \term' ->
+                  case term' of
+                    TupleTerm xs' -> TupleTerm (x : xs')
+                    _ -> error "TupleTerm recursion somehow returned a non TupleTerm continuation"
+              )
+              (\v2 -> return $ Happy $ Tuple $ v1 : (fromRight [] $ valueToTuple v2))
+        )
+    [] -> return $ Happy $ Tuple []
+reduce_ (AccessTuple t i) =
+  premise
+    (reduce t)
+    (\term' -> AccessTuple term' i)
+    ( \v1 ->
+        premise
+          (reduce i)
+          (AccessTuple t)
+          (getTupleValue v1)
+    )
 
 reduce :: (Machine m, Show m, V m ~ Value) => Term -> Env m
 reduce t = do
