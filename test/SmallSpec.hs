@@ -93,7 +93,7 @@ instance Machine MockMachine where
   notVal (BoolVal v) = return $ Happy (BoolVal (not v))
   notVal _ = return $ Sad "Type error in !"
 
-  getTupleValue (Tuple (x:xs)) (IntVal pos) = if pos == 0 then return (Happy x) else getTupleValue (Tuple xs) (IntVal (pos - 1))
+  getTupleValue (Tuple (x : xs)) (IntVal pos) = if pos == 0 then return (Happy x) else getTupleValue (Tuple xs) (IntVal (pos - 1))
   getTupleValue _ _ = return $ Sad "Tuple Lookup Bad Input"
 
   selectValue (BoolVal True) c _ = c
