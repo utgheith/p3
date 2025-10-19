@@ -202,25 +202,6 @@ spec = do
       let (result, _) = reduceFully term initialMachine
       result `shouldBe` Left "Type error in subtraction"
 
-    it "invokes a zero-argument function" $ do
-      let f0 = Fun [] (Literal 42)
-      let term = ApplyFun f0 []
-      reduceFully term initialMachine `shouldBe` (Right (IntVal 42), initialMachine)
-
-    it "errors when invoking a function that expects arguments" $ do
-      let f1 = Fun ["x"] (Var "x")
-      let term = ApplyFun f1 []
-      let (result, _) = reduceFully term initialMachine
-      result `shouldBe` Left "missing arguments: function requires parameters"
-
-    it "errors when applying an argument to a zero-arg function" $ do
-      let f0 = Fun [] (Literal 1)
-      let term = ApplyFun f0 [Literal 0]
-      let (result, _) = reduceFully term initialMachine
-      result `shouldBe` Left "too many arguments: function takes 0 arguments"
-
-    -- (Removed duplicated comparison block; the canonical one lives later in the file)
-
     -- Logical Operations Tests
     it "reduces logical AND operation" $ do
       let term = BinaryOps And (BoolLit True) (BoolLit True)
@@ -290,6 +271,23 @@ spec = do
       reduceFully term initialMachine `shouldBe` (Right (IntVal 15), finalMachine)
 
     -- Function Application Tests
+    it "invokes a zero-argument function" $ do
+      let f0 = Fun [] (Literal 42)
+      let term = ApplyFun f0 []
+      reduceFully term initialMachine `shouldBe` (Right (IntVal 42), initialMachine)
+
+    it "errors when invoking a function that expects arguments" $ do
+      let f1 = Fun ["x"] (Var "x")
+      let term = ApplyFun f1 []
+      let (result, _) = reduceFully term initialMachine
+      result `shouldBe` Left "missing arguments: function requires parameters"
+
+    it "errors when applying an argument to a zero-arg function" $ do
+      let f0 = Fun [] (Literal 1)
+      let term = ApplyFun f0 [Literal 0]
+      let (result, _) = reduceFully term initialMachine
+      result `shouldBe` Left "too many arguments: function takes 0 arguments"
+
     it "applies a simple function" $ do
       let inc = Fun ["x"] (BinaryOps Add (Var "x") (Literal 1))
       let term = ApplyFun inc [Literal 41]
@@ -404,71 +402,3 @@ spec = do
     it "reduces inequality comparison" $ do
       let term = BinaryOps Neq (Literal 5) (Literal 10)
       reduceFully term initialMachine `shouldBe` (Right (BoolVal True), initialMachine)
-
-    -- Logical Operations Tests
-    it "reduces logical AND operation" $ do
-      let term = BinaryOps And (BoolLit True) (BoolLit True)
-      reduceFully term initialMachine `shouldBe` (Right (BoolVal True), initialMachine)
-
-    it "reduces logical OR operation" $ do
-      let term = BinaryOps Or (BoolLit False) (BoolLit True)
-      reduceFully term initialMachine `shouldBe` (Right (BoolVal True), initialMachine)
-
-    it "reduces logical NOT operation" $ do
-      let term = UnaryOps Not (BoolLit False)
-      reduceFully term initialMachine `shouldBe` (Right (BoolVal True), initialMachine)
-
-    -- Complex Scenarios Tests
-    it "reduces nested if statements" $ do
-      let term =
-            If
-              (BinaryOps Gt (Literal 10) (Literal 5))
-              ( If
-                  (BinaryOps Lt (Literal 3) (Literal 7))
-                  (Literal 1)
-                  (Literal 2)
-              )
-              (Literal 3)
-      reduceFully term initialMachine `shouldBe` (Right (IntVal 1), initialMachine)
-
-    it "reduces while loop with complex condition" $ do
-      let term =
-            Seq
-              (Let "x" (Literal 5))
-              ( Seq
-                  ( While
-                      ( BinaryOps
-                          And
-                          (BinaryOps Gt (Var "x") (Literal 0))
-                          (BinaryOps Lt (Var "x") (Literal 10))
-                      )
-                      (Let "x" (BinaryOps Add (Var "x") (Literal 1)))
-                  )
-                  (Var "x")
-              )
-      let finalMachine = initialMachine {getMem = scopeFromList [("x", IntVal 10)]}
-      reduceFully term initialMachine `shouldBe` (Right (IntVal 10), finalMachine)
-
-    it "reduces combination of arithmetic and logical operations" $ do
-      let term =
-            BinaryOps
-              And
-              (BinaryOps Gt (BinaryOps Add (Literal 5) (Literal 5)) (Literal 8))
-              (BinaryOps Lt (BinaryOps Mul (Literal 2) (Literal 3)) (Literal 7))
-      reduceFully term initialMachine `shouldBe` (Right (BoolVal True), initialMachine)
-
-    it "handles type error in comparison" $ do
-      let term = BinaryOps Lt (Literal 5) (BoolLit True)
-      let (result, _) = reduceFully term initialMachine
-      result `shouldBe` Left "Type error in <"
-
-    it "handles multiple variables in scope" $ do
-      let term =
-            Seq
-              (Let "x" (Literal 10))
-              ( Seq
-                  (Let "y" (Literal 5))
-                  (BinaryOps Add (Var "x") (Var "y"))
-              )
-      let finalMachine = initialMachine {getMem = scopeFromList [("x", IntVal 10), ("y", IntVal 5)]}
-      reduceFully term initialMachine `shouldBe` (Right (IntVal 15), finalMachine)
