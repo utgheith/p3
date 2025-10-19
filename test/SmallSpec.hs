@@ -187,24 +187,7 @@ spec = do
       let (result, _) = reduceFully term initialMachine
       result `shouldBe` Left "Type error in subtraction"
 
-    it "invokes a zero-argument function" $ do
-      let f0 = Fun [] (Literal 42)
-      let term = ApplyFun f0 []
-      reduceFully term initialMachine `shouldBe` (Right (IntVal 42), initialMachine)
-
-    it "errors when invoking a function that expects arguments" $ do
-      let f1 = Fun ["x"] (Var "x")
-      let term = ApplyFun f1 []
-      let (result, _) = reduceFully term initialMachine
-      result `shouldBe` Left "missing arguments: function requires parameters"
-
-    it "errors when applying an argument to a zero-arg function" $ do
-      let f0 = Fun [] (Literal 1)
-      let term = ApplyFun f0 [Literal 0]
-      let (result, _) = reduceFully term initialMachine
-      result `shouldBe` Left "too many arguments: function takes 0 arguments"
-
-    -- (Removed duplicated comparison block; the canonical one lives later in the file)
+    
 
     -- Logical Operations Tests
     it "reduces logical AND operation" $ do
@@ -275,6 +258,22 @@ spec = do
       reduceFully term initialMachine `shouldBe` (Right (IntVal 15), finalMachine)
 
     -- Function application tests
+    it "invokes a zero-argument function" $ do
+      let f0 = Fun [] (Literal 42)
+      let term = ApplyFun f0 []
+      reduceFully term initialMachine `shouldBe` (Right (IntVal 42), initialMachine)
+
+    it "errors when invoking a function that expects arguments" $ do
+      let f1 = Fun ["x"] (Var "x")
+      let term = ApplyFun f1 []
+      let (result, _) = reduceFully term initialMachine
+      result `shouldBe` Left "missing arguments: function requires parameters"
+
+    it "errors when applying an argument to a zero-arg function" $ do
+      let f0 = Fun [] (Literal 1)
+      let term = ApplyFun f0 [Literal 0]
+      let (result, _) = reduceFully term initialMachine
+      result `shouldBe` Left "too many arguments: function takes 0 arguments"
     it "applies a simple function" $ do
       let inc = Fun ["x"] (BinaryOps Add (Var "x") (Literal 1))
       let term = ApplyFun inc [Literal 41]
