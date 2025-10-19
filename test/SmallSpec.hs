@@ -189,53 +189,22 @@ spec = do
 
     it "invokes a zero-argument function" $ do
       let f0 = Fun [] (Literal 42)
-      let term = CallNoArgs f0
+      let term = ApplyFun f0 []
       reduceFully term initialMachine `shouldBe` (Right (IntVal 42), initialMachine)
 
     it "errors when invoking a function that expects arguments" $ do
       let f1 = Fun ["x"] (Var "x")
-      let term = CallNoArgs f1
+      let term = ApplyFun f1 []
       let (result, _) = reduceFully term initialMachine
       result `shouldBe` Left "missing arguments: function requires parameters"
 
     it "errors when applying an argument to a zero-arg function" $ do
       let f0 = Fun [] (Literal 1)
-      let term = CallWithArg f0 (Literal 0)
+      let term = ApplyFun f0 [Literal 0]
       let (result, _) = reduceFully term initialMachine
       result `shouldBe` Left "too many arguments: function takes 0 arguments"
 
-    -- Comparison Operations Tests
-    it "reduces less than comparison" $ do
-      let term = BinaryOps Lt (Literal 5) (Literal 10)
-      reduceFully term initialMachine `shouldBe` (Right (BoolVal True), initialMachine)
-
-    it "reduces greater than comparison" $ do
-      let term = BinaryOps Gt (Literal 10) (Literal 5)
-      reduceFully term initialMachine `shouldBe` (Right (BoolVal True), initialMachine)
-
-    it "reduces less than or equal comparison" $ do
-      let term = BinaryOps Lte (Literal 5) (Literal 5)
-      reduceFully term initialMachine `shouldBe` (Right (BoolVal True), initialMachine)
-
-    it "reduces greater than or equal comparison" $ do
-      let term = BinaryOps Gte (Literal 10) (Literal 5)
-      reduceFully term initialMachine `shouldBe` (Right (BoolVal True), initialMachine)
-
-    it "reduces equality comparison for integers" $ do
-      let term = BinaryOps Eq (Literal 5) (Literal 5)
-      reduceFully term initialMachine `shouldBe` (Right (BoolVal True), initialMachine)
-
-    it "reduces equality comparison for booleans" $ do
-      let term = BinaryOps Eq (BoolLit True) (BoolLit True)
-      reduceFully term initialMachine `shouldBe` (Right (BoolVal True), initialMachine)
-
-    it "reduces equality comparison for strings" $ do
-      let term = BinaryOps Eq (StringLiteral "hello") (StringLiteral "hello")
-      reduceFully term initialMachine `shouldBe` (Right (BoolVal True), initialMachine)
-
-    it "reduces inequality comparison" $ do
-      let term = BinaryOps Neq (Literal 5) (Literal 10)
-      reduceFully term initialMachine `shouldBe` (Right (BoolVal True), initialMachine)
+    -- (Removed duplicated comparison block; the canonical one lives later in the file)
 
     -- Logical Operations Tests
     it "reduces logical AND operation" $ do
@@ -308,26 +277,26 @@ spec = do
     -- Function application tests
     it "applies a simple function" $ do
       let inc = Fun ["x"] (BinaryOps Add (Var "x") (Literal 1))
-      let term = CallWithArg inc (Literal 41)
+      let term = ApplyFun inc [Literal 41]
       reduceFully term initialMachine `shouldBe` (Right (IntVal 42), initialMachine)
 
     it "binds parameter in environment for body" $ do
       let f = Fun ["x"] (Var "x")
-      let term = CallWithArg f (Literal 7)
+      let term = ApplyFun f [Literal 7]
       reduceFully term initialMachine `shouldBe` (Right (IntVal 7), initialMachine)
 
     it "applies a two-argument function via currying" $ do
       let add2 = Fun ["x", "y"] (BinaryOps Add (Var "x") (Var "y"))
-      let term = CallWithArg (CallWithArg add2 (Literal 2)) (Literal 3)
+      let term = ApplyFun add2 [Literal 2, Literal 3]
       reduceFully term initialMachine `shouldBe` (Right (IntVal 5), initialMachine)
 
     it "applies a three-argument function via currying" $ do
       let add3 = Fun ["x", "y", "z"] (BinaryOps Add (BinaryOps Add (Var "x") (Var "y")) (Var "z"))
-      let term = CallWithArg (CallWithArg (CallWithArg add3 (Literal 1)) (Literal 2)) (Literal 3)
+      let term = ApplyFun add3 [Literal 1, Literal 2, Literal 3]
       reduceFully term initialMachine `shouldBe` (Right (IntVal 6), initialMachine)
 
     it "errors when applying a non-function" $ do
-      let term = CallWithArg (Literal 3) (Literal 4)
+      let term = ApplyFun (Literal 3) [Literal 4]
       let (result, _) = reduceFully term initialMachine
       result `shouldBe` Left "attempt to call a non-function"
 

@@ -152,30 +152,50 @@ reduce_ (UnaryOps op t) =
 reduce_ (Fun xs t) =
   -- very minimal closure, for right now we are ignoring the captured environment since im not worrying about scoping for now
   return $ Happy (ClosureVal xs t [])
-reduce_ (CallWithArg tf ta) =
+reduce_ (ApplyFun tf tas) =
   premise
     (reduce tf)
-    (`CallWithArg` ta)
-    (premise (reduce ta) (CallWithArg tf) . applyFunArg)
-reduce_ (CallNoArgs tf) =
-  premise
-    (reduce tf)
-    CallNoArgs
-    applyFuncNoArg
+    (\tf' -> ApplyFun tf' tas)
+    (reduceArgsAndApply tas)
+
+reduceArgsAndApply :: (Machine m, Show m, V m ~ Value) => [Term] -> Value -> Env m
+reduceArgsAndApply args funVal =
+  case args of
+    [] -> applyFuncNoArg funVal
+    (a : rest) ->
+      premise
+        (reduce a)
+        (\a' -> case funVal of
+            ClosureVal (_:_) _ _ -> ApplyFun funTerm (a':rest)
+            _ -> ApplyFun funTerm (a':rest))
+        (\argVal -> applyFunArgList rest funVal argVal)
+  where
+    funTerm = case funVal of
+      ClosureVal {} -> Fun [] (Literal 0) -- placeholder, not used
+      _ -> Fun [] (Literal 0)
+
+applyFunArgList :: (Machine m, Show m, V m ~ Value) => [Term] -> Value -> Value -> Env m
+applyFunArgList rest funVal argVal = do
+  res1 <- applyFunArg funVal argVal
+  case res1 of
+    Happy v1 -> case rest of
+      [] -> return (Happy v1)
+      _ -> reduceArgsAndApply rest v1
+    Continue t -> return (Continue t)
+    Sad msg -> return (Sad msg)
 
 applyFunArg :: (Machine m, Show m, V m ~ Value) => Value -> Value -> Env m
 applyFunArg (ClosureVal [] _ _) _ = do
   return $ Sad "too many arguments: function takes 0 arguments"
 applyFunArg (ClosureVal (x : xs) body caps) arg = do
-  let newCaps = caps ++ [(x, arg)]
+  let newCaps = (x, arg) : caps
   if null xs
-    then evalClosureBody body newCaps
+    then evalClosureBody body (reverse newCaps)
     else return $ Happy (ClosureVal xs body newCaps)
 applyFunArg _ _ = return $ Sad "attempt to call a non-function"
 
--- invocation handler for 0 argument functions
 applyFuncNoArg :: (Machine m, Show m, V m ~ Value) => Value -> Env m
-applyFuncNoArg (ClosureVal [] body caps) = evalClosureBody body caps
+applyFuncNoArg (ClosureVal [] body caps) = evalClosureBody body (reverse caps)
 applyFuncNoArg (ClosureVal (_ : _) _ _) = return $ Sad "missing arguments: function requires parameters"
 applyFuncNoArg _ = return $ Sad "attempt to call a non-function"
 

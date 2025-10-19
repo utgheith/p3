@@ -21,6 +21,5 @@ data Term
   | Write Term
   | BoolLit Bool
   | Fun [String] Term
-  | CallWithArg Term Term
-  | CallNoArgs Term
+  | ApplyFun Term [Term]
   deriving (Eq, Show)
