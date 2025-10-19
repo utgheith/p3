@@ -8,27 +8,47 @@ module Main (main) where
 import qualified Control.Monad.State as S
 import qualified Data.Map as M
 import qualified Progs
+import Scope (Scope (..), emptyScope, getAllBindings, insertScope, lookupScope)
 import Small (Env, Machine (..), Result (..), reduceFully)
 import Term (Term (..))
 import Value (Value (..))
 
-data Simulator = Simulator (M.Map String Value) [Value] [Value] deriving (Eq, Show)
+data Simulator = Simulator Scope [Value] [Value] deriving (Eq, Show)
 
 instance Machine Simulator where
   type V Simulator = Value
   getVar :: String -> Env Simulator
   getVar name = do
     (Simulator m _ _) <- S.get
-    case M.lookup name m of
+    case lookupScope name m of
       Just v -> return $ Happy v
       Nothing -> return $ Sad $ "get: " ++ name ++ " not found"
 
   setVar :: String -> Value -> Env Simulator
   setVar name val = do
     (Simulator m inp out) <- S.get
-    let m' = M.insert name val m
+    let m' = insertScope name val m
     S.put (Simulator m' inp out)
     return $ Happy val
+
+  getScope :: Simulator -> [(String, Value)]
+  getScope (Simulator m _ _) = getAllBindings m
+
+  pushScope :: [(String, Value)] -> Env Simulator
+  pushScope vars = do
+    (Simulator m inp out) <- S.get
+    let newScope = Scope (M.fromList vars) (Just m)
+    S.put (Simulator newScope inp out)
+    return $ Happy (IntVal 0)
+
+  popScope :: Env Simulator
+  popScope = do
+    (Simulator m inp out) <- S.get
+    let parent = case m of
+          Scope _ (Just p) -> p
+          Scope _ Nothing -> emptyScope
+    S.put (Simulator parent inp out)
+    return $ Happy (IntVal 0)
 
   inputVal :: Env Simulator
   inputVal = do
@@ -130,13 +150,13 @@ instance Machine Simulator where
   setTupleValue :: String -> Value -> Value -> Env Simulator
   setTupleValue n t v = do
     (Simulator m inp out) <- S.get
-    case M.lookup n m of
+    case lookupScope n m of
       Just oldVal -> case oldVal of
         Tuple _ ->
           let newVal = updateTuple oldVal t v
            in case newVal of
                 Just newVal' -> do
-                  let m' = M.insert n newVal' m
+                  let m' = insertScope n newVal' m
                   S.put (Simulator m' inp out)
                   return $ Happy v
                 Nothing -> return $ Sad "Something went wrong while trying to update Tuple value"
@@ -180,12 +200,12 @@ prog =
 
 main :: IO ()
 main = do
-  let out = reduceFully prog (Simulator M.empty [] [])
+  let out = reduceFully prog (Simulator emptyScope [] [])
   print out
   putStrLn "-----------------------------"
-  let out2 = reduceFully Progs.prog (Simulator M.empty [] [])
+  let out2 = reduceFully Progs.prog (Simulator emptyScope [] [])
   print out2
   putStrLn "-----------------------------"
   putStrLn "Testing booleans and comparisons:"
-  let out3 = reduceFully Progs.prog3 (Simulator M.empty [] [])
+  let out3 = reduceFully Progs.prog3 (Simulator emptyScope [] [])
   print out3
