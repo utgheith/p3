@@ -1,16 +1,15 @@
 module Scope
-    ( Scope (..),
-        lookupScope,
-        insertScope,
-        getAllBindings,
-        emptyScope,
-        scopeFromList,
-    )
-    where
+  ( Scope (..),
+    lookupScope,
+    insertScope,
+    getAllBindings,
+    emptyScope,
+    scopeFromList,
+  )
+where
 
 import qualified Data.Map as M
 import Value (Value)
-
 
 data Scope = Scope (M.Map String Value) (Maybe Scope)
   deriving (Eq, Show)
@@ -39,4 +38,3 @@ emptyScope = Scope M.empty Nothing
 
 scopeFromList :: [(String, Value)] -> Scope
 scopeFromList vars = Scope (M.fromList vars) Nothing
-

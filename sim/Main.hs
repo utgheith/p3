@@ -8,10 +8,10 @@ module Main (main) where
 import qualified Control.Monad.State as S
 import qualified Data.Map as M
 import qualified Progs
+import Scope (Scope (..), emptyScope, getAllBindings, insertScope, lookupScope)
 import Small (Env, Machine (..), Result (..), reduceFully)
 import Term (Term (..))
 import Value (Value (..))
-import Scope (Scope (..), emptyScope, getAllBindings, insertScope, lookupScope)
 
 data Simulator = Simulator Scope [Value] [Value] deriving (Eq, Show)
 

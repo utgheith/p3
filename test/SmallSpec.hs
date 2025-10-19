@@ -6,11 +6,11 @@ module SmallSpec (spec) where
 
 import qualified Control.Monad.State as S
 import qualified Data.Map as M
+import Scope (Scope (..), emptyScope, getAllBindings, insertScope, lookupScope, scopeFromList)
 import Small
 import Term
 import Test.Hspec
 import Value (Value (..))
-import Scope (Scope (..), lookupScope, insertScope, getAllBindings, emptyScope, scopeFromList)
 
 -- A mock machine for testing
 data MockMachine = MockMachine {getMem :: Scope, getInput :: [Value], getOutput :: [Value]} deriving (Show, Eq)
