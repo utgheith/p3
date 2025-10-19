@@ -12,9 +12,11 @@ import Scope (Scope (..), emptyScope, getAllBindings, insertScope, lookupScope)
 import Small (Env, Machine (..), Result (..), reduceFully)
 import Term (Term (..))
 import Value (Value (..))
+-- import System.Random as R
+-- import Control.Monad.Random as MR
 
 data Simulator = Simulator Scope [Value] [Value] deriving (Eq, Show)
-
+    
 instance Machine Simulator where
   type V Simulator = Value
   getVar :: String -> Env Simulator
@@ -102,6 +104,9 @@ instance Machine Simulator where
   selectValue (StringVal s) e1 e2 = if not (null s) then e1 else e2
   selectValue (Tuple l) e1 e2 = if not (null l) then e1 else e2
   selectValue (ClosureVal {}) _ _ = return $ Sad "Type error in select"
+
+  selectRandom :: Simulator -> Env Simulator -> Env Simulator -> Env Simulator
+  selectRandom _ e1 _ = e1
 
   ltVal :: Value -> Value -> Env Simulator
   ltVal (IntVal v1) (IntVal v2) = return $ Happy (BoolVal (v1 < v2))

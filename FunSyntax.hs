@@ -27,6 +27,7 @@ data Term
   | VarDef String (Maybe Term)
   | VarRef String
   | While Term Term
+  | ConcurBlock [Term] 
   deriving
     ( -- | more term constructors
       Show,
@@ -127,6 +128,14 @@ block = do
   _ <- token $ Symbol "}"
   return $ Block ts
 
+concurblock :: Parser Token Term 
+concurblock = do 
+  _ <- token $ Keyword "Concur"
+  _ <- token $ Symbol "{"
+  ts <- rpt term 
+  _ <- token $ Symbol "}"
+  return $ ConcurBlock ts
+
 ifExpr :: Parser Token Term
 ifExpr = do
   _ <- keyword "if"
@@ -150,7 +159,7 @@ whileTerm = do
   return $ While cond body
 
 unaryExp :: Parser Token Term
-unaryExp = oneof [assign, ifExpr, block, funDef, minus, num, string, parens, varDef, varRef, whileTerm]
+unaryExp = oneof [assign, ifExpr, concurblock, block, funDef, minus, num, string, parens, varDef, varRef, whileTerm]
 
 ----------- prog ----------
 

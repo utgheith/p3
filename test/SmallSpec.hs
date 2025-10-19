@@ -155,6 +155,8 @@ instance Machine MockMachine where
   selectValue (Tuple l) c t = if not (null l) then c else t
   selectValue (ClosureVal {}) _ _ = return $ Sad "Type error in select"
 
+  selectRandom _ e1 _ = e1
+
 spec :: Spec
 spec = do
   describe "reduceFully" $ do

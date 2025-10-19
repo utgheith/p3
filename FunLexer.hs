@@ -26,7 +26,8 @@ keywords =
       "while",
       "print",
       "try",
-      "catch"
+      "catch",
+      "Concur"
     ]
 
 lexer :: [Char] -> [Token]
