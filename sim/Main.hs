@@ -21,7 +21,7 @@ instance Machine Simulator where
     (Simulator m _ _) <- S.get
     case M.lookup name m of
       Just v -> return $ Happy v
-      Nothing -> return $ Sad $ (VariableNotFound, ("get: " ++ name ++ " not found"))
+      Nothing -> return $ Sad $ (VariableNotFound, "get: " ++ name ++ " not found")
 
   setVar :: String -> Value -> Env Simulator
   setVar name val = do
@@ -101,13 +101,13 @@ instance Machine Simulator where
   eqVal (IntVal v1) (IntVal v2) = return $ Happy (BoolVal (v1 == v2))
   eqVal (BoolVal v1) (BoolVal v2) = return $ Happy (BoolVal (v1 == v2))
   eqVal (StringVal v1) (StringVal v2) = return $ Happy (BoolVal (v1 == v2))
-  eqVal v1 v2 = return $ Sad $ (Type, ("Type error in ==: cannot compare " ++ show v1 ++ " and " ++ show v2))
+  eqVal v1 v2 = return $ Sad $ (Type, "Type error in ==: cannot compare " ++ show v1 ++ " and " ++ show v2)
 
   neqVal :: Value -> Value -> Env Simulator
   neqVal (IntVal v1) (IntVal v2) = return $ Happy (BoolVal (v1 /= v2))
   neqVal (BoolVal v1) (BoolVal v2) = return $ Happy (BoolVal (v1 /= v2))
   neqVal (StringVal v1) (StringVal v2) = return $ Happy (BoolVal (v1 /= v2))
-  neqVal v1 v2 = return $ Sad $ (Type, ("Type error in !=: cannot compare " ++ show v1 ++ " and " ++ show v2))
+  neqVal v1 v2 = return $ Sad $ (Type, "Type error in !=: cannot compare " ++ show v1 ++ " and " ++ show v2)
 
   andVal :: Value -> Value -> Env Simulator
   andVal (BoolVal v1) (BoolVal v2) = return $ Happy (BoolVal (v1 && v2))
