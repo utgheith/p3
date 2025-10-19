@@ -128,28 +128,32 @@ instance Machine Simulator where
     (Simulator m inp out) <- S.get
     case M.lookup n m of
       Just oldVal -> case oldVal of
-        Tuple _ -> let newVal = updateTuple oldVal t v in
-          case newVal of
-            Just newVal' -> do
-              let m' = M.insert n newVal' m
-              S.put (Simulator m' inp out)
-              return $ Happy v
-            Nothing -> return $ Sad "Something went wrong while trying to update Tuple value"
+        Tuple _ ->
+          let newVal = updateTuple oldVal t v
+           in case newVal of
+                Just newVal' -> do
+                  let m' = M.insert n newVal' m
+                  S.put (Simulator m' inp out)
+                  return $ Happy v
+                Nothing -> return $ Sad "Something went wrong while trying to update Tuple value"
         _ -> return $ Sad "Attempting to Index but didn't find Tuple"
       Nothing -> return $ Sad "Attempting to Set Tuple That Doesn't Exist"
     where
       updateTuple :: Value -> Value -> Value -> Maybe Value
-      updateTuple (Tuple (x:xs)) (Tuple (y:ys)) val = case y of
-        IntVal index -> if index == 0 
-          then let returnVal = updateTuple x (Tuple ys) val in
-            case returnVal of
-              Just a -> Just $ Tuple (a:xs)
-              Nothing -> Nothing
-          else let returnVal = updateTuple (Tuple xs) (Tuple (IntVal (index - 1) : ys)) val in
-            case returnVal of
-              Just (Tuple a) -> Just $ Tuple (x:a)
-              Nothing -> Nothing
-              _ -> error "Unable to rebuild tuple"
+      updateTuple (Tuple (x : xs)) (Tuple (y : ys)) val = case y of
+        IntVal index ->
+          if index == 0
+            then
+              let returnVal = updateTuple x (Tuple ys) val
+               in case returnVal of
+                    Just a -> Just $ Tuple (a : xs)
+                    Nothing -> Nothing
+            else
+              let returnVal = updateTuple (Tuple xs) (Tuple (IntVal (index - 1) : ys)) val
+               in case returnVal of
+                    Just (Tuple a) -> Just $ Tuple (x : a)
+                    Nothing -> Nothing
+                    _ -> error "Unable to rebuild tuple"
         _ -> Nothing
       updateTuple _ (Tuple []) val = Just val
       updateTuple _ _ _ = Nothing

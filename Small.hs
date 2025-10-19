@@ -211,14 +211,14 @@ reduce_ (SetTuple name terms val) =
   case terms of
     TupleTerm tupleTerm ->
       premise
-      (reduce $ TupleTerm tupleTerm)
-      (\terms' -> SetTuple name terms' val)
-      (\terms' -> 
-        premise
-          (reduce val)
-          (\val' -> SetTuple name terms val')
-          (\val' -> setTupleValue name terms' val')
-      )
+        (reduce $ TupleTerm tupleTerm)
+        (\terms' -> SetTuple name terms' val)
+        ( \terms' ->
+            premise
+              (reduce val)
+              (\val' -> SetTuple name terms val')
+              (\val' -> setTupleValue name terms' val')
+        )
     _ -> error "SetTuple should only have tuple term as second argument"
 
 reduce :: (Machine m, Show m, V m ~ Value) => Term -> Env m
