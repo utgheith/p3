@@ -149,6 +149,70 @@ reduce_ (UnaryOps op t) =
   where
     applyUnaryOp Neg = negVal
     applyUnaryOp Not = notVal
+reduce_ (Fun xs t) =
+  -- very minimal closure, for right now we are ignoring the captured environment since im not worrying about scoping for now
+  return $ Happy (ClosureVal xs t [])
+reduce_ (ApplyFun tf tas) =
+  premise
+    (reduce tf)
+    (`ApplyFun` tas)
+    (reduceArgsAndApply tf tas)
+
+reduceArgsAndApply :: (Machine m, Show m, V m ~ Value) => Term -> [Term] -> Value -> Env m
+reduceArgsAndApply tf args funVal =
+  case args of
+    [] -> applyFuncNoArg funVal
+    (a : rest) ->
+      premise
+        (reduce a)
+        (\a' -> ApplyFun tf (a' : rest))
+        (applyFunArgList tf rest funVal)
+
+applyFunArgList :: (Machine m, Show m, V m ~ Value) => Term -> [Term] -> Value -> Value -> Env m
+applyFunArgList tf rest funVal argVal = do
+  res1 <- applyFunArg funVal argVal
+  case res1 of
+    Happy v1 -> case rest of
+      [] -> return (Happy v1)
+      _ -> reduceArgsAndApply tf rest v1
+    Continue t -> return (Continue t)
+    Sad msg -> return (Sad msg)
+
+applyFunArg :: (Machine m, Show m, V m ~ Value) => Value -> Value -> Env m
+applyFunArg (ClosureVal [] _ _) _ = do
+  return $ Sad "too many arguments: function takes 0 arguments"
+applyFunArg (ClosureVal (x : xs) body caps) arg = do
+  let newCaps = (x, arg) : caps
+  if null xs
+    then evalClosureBody body (reverse newCaps)
+    else return $ Happy (ClosureVal xs body newCaps)
+applyFunArg _ _ = return $ Sad "attempt to call a non-function"
+
+applyFuncNoArg :: (Machine m, Show m, V m ~ Value) => Value -> Env m
+applyFuncNoArg (ClosureVal [] body caps) = evalClosureBody body (reverse caps)
+applyFuncNoArg (ClosureVal (_ : _) _ _) = return $ Sad "missing arguments: function requires parameters"
+applyFuncNoArg _ = return $ Sad "attempt to call a non-function"
+
+-- Bind captured args, evaluate body, restore machine state
+evalClosureBody :: (Machine m, Show m, V m ~ Value) => Term -> [(String, Value)] -> Env m
+evalClosureBody body caps = do
+  m0 <- S.get
+  case bindMany caps m0 of
+    Left msg -> return (Sad msg)
+    Right m1 -> do
+      let (res, _m2) = reduceFully body m1
+      S.put m0
+      case res of
+        Left msg -> return $ Sad msg
+        Right v -> return $ Happy v
+
+bindMany :: (Machine m, V m ~ Value) => [(String, Value)] -> m -> Either String m
+bindMany [] m = Right m
+bindMany ((k, v) : rest) m =
+  case S.runState (setVar k v) m of
+    (Sad msg, _m') -> Left msg
+    (Continue _, _m') -> Left "internal: setVar requested Continue"
+    (Happy _, m') -> bindMany rest m'
 
 reduce :: (Machine m, Show m, V m ~ Value) => Term -> Env m
 reduce t = do
