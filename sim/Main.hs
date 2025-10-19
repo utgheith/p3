@@ -150,13 +150,13 @@ instance Machine Simulator where
   setTupleValue :: String -> Value -> Value -> Env Simulator
   setTupleValue n t v = do
     (Simulator m inp out) <- S.get
-    case M.lookup n m of
+    case lookupScope n m of
       Just oldVal -> case oldVal of
         Tuple _ ->
           let newVal = updateTuple oldVal t v
            in case newVal of
                 Just newVal' -> do
-                  let m' = M.insert n newVal' m
+                  let m' = insertScope n newVal' m
                   S.put (Simulator m' inp out)
                   return $ Happy v
                 Nothing -> return $ Sad "Something went wrong while trying to update Tuple value"

@@ -117,13 +117,13 @@ instance Machine MockMachine where
 
   setTupleValue n t v = do
     m <- S.get
-    case M.lookup n (getMem m) of
+    case lookupScope n (getMem m) of
       Just oldVal -> case oldVal of
         Tuple _ ->
           let newVal = updateTuple oldVal t v
            in case newVal of
                 Just newVal' -> do
-                  S.put (m {getMem = M.insert n newVal' (getMem m)})
+                  S.put (m {getMem = insertScope n newVal' (getMem m)})
                   return $ Happy v
                 Nothing -> return $ Sad "Something went wrong while trying to update Tuple value"
         _ -> return $ Sad "Attempting to Index but didn't find Tuple"
@@ -251,12 +251,12 @@ spec = do
 
     it "reduces a let tuple expression" $ do
       let term = Seq (Let "x" (TupleTerm [(Literal 10), (StringLiteral "hello"), (BoolLit True)])) (SetTuple "x" (TupleTerm [Literal 2]) (BoolLit False))
-      let finalMachine = initialMachine {getMem = M.fromList [("x", Tuple [IntVal 10, StringVal "hello", BoolVal False])]}
+      let finalMachine = initialMachine {getMem = scopeFromList [("x", Tuple [IntVal 10, StringVal "hello", BoolVal False])]}
       reduceFully term initialMachine `shouldBe` (Right (BoolVal False), finalMachine)
 
     it "reduces a let nested tuple expression" $ do
       let term = Seq (Let "x" (TupleTerm [(Literal 10), TupleTerm [StringLiteral "hello"], (BoolLit True)])) (SetTuple "x" (TupleTerm [Literal 1, Literal 0]) (StringLiteral "goodbye"))
-      let finalMachine = initialMachine {getMem = M.fromList [("x", Tuple [IntVal 10, Tuple [StringVal "goodbye"], BoolVal True])]}
+      let finalMachine = initialMachine {getMem = scopeFromList [("x", Tuple [IntVal 10, Tuple [StringVal "goodbye"], BoolVal True])]}
       reduceFully term initialMachine `shouldBe` (Right (StringVal "goodbye"), finalMachine)
 
     -- Logical Operations Tests
