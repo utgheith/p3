@@ -155,7 +155,7 @@ reduce_ (Fun xs t) =
 reduce_ (ApplyFun tf tas) =
   premise
     (reduce tf)
-    (\tf' -> ApplyFun tf' tas)
+    (`ApplyFun` tas)
     (reduceArgsAndApply tas)
 
 reduceArgsAndApply :: (Machine m, Show m, V m ~ Value) => [Term] -> Value -> Env m
