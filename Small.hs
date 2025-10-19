@@ -168,12 +168,12 @@ reduce_ (UnaryOps op t) =
       StringVal s -> return $ Happy $ IntVal (fromIntegral (length s))
       BoolVal _ -> return $ Happy $ IntVal 1
       IntVal n ->
-        let m = abs n in
-        let digits = if m == 0 then 1 else length (show m)
-         in return $ Happy $ IntVal digits
+        let m = abs n
+         in let digits = if m == 0 then 1 else length (show m)
+             in return $ Happy $ IntVal (fromIntegral digits)
     applyUnaryOp IsNil = \v -> case v of
       ListVal [] -> return (Happy (BoolVal True))
-      ListVal _  -> return (Happy (BoolVal False))
+      ListVal _ -> return (Happy (BoolVal False))
       _ -> return (Sad "Type error: IsNil called on non-list")
 
 reduce :: (Machine m, Show m, V m ~ Value) => Term -> Env m
