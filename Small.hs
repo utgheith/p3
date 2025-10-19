@@ -182,7 +182,6 @@ applyFunArgList rest funVal argVal = do
     Happy v1 -> case rest of
       [] -> return (Happy v1)
       _ -> reduceArgsAndApply rest v1
-    Continue t -> return (Continue t)
     Sad msg -> return (Sad msg)
 
 applyFunArg :: (Machine m, Show m, V m ~ Value) => Value -> Value -> Env m
