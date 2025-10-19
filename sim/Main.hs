@@ -104,7 +104,6 @@ instance Machine Simulator where
   selectValue (ClosureVal {}) _ _ = return $ Sad "Type error in select"
   selectValue (Dictionary _) _ _ = return $ Sad "Type error in select"
 
-
   ltVal :: Value -> Value -> Env Simulator
   ltVal (IntVal v1) (IntVal v2) = return $ Happy (BoolVal (v1 < v2))
   ltVal _ _ = return $ Sad "Type error in <"
@@ -166,14 +165,14 @@ instance Machine Simulator where
                   S.put (Simulator m' inp out)
                   return $ Happy v
                 Nothing -> return $ Sad "Something went wrong while trying to update Tuple value"
-        Dictionary _ -> 
+        Dictionary _ ->
           let newVal = updateTuple oldVal t v
            in case newVal of
-              Just newVal' -> do
-                let m' = insertScope n newVal' m
-                S.put (Simulator m' inp out)
-                return $ Happy v
-              Nothing -> return $ Sad "Something went wrong while trying to update Tuple value"
+                Just newVal' -> do
+                  let m' = insertScope n newVal' m
+                  S.put (Simulator m' inp out)
+                  return $ Happy v
+                Nothing -> return $ Sad "Something went wrong while trying to update Tuple value"
         _ -> return $ Sad "Attempting to Index but didn't find Tuple"
       Nothing -> return $ Sad "Attempting to Set Tuple That Doesn't Exist"
     where
@@ -195,10 +194,11 @@ instance Machine Simulator where
         _ -> Nothing
       updateTuple (Dictionary d) (Tuple (y : ys)) val = case y of
         IntVal index -> case M.lookup index d of
-          Just r -> let returnVal = updateTuple r (Tuple ys) val in
-            case returnVal of
-              Just w -> Just (Dictionary (M.insert index w d))
-              Nothing -> Nothing
+          Just r ->
+            let returnVal = updateTuple r (Tuple ys) val
+             in case returnVal of
+                  Just w -> Just (Dictionary (M.insert index w d))
+                  Nothing -> Nothing
           Nothing -> Nothing
         _ -> Nothing
       updateTuple _ (Tuple []) val = Just val

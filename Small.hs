@@ -6,8 +6,8 @@
 module Small (reduceFully, Machine (..), Result (..), Env) where
 
 import qualified Control.Monad.State as S
-import qualified Data.Map as M
 import Data.Either
+import qualified Data.Map as M
 import Debug.Trace (trace)
 import Term (BinaryOp (..), Term (..), UnaryOp (..))
 import Value (Value (..), valueToInt, valueToTuple)
