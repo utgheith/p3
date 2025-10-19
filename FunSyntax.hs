@@ -27,6 +27,9 @@ data Term
   | VarDef String (Maybe Term)
   | VarRef String
   | While Term Term
+  | Read String
+  | Write Term
+  | BoolLit Bool
   deriving
     ( -- | more term constructors
       Show,
@@ -68,7 +71,13 @@ term = binaryExp precedence
 
 -- precedence levels, from lowest to highest
 precedence :: [S.Set String]
-precedence = [S.fromList ["+"], S.fromList ["*", "/"]]
+precedence = [
+  S.fromList ["||"],
+  S.fromList ["&&"],
+  S.fromList ["==", "!=", "<=", ">=", "<", ">"],
+  S.fromList ["+", "-"],
+  S.fromList ["*", "/"]
+  ]
 
 binaryExp :: [S.Set String] -> Parser Token Term
 binaryExp [] = unaryExp
@@ -92,8 +101,10 @@ assign :: Parser Token Term
 assign = [Assign name expr | name <- ident, _ <- symbol "=", expr <- term]
 
 -- We can use monad comprehensions (GHC extension) to make parsers more concise
-minus :: Parser Token Term
-minus = [Negate e | _ <- symbol "-", e <- unaryExp]
+negateTerm :: Parser Token Term
+negateTerm = [Negate e | _ <- symbol "-", e <- unaryExp]
+notTerm :: Parser Token Term
+notTerm = [Negate e | _ <- symbol "!", e <- unaryExp]
 
 num :: Parser Token Term
 num = do
@@ -108,6 +119,12 @@ string = do
     StringLiteral s -> Just s
     _ -> Nothing
   return $ ConstString s
+
+boolLit :: Parser Token Term
+boolLit = oneof
+  [ [BoolLit True | _ <- keyword "true"]
+  , [BoolLit False | _ <- keyword "false"]
+  ]
 
 parens :: Parser Token Term
 parens = [t | _ <- symbol "(", t <- term, _ <- symbol ")"]
@@ -149,8 +166,15 @@ whileTerm = do
   body <- term
   return $ While cond body
 
+readTerm :: Parser Token Term
+readTerm = [Read name | _ <- keyword "read", name <- ident]
+
+writeTerm :: Parser Token Term
+writeTerm = [Write t | _ <- keyword "print", t <- term]
+
 unaryExp :: Parser Token Term
-unaryExp = oneof [assign, ifExpr, block, funDef, minus, num, string, parens, varDef, varRef, whileTerm]
+
+unaryExp = oneof [whileTerm, ifExpr, block, funDef, varDef, assign, readTerm, writeTerm, boolLit, notTerm, negateTerm, num, string, parens, varRef]
 
 ----------- prog ----------
 
