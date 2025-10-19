@@ -169,8 +169,7 @@ reduce_ (UnaryOps op t) =
       BoolVal _ -> return $ Happy $ IntVal 1
       IntVal n ->
         let m = abs n
-         in let digits = if m == 0 then 1 else length (show m)
-             in return $ Happy $ IntVal (fromIntegral digits)
+        in return $ Happy $ IntVal (fromIntegral (length (show m)))
     applyUnaryOp IsNil = \v -> case v of
       ListVal [] -> return (Happy (BoolVal True))
       ListVal _ -> return (Happy (BoolVal False))
