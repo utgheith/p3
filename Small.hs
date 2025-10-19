@@ -169,9 +169,7 @@ reduce_ (UnaryOps op t) =
       BoolVal _ -> return $ Happy $ IntVal 1
       IntVal n ->
         let m = abs n in
-        let digits = if m == 0
-                     then 1
-                     else (floor (logBase 10 (fromIntegral m :: Double)) :: Integer) + 1
+        let digits = length (show m)
          in return $ Happy $ IntVal digits
     applyUnaryOp IsNil = \v -> case v of
       ListVal [] -> return (Happy (BoolVal True))
