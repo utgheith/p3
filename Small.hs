@@ -173,7 +173,8 @@ reduce_ (UnaryOps op t) =
          in return $ Happy $ IntVal digits
     applyUnaryOp IsNil = \v -> case v of
       ListVal [] -> return (Happy (BoolVal True))
-      _ -> return (Happy (BoolVal False))
+      ListVal _  -> return (Happy (BoolVal False))
+      _ -> return (Sad "Type error: isnil called on non-list")
 
 reduce :: (Machine m, Show m, V m ~ Value) => Term -> Env m
 reduce t = do
