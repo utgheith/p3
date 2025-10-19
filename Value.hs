@@ -18,7 +18,7 @@ data Value
   = IntVal Integer
   | BoolVal Bool
   | StringVal String
-  | ClosureVal String Term [(String, Value)]
+  | ClosureVal [String] Term [(String, Value)]
   deriving (Eq, Show)
 
 valueToInt :: Value -> Either String Integer

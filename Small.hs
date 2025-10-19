@@ -149,29 +149,43 @@ reduce_ (UnaryOps op t) =
   where
     applyUnaryOp Neg = negVal
     applyUnaryOp Not = notVal
-reduce_ (Fun x t) =
+reduce_ (Fun xs t) =
   -- very minimal closure, for right now we are ignoring the captured environment since im not worrying about scoping for now
-  return $ Happy (ClosureVal x t [])
-reduce_ (App tf ta) =
+  return $ Happy (ClosureVal xs t [])
+reduce_ (ApplyFun tf ta) =
   premise
     (reduce tf)
-    (`App` ta)
-    (premise (reduce ta) (App tf) . apply)
+    (`ApplyFun` ta)
+    (premise (reduce ta) (ApplyFun tf) . apply)
 
 apply :: (Machine m, Show m, V m ~ Value) => Value -> Value -> Env m
-apply (ClosureVal x body _caps) arg = do
+apply (ClosureVal [] _ _) _ = do
+  return $ Sad "attempt to call a non-function"
+apply (ClosureVal (x : xs) body caps) arg = do
   m0 <- S.get -- save the current machine state
-  let (resSet, m1) = S.runState (setVar x arg) m0
-  case resSet of
-    Sad msg -> S.put m0 >> return (Sad msg)
-    Continue _ -> S.put m0 >> return (Sad "internal: setVar requested Continue")
-    Happy _ -> do
-      let (res, _m2) = reduceFully body m1
-      S.put m0 -- restore the machine state
-      case res of
-        Left msg -> return $ Sad msg
-        Right v -> return $ Happy v
+  let newCaps = caps ++ [(x, arg)]
+  if null xs
+    then do
+      case bindMany newCaps m0 of
+        Left msg -> S.put m0 >> return (Sad msg)
+        Right m1 -> do
+          let (res, _m2) = reduceFully body m1
+          S.put m0 -- restore the machine state
+          case res of
+            Left msg -> return $ Sad msg
+            Right v -> return $ Happy v
+    else do
+      S.put m0
+      return $ Happy (ClosureVal xs body newCaps)
 apply _ _ = return $ Sad "attempt to call a non-function"
+
+bindMany :: (Machine m, V m ~ Value) => [(String, Value)] -> m -> Either String m
+bindMany [] m = Right m
+bindMany ((k, v) : rest) m =
+  case S.runState (setVar k v) m of
+    (Sad msg, _m') -> Left msg
+    (Continue _, _m') -> Left "internal: setVar requested Continue"
+    (Happy _, m') -> bindMany rest m'
 
 reduce :: (Machine m, Show m, V m ~ Value) => Term -> Env m
 reduce t = do

@@ -290,16 +290,26 @@ spec = do
 
     -- Function application tests (single-arg functions)
     it "applies a simple function" $ do
-      let inc = Fun "x" (BinaryOps Add (Var "x") (Literal 1))
-      let term = App inc (Literal 41)
+      let inc = Fun ["x"] (BinaryOps Add (Var "x") (Literal 1))
+      let term = ApplyFun inc (Literal 41)
       reduceFully term initialMachine `shouldBe` (Right (IntVal 42), initialMachine)
 
     it "binds parameter in environment for body" $ do
-      let f = Fun "x" (Var "x")
-      let term = App f (Literal 7)
+      let f = Fun ["x"] (Var "x")
+      let term = ApplyFun f (Literal 7)
       reduceFully term initialMachine `shouldBe` (Right (IntVal 7), initialMachine)
 
+    it "applies a two-argument function via currying" $ do
+      let add2 = Fun ["x", "y"] (BinaryOps Add (Var "x") (Var "y"))
+      let term = ApplyFun (ApplyFun add2 (Literal 2)) (Literal 3)
+      reduceFully term initialMachine `shouldBe` (Right (IntVal 5), initialMachine)
+
+    it "applies a three-argument function via currying" $ do
+      let add3 = Fun ["x", "y", "z"] (BinaryOps Add (BinaryOps Add (Var "x") (Var "y")) (Var "z"))
+      let term = ApplyFun (ApplyFun (ApplyFun add3 (Literal 1)) (Literal 2)) (Literal 3)
+      reduceFully term initialMachine `shouldBe` (Right (IntVal 6), initialMachine)
+
     it "errors when applying a non-function" $ do
-      let term = App (Literal 3) (Literal 4)
+      let term = ApplyFun (Literal 3) (Literal 4)
       let (result, _) = reduceFully term initialMachine
       result `shouldBe` Left "attempt to call a non-function"
