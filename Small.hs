@@ -152,32 +152,46 @@ reduce_ (UnaryOps op t) =
 reduce_ (Fun xs t) =
   -- very minimal closure, for right now we are ignoring the captured environment since im not worrying about scoping for now
   return $ Happy (ClosureVal xs t [])
-reduce_ (ApplyFun tf ta) =
+reduce_ (CallWithArg tf ta) =
   premise
     (reduce tf)
-    (`ApplyFun` ta)
-    (premise (reduce ta) (ApplyFun tf) . apply)
+    (`CallWithArg` ta)
+    (premise (reduce ta) (CallWithArg tf) . applyFunArg)
 
-apply :: (Machine m, Show m, V m ~ Value) => Value -> Value -> Env m
-apply (ClosureVal [] _ _) _ = do
-  return $ Sad "attempt to call a non-function"
-apply (ClosureVal (x : xs) body caps) arg = do
-  m0 <- S.get -- save the current machine state
+reduce_ (CallNoArgs tf) =
+  premise
+    (reduce tf)
+    CallNoArgs
+    applyFuncNoArg
+
+applyFunArg :: (Machine m, Show m, V m ~ Value) => Value -> Value -> Env m
+applyFunArg (ClosureVal [] _ _) _ = do
+  return $ Sad "too many arguments: function takes 0 arguments"
+applyFunArg (ClosureVal (x : xs) body caps) arg = do
   let newCaps = caps ++ [(x, arg)]
   if null xs
-    then do
-      case bindMany newCaps m0 of
-        Left msg -> S.put m0 >> return (Sad msg)
-        Right m1 -> do
-          let (res, _m2) = reduceFully body m1
-          S.put m0 -- restore the machine state
-          case res of
-            Left msg -> return $ Sad msg
-            Right v -> return $ Happy v
-    else do
+    then evalClosureBody body newCaps
+    else return $ Happy (ClosureVal xs body newCaps)
+applyFunArg _ _ = return $ Sad "attempt to call a non-function"
+
+-- invocation handler for 0 argument functions
+applyFuncNoArg :: (Machine m, Show m, V m ~ Value) => Value -> Env m
+applyFuncNoArg (ClosureVal [] body caps) = evalClosureBody body caps
+applyFuncNoArg (ClosureVal (_ : _) _ _) = return $ Sad "missing arguments: function requires parameters"
+applyFuncNoArg _ = return $ Sad "attempt to call a non-function"
+
+-- Bind captured args, evaluate body, restore machine state
+evalClosureBody :: (Machine m, Show m, V m ~ Value) => Term -> [(String, Value)] -> Env m
+evalClosureBody body caps = do
+  m0 <- S.get
+  case bindMany caps m0 of
+    Left msg -> return (Sad msg)
+    Right m1 -> do
+      let (res, _m2) = reduceFully body m1
       S.put m0
-      return $ Happy (ClosureVal xs body newCaps)
-apply _ _ = return $ Sad "attempt to call a non-function"
+      case res of
+        Left msg -> return $ Sad msg
+        Right v -> return $ Happy v
 
 bindMany :: (Machine m, V m ~ Value) => [(String, Value)] -> m -> Either String m
 bindMany [] m = Right m
