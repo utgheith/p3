@@ -8,7 +8,7 @@ module Small (reduceFully, Machine (..), Result (..), Env) where
 import qualified Control.Monad.State as S
 import Data.Either
 import Debug.Trace (trace)
-import Term (BinaryOp (..), Term (..))
+import Term (BinaryOp (..), Term (..), UnaryOp (..))
 import Value (Value (..), valueToInt, valueToTuple)
 
 ----- The Machine type class -----
@@ -37,6 +37,7 @@ class Machine m where
   mulVal :: V m -> V m -> Env m
   divVal :: V m -> V m -> Env m
   modVal :: V m -> V m -> Env m
+  negVal :: V m -> Env m
 
   -- Comparison operations (operate on integers, return booleans)
   ltVal :: V m -> V m -> Env m
@@ -133,53 +134,32 @@ reduce_ (BinaryOps op t1 t2) =
     applyBinaryOp Mul = mulVal
     applyBinaryOp Div = divVal
     applyBinaryOp Mod = modVal
+    applyBinaryOp Lt = ltVal
+    applyBinaryOp Gt = gtVal
+    applyBinaryOp Lte = lteVal
+    applyBinaryOp Gte = gteVal
+    applyBinaryOp Eq = eqVal
+    applyBinaryOp Neq = neqVal
+    applyBinaryOp And = andVal
+    applyBinaryOp Or = orVal
 reduce_ (BoolLit b) =
   return $ Happy $ BoolVal b
-reduce_ (Lt t1 t2) =
-  premise
-    (reduce t1)
-    (`Lt` t2)
-    (premise (reduce t2) (const Skip) . ltVal)
-reduce_ (Gt t1 t2) =
-  premise
-    (reduce t1)
-    (`Gt` t2)
-    (premise (reduce t2) (const Skip) . gtVal)
-reduce_ (Lte t1 t2) =
-  premise
-    (reduce t1)
-    (`Lte` t2)
-    (premise (reduce t2) (const Skip) . lteVal)
-reduce_ (Gte t1 t2) =
-  premise
-    (reduce t1)
-    (`Gte` t2)
-    (premise (reduce t2) (const Skip) . gteVal)
-reduce_ (Eq t1 t2) =
-  premise
-    (reduce t1)
-    (`Eq` t2)
-    (premise (reduce t2) (const Skip) . eqVal)
-reduce_ (Neq t1 t2) =
-  premise
-    (reduce t1)
-    (`Neq` t2)
-    (premise (reduce t2) (const Skip) . neqVal)
-reduce_ (And t1 t2) =
-  premise
-    (reduce t1)
-    (`And` t2)
-    (premise (reduce t2) (const Skip) . andVal)
-reduce_ (Or t1 t2) =
-  premise
-    (reduce t1)
-    (`Or` t2)
-    (premise (reduce t2) (const Skip) . orVal)
-reduce_ (Not t) =
+reduce_ (UnaryOps op t) =
   premise
     (reduce t)
-    Not
-    notVal
+    (UnaryOps op)
+    (applyUnaryOp op)
+  where
+    applyUnaryOp Neg = negVal
+    applyUnaryOp Not = notVal
+reduce_ (Fun xs t) =
+  -- very minimal closure, for right now we are ignoring the captured environment since im not worrying about scoping for now
+  return $ Happy (ClosureVal xs t [])
+reduce_ (ApplyFun tf tas) =
+  premise
+    (reduce tf)
+    (`ApplyFun` tas)
+    (reduceArgsAndApply tf tas)
 reduce_ (TupleTerm elements) =
   case elements of
     (x : xs) ->
@@ -220,6 +200,62 @@ reduce_ (SetTuple name terms val) =
               (\val' -> setTupleValue name terms' val')
         )
     _ -> error "SetTuple should only have tuple term as second argument"
+
+reduceArgsAndApply :: (Machine m, Show m, V m ~ Value) => Term -> [Term] -> Value -> Env m
+reduceArgsAndApply tf args funVal =
+  case args of
+    [] -> applyFuncNoArg funVal
+    (a : rest) ->
+      premise
+        (reduce a)
+        (\a' -> ApplyFun tf (a' : rest))
+        (applyFunArgList tf rest funVal)
+
+applyFunArgList :: (Machine m, Show m, V m ~ Value) => Term -> [Term] -> Value -> Value -> Env m
+applyFunArgList tf rest funVal argVal = do
+  res1 <- applyFunArg funVal argVal
+  case res1 of
+    Happy v1 -> case rest of
+      [] -> return (Happy v1)
+      _ -> reduceArgsAndApply tf rest v1
+    Continue t -> return (Continue t)
+    Sad msg -> return (Sad msg)
+
+applyFunArg :: (Machine m, Show m, V m ~ Value) => Value -> Value -> Env m
+applyFunArg (ClosureVal [] _ _) _ = do
+  return $ Sad "too many arguments: function takes 0 arguments"
+applyFunArg (ClosureVal (x : xs) body caps) arg = do
+  let newCaps = (x, arg) : caps
+  if null xs
+    then evalClosureBody body (reverse newCaps)
+    else return $ Happy (ClosureVal xs body newCaps)
+applyFunArg _ _ = return $ Sad "attempt to call a non-function"
+
+applyFuncNoArg :: (Machine m, Show m, V m ~ Value) => Value -> Env m
+applyFuncNoArg (ClosureVal [] body caps) = evalClosureBody body (reverse caps)
+applyFuncNoArg (ClosureVal (_ : _) _ _) = return $ Sad "missing arguments: function requires parameters"
+applyFuncNoArg _ = return $ Sad "attempt to call a non-function"
+
+-- Bind captured args, evaluate body, restore machine state
+evalClosureBody :: (Machine m, Show m, V m ~ Value) => Term -> [(String, Value)] -> Env m
+evalClosureBody body caps = do
+  m0 <- S.get
+  case bindMany caps m0 of
+    Left msg -> return (Sad msg)
+    Right m1 -> do
+      let (res, _m2) = reduceFully body m1
+      S.put m0
+      case res of
+        Left msg -> return $ Sad msg
+        Right v -> return $ Happy v
+
+bindMany :: (Machine m, V m ~ Value) => [(String, Value)] -> m -> Either String m
+bindMany [] m = Right m
+bindMany ((k, v) : rest) m =
+  case S.runState (setVar k v) m of
+    (Sad msg, _m') -> Left msg
+    (Continue _, _m') -> Left "internal: setVar requested Continue"
+    (Happy _, m') -> bindMany rest m'
 
 reduce :: (Machine m, Show m, V m ~ Value) => Term -> Env m
 reduce t = do

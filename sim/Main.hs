@@ -72,12 +72,16 @@ instance Machine Simulator where
       else return $ Happy (IntVal (v1 `mod` v2)) -- I don't want the actual interpreter to crash
   modVal _ _ = return $ Sad "Type error in modulus"
 
+  negVal (IntVal v) = return $ Happy (IntVal (-v))
+  negVal _ = return $ Sad "Type error in neg"
+
   selectValue :: Value -> Env Simulator -> Env Simulator -> Env Simulator
   selectValue (BoolVal True) e1 _ = e1
   selectValue (BoolVal False) _ e2 = e2
   selectValue (IntVal n) e1 e2 = if n /= 0 then e1 else e2 -- backward compat
   selectValue (StringVal s) e1 e2 = if not (null s) then e1 else e2
   selectValue (Tuple l) e1 e2 = if not (null l) then e1 else e2
+  selectValue (ClosureVal {}) _ _ = return $ Sad "Type error in select"
 
   ltVal :: Value -> Value -> Env Simulator
   ltVal (IntVal v1) (IntVal v2) = return $ Happy (BoolVal (v1 < v2))
