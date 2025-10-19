@@ -81,6 +81,7 @@ instance Machine Simulator where
   selectValue (IntVal n) e1 e2 = if n /= 0 then e1 else e2 -- backward compat
   selectValue (StringVal s) e1 e2 = if not (null s) then e1 else e2
   selectValue (ListVal xs) e1 e2 = if not (null xs) then e1 else e2
+  selectValue (ClosureVal {}) _ _ = return $ Sad "Type error in select"
 
   ltVal :: Value -> Value -> Env Simulator
   ltVal (IntVal v1) (IntVal v2) = return $ Happy (BoolVal (v1 < v2))

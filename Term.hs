@@ -21,4 +21,6 @@ data Term
   | Write Term
   | BoolLit Bool
   | Nil
+  | Fun [String] Term
+  | ApplyFun Term [Term]
   deriving (Eq, Show)
