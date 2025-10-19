@@ -27,4 +27,5 @@ data Term
   | Not Term
   | TupleTerm [Term]
   | AccessTuple Term Term
+  | SetTuple String Term Term
   deriving (Eq, Show)

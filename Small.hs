@@ -52,6 +52,7 @@ class Machine m where
   notVal :: V m -> Env m
 
   getTupleValue :: V m -> V m -> Env m
+  setTupleValue :: String -> V m -> V m -> Env m
 
   -- Control flow - selectValue uses boolean semantics
   selectValue :: V m -> Env m -> Env m -> Env m
@@ -206,6 +207,19 @@ reduce_ (AccessTuple t i) =
           (AccessTuple t)
           (getTupleValue v1)
     )
+reduce_ (SetTuple name terms val) =
+  case terms of
+    TupleTerm tupleTerm ->
+      premise
+      (reduce $ TupleTerm tupleTerm)
+      (\terms' -> SetTuple name terms' val)
+      (\terms' -> 
+        premise
+          (reduce val)
+          (\val' -> SetTuple name terms val')
+          (\val' -> setTupleValue name terms' val')
+      )
+    _ -> error "SetTuple should only have tuple term as second argument"
 
 reduce :: (Machine m, Show m, V m ~ Value) => Term -> Env m
 reduce t = do
