@@ -188,9 +188,9 @@ applyFunArg :: (Machine m, Show m, V m ~ Value) => Value -> Value -> Env m
 applyFunArg (ClosureVal [] _ _) _ = do
   return $ Sad "too many arguments: function takes 0 arguments"
 applyFunArg (ClosureVal (x : xs) body caps) arg = do
-  let newCaps = (x, arg) : reverse caps
+  let newCaps = caps ++ [(x, arg)]
   if null xs
-    then evalClosureBody body (reverse newCaps)
+    then evalClosureBody body newCaps
     else return $ Happy (ClosureVal xs body newCaps)
 applyFunArg _ _ = return $ Sad "attempt to call a non-function"
 
