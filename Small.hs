@@ -169,7 +169,7 @@ reduceArgsAndApply args funVal =
             ClosureVal (_ : _) _ _ -> ApplyFun funTerm (a' : rest)
             _ -> ApplyFun funTerm (a' : rest)
         )
-        (\argVal -> applyFunArgList rest funVal argVal)
+        (applyFunArgList rest funVal)
   where
     funTerm = case funVal of
       ClosureVal {} -> Fun [] (Literal 0) -- placeholder, not used
