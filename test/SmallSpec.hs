@@ -104,6 +104,10 @@ instance Machine MockMachine where
       else return $ Happy (IntVal (v1 `mod` v2)) -- I don't want the actual interpreter to crash
   modVal _ _ = return $ Sad "Type error in modulus"
 
+  negVal (IntVal v) =
+    return $ Happy (IntVal (-v))
+  negVal _ = return $ Sad "Type error in neg"
+
   ltVal (IntVal v1) (IntVal v2) = return $ Happy (BoolVal (v1 < v2))
   ltVal _ _ = return $ Sad "Type error in <"
 
@@ -224,6 +228,107 @@ spec = do
       let term = BinaryOps Sub (Literal 10) (StringLiteral "hello")
       let (result, _) = reduceFully term initialMachine
       result `shouldBe` Left "Type error in subtraction"
+
+    -- Comparison Operations Tests
+    it "reduces less than comparison" $ do
+      let term = BinaryOps Lt (Literal 5) (Literal 10)
+      reduceFully term initialMachine `shouldBe` (Right (BoolVal True), initialMachine)
+
+    it "reduces greater than comparison" $ do
+      let term = BinaryOps Gt (Literal 10) (Literal 5)
+      reduceFully term initialMachine `shouldBe` (Right (BoolVal True), initialMachine)
+
+    it "reduces less than or equal comparison" $ do
+      let term = BinaryOps Lte (Literal 5) (Literal 5)
+      reduceFully term initialMachine `shouldBe` (Right (BoolVal True), initialMachine)
+
+    it "reduces greater than or equal comparison" $ do
+      let term = BinaryOps Gte (Literal 10) (Literal 5)
+      reduceFully term initialMachine `shouldBe` (Right (BoolVal True), initialMachine)
+
+    it "reduces equality comparison for integers" $ do
+      let term = BinaryOps Eq (Literal 5) (Literal 5)
+      reduceFully term initialMachine `shouldBe` (Right (BoolVal True), initialMachine)
+
+    it "reduces equality comparison for booleans" $ do
+      let term = BinaryOps Eq (BoolLit True) (BoolLit True)
+      reduceFully term initialMachine `shouldBe` (Right (BoolVal True), initialMachine)
+
+    it "reduces equality comparison for strings" $ do
+      let term = BinaryOps Eq (StringLiteral "hello") (StringLiteral "hello")
+      reduceFully term initialMachine `shouldBe` (Right (BoolVal True), initialMachine)
+
+    it "reduces inequality comparison" $ do
+      let term = BinaryOps Neq (Literal 5) (Literal 10)
+      reduceFully term initialMachine `shouldBe` (Right (BoolVal True), initialMachine)
+
+    -- Logical Operations Tests
+    it "reduces logical AND operation" $ do
+      let term = BinaryOps And (BoolLit True) (BoolLit True)
+      reduceFully term initialMachine `shouldBe` (Right (BoolVal True), initialMachine)
+
+    it "reduces logical OR operation" $ do
+      let term = BinaryOps Or (BoolLit False) (BoolLit True)
+      reduceFully term initialMachine `shouldBe` (Right (BoolVal True), initialMachine)
+
+    it "reduces logical NOT operation" $ do
+      let term = UnaryOps Not (BoolLit False)
+      reduceFully term initialMachine `shouldBe` (Right (BoolVal True), initialMachine)
+
+    -- Complex Scenarios Tests
+    it "reduces nested if statements" $ do
+      let term =
+            If
+              (BinaryOps Gt (Literal 10) (Literal 5))
+              ( If
+                  (BinaryOps Lt (Literal 3) (Literal 7))
+                  (Literal 1)
+                  (Literal 2)
+              )
+              (Literal 3)
+      reduceFully term initialMachine `shouldBe` (Right (IntVal 1), initialMachine)
+
+    it "reduces while loop with complex condition" $ do
+      let term =
+            Seq
+              (Let "x" (Literal 5))
+              ( Seq
+                  ( While
+                      ( BinaryOps
+                          And
+                          (BinaryOps Gt (Var "x") (Literal 0))
+                          (BinaryOps Lt (Var "x") (Literal 10))
+                      )
+                      (Let "x" (BinaryOps Add (Var "x") (Literal 1)))
+                  )
+                  (Var "x")
+              )
+      let finalMachine = initialMachine {getMem = scopeFromList [("x", IntVal 10)]}
+      reduceFully term initialMachine `shouldBe` (Right (IntVal 10), finalMachine)
+
+    it "reduces combination of arithmetic and logical operations" $ do
+      let term =
+            BinaryOps
+              And
+              (BinaryOps Gt (BinaryOps Add (Literal 5) (Literal 5)) (Literal 8))
+              (BinaryOps Lt (BinaryOps Mul (Literal 2) (Literal 3)) (Literal 7))
+      reduceFully term initialMachine `shouldBe` (Right (BoolVal True), initialMachine)
+
+    it "handles type error in comparison" $ do
+      let term = BinaryOps Lt (Literal 5) (BoolLit True)
+      let (result, _) = reduceFully term initialMachine
+      result `shouldBe` Left "Type error in <"
+
+    it "handles multiple variables in scope" $ do
+      let term =
+            Seq
+              (Let "x" (Literal 10))
+              ( Seq
+                  (Let "y" (Literal 5))
+                  (BinaryOps Add (Var "x") (Var "y"))
+              )
+      let finalMachine = initialMachine {getMem = scopeFromList [("x", IntVal 10), ("y", IntVal 5)]}
+      reduceFully term initialMachine `shouldBe` (Right (IntVal 15), finalMachine)
 
     it "applies a simple function" $ do
       let inc = Fun "x" (BinaryOps Add (Var "x") (Literal 1))
