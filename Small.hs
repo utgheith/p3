@@ -9,7 +9,7 @@ import qualified Control.Monad.State as S
 import Data.Either
 import Debug.Trace (trace)
 import Term (BinaryOp (..), Term (..), UnaryOp (..))
-import Value (Value (..), valueToInt, valueToTuple)
+import Value (Value (..), valueToInt, valueToList, valueToTuple)
 
 ----- The Machine type class -----
 
@@ -59,6 +59,8 @@ class Machine m where
 
   getTupleValue :: V m -> V m -> Env m
   setTupleValue :: String -> V m -> V m -> Env m
+  getListValue :: V m -> V m -> Env m
+  setListValue :: String -> V m -> V m -> Env m
 
   -- Control flow - selectValue uses boolean semantics
   selectValue :: V m -> Env m -> Env m -> Env m
@@ -183,6 +185,26 @@ reduce_ (TupleTerm elements) =
               (\v2 -> return $ Happy $ Tuple $ v1 : (fromRight [] $ valueToTuple v2))
         )
     [] -> return $ Happy $ Tuple []
+reduce_ (ListTerm elements) =
+  case elements of
+    (x : xs) ->
+      premise
+        (reduce x)
+        (\term' -> ListTerm $ term' : xs)
+        ( \v1 ->
+            premise
+              (reduce $ ListTerm xs)
+              ( \term' ->
+                  case term' of
+                    ListTerm xs' -> ListTerm (x : xs')
+                    _ -> error "ListTerm recursion somehow returned a non ListTerm continuation"
+              )
+              (\v2 -> case valueToList v2 of
+                  Right rest -> return $ Happy $ List (v1 : rest)
+                  Left err -> return $ Sad err
+              )
+        )
+    [] -> return $ Happy $ List []
 reduce_ (AccessTuple t i) =
   premise
     (reduce t)
@@ -192,6 +214,16 @@ reduce_ (AccessTuple t i) =
           (reduce i)
           (AccessTuple t)
           (getTupleValue v1)
+    )
+reduce_ (AccessList t i) =
+  premise
+    (reduce t)
+    (\term' -> AccessList term' i)
+    ( \v1 ->
+        premise
+          (reduce i)
+          (AccessList t)
+          (getListValue v1)
     )
 reduce_ (SetTuple name terms val) =
   case terms of
@@ -206,6 +238,19 @@ reduce_ (SetTuple name terms val) =
               (\val' -> setTupleValue name terms' val')
         )
     _ -> error "SetTuple should only have tuple term as second argument"
+reduce_ (SetList name terms val) =
+  case terms of
+    ListTerm listTerm ->
+      premise
+        (reduce $ ListTerm listTerm)
+        (\terms' -> SetList name terms' val)
+        ( \terms' ->
+            premise
+              (reduce val)
+              (\val' -> SetList name terms val')
+              (\val' -> setListValue name terms' val')
+        )
+    _ -> error "SetList should only have list term as second argument"
 
 reduceArgsAndApply :: (Machine m, Show m, V m ~ Value) => Term -> [Term] -> Value -> Env m
 reduceArgsAndApply tf args funVal =
