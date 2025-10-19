@@ -8,7 +8,7 @@ module Small (reduceFully, Machine (..), Result (..), Error, Env) where
 import qualified Control.Monad.State as S
 import Data.Either
 import Debug.Trace (trace)
-import Term (BinaryOp (..), Term (..), UnaryOp (..), ErrorKind (..), ErrorKindOrAny (..))
+import Term (BinaryOp (..), ErrorKind (..), ErrorKindOrAny (..), Term (..), UnaryOp (..))
 import Value (Value (..), valueToInt)
 
 ----- The Machine type class -----
@@ -83,6 +83,7 @@ premise e l r = do
 errorShouldBeCaught :: ErrorKind -> ErrorKindOrAny -> Bool
 errorShouldBeCaught _ Any = True
 errorShouldBeCaught resultErrorKind (Specific catchableErrorKind) = resultErrorKind == catchableErrorKind
+
 ------ Small-step reduction ------
 
 reduce_ :: (Machine m, Show m, V m ~ Value) => Term -> Env m
@@ -112,7 +113,7 @@ reduce_ (Try tTry catchableErrorKindOrAny tCatch) = do
   case vTry of
     Continue tTry' -> return $ Continue (Try tTry' catchableErrorKindOrAny tCatch)
     Happy n -> return $ Happy n
-    Sad (resultErrorKind, _) | errorShouldBeCaught resultErrorKind catchableErrorKindOrAny-> return $ Continue tCatch
+    Sad (resultErrorKind, _) | errorShouldBeCaught resultErrorKind catchableErrorKindOrAny -> return $ Continue tCatch
     Sad _ -> return vTry
 reduce_ w@(While cond body) =
   return $ Continue (If cond (Seq body w) Skip)

@@ -9,7 +9,7 @@ import qualified Control.Monad.State as S
 import qualified Data.Map as M
 import qualified Progs
 import Small (Env, Machine (..), Result (..), reduceFully)
-import Term (Term (..), ErrorKind(..))
+import Term (ErrorKind (..), Term (..))
 import Value (Value (..))
 
 data Simulator = Simulator (M.Map String Value) [Value] [Value] deriving (Eq, Show)
