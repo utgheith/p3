@@ -1,11 +1,14 @@
-module Term (Term (..), BinaryOp (..)) where
+module Term (Term (..), BinaryOp (..), ErrorKind(..), ErrorKindOrAny(..)) where
 
 data BinaryOp = Add | Sub | Mul | Div | Mod
   deriving (Eq, Show)
 
+data ErrorKind = Arithmetic | Type | Input | VariableNotFound deriving (Eq, Show)
+data ErrorKindOrAny = Specific ErrorKind | Any deriving (Eq, Show)
+
 data Term
   = If Term Term Term
-  | Try Term Term
+  | Try Term ErrorKindOrAny Term
   | Let String Term
   | Literal Integer
   | StringLiteral String

@@ -3,12 +3,12 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 
-module Small (reduceFully, Machine (..), Result (..), Env) where
+module Small (reduceFully, Machine (..), Result (..), Error, Env) where
 
 import qualified Control.Monad.State as S
 import Data.Either
 import Debug.Trace (trace)
-import Term (BinaryOp (..), Term (..))
+import Term (BinaryOp (..), Term (..), ErrorKind (..), ErrorKindOrAny (..))
 import Value (Value (..), valueToInt)
 
 ----- The Machine type class -----
@@ -56,10 +56,12 @@ class Machine m where
 
 ----- The Result type -----
 
+type Error = (ErrorKind, String)
+
 data Result a
   = Happy a -- produced an answer
   | Continue Term -- need to keep going
-  | Sad String -- error
+  | Sad Error -- error
   deriving (Eq, Show)
 
 ----- The Env monad -----
@@ -76,6 +78,10 @@ premise e l r = do
     Happy n -> r n
     Sad _ -> return v
 
+-- Helper for try-catch statement
+errorShouldBeCaught :: ErrorKind -> ErrorKindOrAny -> Bool
+errorShouldBeCaught _ Any = True
+errorShouldBeCaught resultErrorKind (Specific catchableErrorKind) = resultErrorKind == catchableErrorKind
 ------ Small-step reduction ------
 
 reduce_ :: (Machine m, Show m, V m ~ Value) => Term -> Env m
@@ -100,12 +106,13 @@ reduce_ (If cond tThen tElse) = do
     (reduce cond)
     (\cond' -> If cond' tThen tElse)
     (\v -> selectValue v (return $ Continue tThen) (return $ Continue tElse))
-reduce_ (Try tTry tCatch) = do
+reduce_ (Try tTry catchableErrorKindOrAny tCatch) = do
   vTry <- (reduce tTry)
   case vTry of
-    Continue tTry' -> return $ Continue (Try tTry' tCatch)
+    Continue tTry' -> return $ Continue (Try tTry' catchableErrorKindOrAny tCatch)
     Happy n -> return $ Happy n
-    Sad _ -> return $ Continue tCatch
+    Sad (resultErrorKind, _) | errorShouldBeCaught resultErrorKind catchableErrorKindOrAny-> return $ Continue tCatch
+    Sad _ -> return vTry
 reduce_ w@(While cond body) =
   return $ Continue (If cond (Seq body w) Skip)
 reduce_ (Read x) =
@@ -194,6 +201,6 @@ reduce t = do
 reduceFully :: (Machine m, Show m, V m ~ Value) => Term -> m -> (Either String (V m), m)
 reduceFully term machine =
   case S.runState (reduce term) machine of
-    (Sad msg, m) -> (Left msg, m)
+    (Sad (_, message), m) -> (Left message, m)
     (Continue t, m) -> reduceFully t m
     (Happy n, m) -> (Right n, m)

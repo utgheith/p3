@@ -9,7 +9,7 @@ import qualified Control.Monad.State as S
 import qualified Data.Map as M
 import qualified Progs
 import Small (Env, Machine (..), Result (..), reduceFully)
-import Term (Term (..))
+import Term (Term (..), ErrorKind(..))
 import Value (Value (..))
 
 data Simulator = Simulator (M.Map String Value) [Value] [Value] deriving (Eq, Show)
@@ -21,7 +21,7 @@ instance Machine Simulator where
     (Simulator m _ _) <- S.get
     case M.lookup name m of
       Just v -> return $ Happy v
-      Nothing -> return $ Sad $ "get: " ++ name ++ " not found"
+      Nothing -> return $ Sad $ (VariableNotFound, ("get: " ++ name ++ " not found"))
 
   setVar :: String -> Value -> Env Simulator
   setVar name val = do
@@ -37,7 +37,7 @@ instance Machine Simulator where
       (x : xs) -> do
         S.put (Simulator m xs out)
         return $ Happy x
-      [] -> return $ Sad "Input stream is empty"
+      [] -> return $ Sad (Input, "Input stream is empty")
 
   outputVal :: Value -> Env Simulator
   outputVal val = do
@@ -48,29 +48,29 @@ instance Machine Simulator where
 
   subVal :: Value -> Value -> Env Simulator
   subVal (IntVal v1) (IntVal v2) = return $ Happy (IntVal (v1 - v2))
-  subVal _ _ = return $ Sad "Type error in subtraction"
+  subVal _ _ = return $ Sad (Type, "Type error in subtraction")
 
   addVal :: Value -> Value -> Env Simulator
   addVal (IntVal v1) (IntVal v2) = return $ Happy (IntVal (v1 + v2))
-  addVal _ _ = return $ Sad "Type error in addition"
+  addVal _ _ = return $ Sad (Type, "Type error in addition")
 
   mulVal :: Value -> Value -> Env Simulator
   mulVal (IntVal v1) (IntVal v2) = return $ Happy (IntVal (v1 * v2))
-  mulVal _ _ = return $ Sad "Type error in multiplication"
+  mulVal _ _ = return $ Sad (Type, "Type error in multiplication")
 
   divVal :: Value -> Value -> Env Simulator
   divVal (IntVal v1) (IntVal v2) =
     if v2 == 0
-      then return $ Sad "Cannot divide by 0"
+      then return $ Sad (Arithmetic, "Cannot divide by 0")
       else return $ Happy (IntVal (v1 `div` v2)) -- I don't want the actual interpreter to crash
-  divVal _ _ = return $ Sad "Type error in division"
+  divVal _ _ = return $ Sad (Type, "Type error in division")
 
   modVal :: Value -> Value -> Env Simulator
   modVal (IntVal v1) (IntVal v2) =
     if v2 == 0
-      then return $ Sad "Cannot mod by 0"
+      then return $ Sad (Arithmetic, "Cannot mod by 0")
       else return $ Happy (IntVal (v1 `mod` v2)) -- I don't want the actual interpreter to crash
-  modVal _ _ = return $ Sad "Type error in modulus"
+  modVal _ _ = return $ Sad (Type, "Type error in modulus")
 
   selectValue :: Value -> Env Simulator -> Env Simulator -> Env Simulator
   selectValue (BoolVal True) e1 _ = e1
@@ -80,43 +80,43 @@ instance Machine Simulator where
 
   ltVal :: Value -> Value -> Env Simulator
   ltVal (IntVal v1) (IntVal v2) = return $ Happy (BoolVal (v1 < v2))
-  ltVal _ _ = return $ Sad "Type error in <"
+  ltVal _ _ = return $ Sad (Type, "Type error in <")
 
   gtVal :: Value -> Value -> Env Simulator
   gtVal (IntVal v1) (IntVal v2) = return $ Happy (BoolVal (v1 > v2))
-  gtVal _ _ = return $ Sad "Type error in >"
+  gtVal _ _ = return $ Sad (Type, "Type error in >")
 
   lteVal :: Value -> Value -> Env Simulator
   lteVal (IntVal v1) (IntVal v2) = return $ Happy (BoolVal (v1 <= v2))
-  lteVal _ _ = return $ Sad "Type error in <="
+  lteVal _ _ = return $ Sad (Type, "Type error in <=")
 
   gteVal :: Value -> Value -> Env Simulator
   gteVal (IntVal v1) (IntVal v2) = return $ Happy (BoolVal (v1 >= v2))
-  gteVal _ _ = return $ Sad "Type error in >="
+  gteVal _ _ = return $ Sad (Type, "Type error in >=")
 
   eqVal :: Value -> Value -> Env Simulator
   eqVal (IntVal v1) (IntVal v2) = return $ Happy (BoolVal (v1 == v2))
   eqVal (BoolVal v1) (BoolVal v2) = return $ Happy (BoolVal (v1 == v2))
   eqVal (StringVal v1) (StringVal v2) = return $ Happy (BoolVal (v1 == v2))
-  eqVal v1 v2 = return $ Sad $ "Type error in ==: cannot compare " ++ show v1 ++ " and " ++ show v2
+  eqVal v1 v2 = return $ Sad $ (Type, ("Type error in ==: cannot compare " ++ show v1 ++ " and " ++ show v2))
 
   neqVal :: Value -> Value -> Env Simulator
   neqVal (IntVal v1) (IntVal v2) = return $ Happy (BoolVal (v1 /= v2))
   neqVal (BoolVal v1) (BoolVal v2) = return $ Happy (BoolVal (v1 /= v2))
   neqVal (StringVal v1) (StringVal v2) = return $ Happy (BoolVal (v1 /= v2))
-  neqVal v1 v2 = return $ Sad $ "Type error in !=: cannot compare " ++ show v1 ++ " and " ++ show v2
+  neqVal v1 v2 = return $ Sad $ (Type, ("Type error in !=: cannot compare " ++ show v1 ++ " and " ++ show v2))
 
   andVal :: Value -> Value -> Env Simulator
   andVal (BoolVal v1) (BoolVal v2) = return $ Happy (BoolVal (v1 && v2))
-  andVal _ _ = return $ Sad "Type error in &&"
+  andVal _ _ = return $ Sad (Type, "Type error in &&")
 
   orVal :: Value -> Value -> Env Simulator
   orVal (BoolVal v1) (BoolVal v2) = return $ Happy (BoolVal (v1 || v2))
-  orVal _ _ = return $ Sad "Type error in ||"
+  orVal _ _ = return $ Sad (Type, "Type error in ||")
 
   notVal :: Value -> Env Simulator
   notVal (BoolVal v) = return $ Happy (BoolVal (not v))
-  notVal _ = return $ Sad "Type error in !"
+  notVal _ = return $ Sad (Type, "Type error in !")
 
 infixl 1 ~
 

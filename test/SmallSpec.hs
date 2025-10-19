@@ -21,7 +21,7 @@ instance Machine MockMachine where
     m <- S.get
     case M.lookup x (getMem m) of
       Just v -> return $ Happy v
-      Nothing -> return $ Sad "variable not found"
+      Nothing -> return $ Sad (VariableNotFound, "variable not found")
 
   setVar x v = do
     m <- S.get
@@ -34,7 +34,7 @@ instance Machine MockMachine where
       (i : is) -> do
         S.put (m {getInput = is})
         return $ Happy i
-      [] -> return $ Sad "end of input"
+      [] -> return $ Sad (Input, "end of input")
 
   outputVal v = do
     m <- S.get
@@ -42,56 +42,56 @@ instance Machine MockMachine where
     return $ Happy v
 
   subVal (IntVal v1) (IntVal v2) = return $ Happy (IntVal (v1 - v2))
-  subVal _ _ = return $ Sad "Type error in subtraction"
+  subVal _ _ = return $ Sad (Type, "Type error in subtraction")
 
   addVal (IntVal v1) (IntVal v2) = return $ Happy (IntVal (v1 + v2))
-  addVal _ _ = return $ Sad "Type error in addition"
+  addVal _ _ = return $ Sad (Type, "Type error in addition")
 
   mulVal (IntVal v1) (IntVal v2) = return $ Happy (IntVal (v1 * v2))
-  mulVal _ _ = return $ Sad "Type error in multiplication"
+  mulVal _ _ = return $ Sad (Type, "Type error in multiplication")
 
   divVal (IntVal v1) (IntVal v2) =
     if v2 == 0
-      then return $ Sad "Cannot divide by 0"
+      then return $ Sad (Arithmetic, "Cannot divide by 0")
       else return $ Happy (IntVal (v1 `div` v2)) -- I don't want the actual interpreter to crash
-  divVal _ _ = return $ Sad "Type error in division"
+  divVal _ _ = return $ Sad (Type, "Type error in division")
 
   modVal (IntVal v1) (IntVal v2) =
     if v2 == 0
-      then return $ Sad "Cannot mod by 0"
+      then return $ Sad (Arithmetic, "Cannot mod by 0")
       else return $ Happy (IntVal (v1 `mod` v2)) -- I don't want the actual interpreter to crash
-  modVal _ _ = return $ Sad "Type error in modulus"
+  modVal _ _ = return $ Sad (Type, "Type error in modulus")
 
   ltVal (IntVal v1) (IntVal v2) = return $ Happy (BoolVal (v1 < v2))
-  ltVal _ _ = return $ Sad "Type error in <"
+  ltVal _ _ = return $ Sad (Type, "Type error in <")
 
   gtVal (IntVal v1) (IntVal v2) = return $ Happy (BoolVal (v1 > v2))
-  gtVal _ _ = return $ Sad "Type error in >"
+  gtVal _ _ = return $ Sad (Type, "Type error in >")
 
   lteVal (IntVal v1) (IntVal v2) = return $ Happy (BoolVal (v1 <= v2))
-  lteVal _ _ = return $ Sad "Type error in <="
+  lteVal _ _ = return $ Sad (Type, "Type error in <=")
 
   gteVal (IntVal v1) (IntVal v2) = return $ Happy (BoolVal (v1 >= v2))
-  gteVal _ _ = return $ Sad "Type error in >="
+  gteVal _ _ = return $ Sad (Type, "Type error in >=")
 
   eqVal (IntVal v1) (IntVal v2) = return $ Happy (BoolVal (v1 == v2))
   eqVal (BoolVal v1) (BoolVal v2) = return $ Happy (BoolVal (v1 == v2))
   eqVal (StringVal v1) (StringVal v2) = return $ Happy (BoolVal (v1 == v2))
-  eqVal _ _ = return $ Sad "Type error in =="
+  eqVal _ _ = return $ Sad (Type, "Type error in ==")
 
   neqVal (IntVal v1) (IntVal v2) = return $ Happy (BoolVal (v1 /= v2))
   neqVal (BoolVal v1) (BoolVal v2) = return $ Happy (BoolVal (v1 /= v2))
   neqVal (StringVal v1) (StringVal v2) = return $ Happy (BoolVal (v1 /= v2))
-  neqVal _ _ = return $ Sad "Type error in !="
+  neqVal _ _ = return $ Sad (Type, "Type error in !=")
 
   andVal (BoolVal v1) (BoolVal v2) = return $ Happy (BoolVal (v1 && v2))
-  andVal _ _ = return $ Sad "Type error in &&"
+  andVal _ _ = return $ Sad (Type, "Type error in &&")
 
   orVal (BoolVal v1) (BoolVal v2) = return $ Happy (BoolVal (v1 || v2))
-  orVal _ _ = return $ Sad "Type error in ||"
+  orVal _ _ = return $ Sad (Type, "Type error in ||")
 
   notVal (BoolVal v) = return $ Happy (BoolVal (not v))
-  notVal _ = return $ Sad "Type error in !"
+  notVal _ = return $ Sad (Type, "Type error in !")
 
   selectValue (BoolVal True) c _ = c
   selectValue (BoolVal False) _ t = t
@@ -183,15 +183,14 @@ spec = do
       result `shouldBe` Left "Type error in subtraction"
 
     it "try catch runs try statement if no error" $ do
-      let term = Try (Literal 1) (Literal 2)
+      let term = Try (Literal 1) Any (Literal 2)
       reduceFully term initialMachine `shouldBe` (Right (IntVal 1), initialMachine)
 
     it "try catch runs catch statement if error" $ do
-      let term = Try (BinaryOps Div (Literal 1) (Literal 0)) (Literal 2)
+      let term = Try (BinaryOps Div (Literal 1) (Literal 0)) (Specific Arithmetic) (Literal 2)
       reduceFully term initialMachine `shouldBe` (Right (IntVal 2), initialMachine)
 
     it "try catch errors if both try and catch statements produce errors" $ do
-      let term = Try (BinaryOps Div (Literal 1) (Literal 0)) (BinaryOps Div (Literal 1) (Literal 0))
+      let term = Try (BinaryOps Add (Literal 1) (StringLiteral "a")) (Specific Type) (BinaryOps Div (Literal 1) (Literal 0))
       reduceFully term initialMachine `shouldBe` (Left "Cannot divide by 0", initialMachine)
-
 
