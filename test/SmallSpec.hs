@@ -97,10 +97,47 @@ instance Machine MockMachine where
   notVal (BoolVal v) = return $ Happy (BoolVal (not v))
   notVal _ = return $ Sad "Type error in !"
 
+  getTupleValue (Tuple (x : xs)) (IntVal pos) = if pos == 0 then return (Happy x) else getTupleValue (Tuple xs) (IntVal (pos - 1))
+  getTupleValue _ _ = return $ Sad "Tuple Lookup Bad Input"
+
+  setTupleValue n t v = do
+    m <- S.get
+    case M.lookup n (getMem m) of
+      Just oldVal -> case oldVal of
+        Tuple _ ->
+          let newVal = updateTuple oldVal t v
+           in case newVal of
+                Just newVal' -> do
+                  S.put (m {getMem = M.insert n newVal' (getMem m)})
+                  return $ Happy v
+                Nothing -> return $ Sad "Something went wrong while trying to update Tuple value"
+        _ -> return $ Sad "Attempting to Index but didn't find Tuple"
+      Nothing -> return $ Sad "Attempting to Set Tuple That Doesn't Exist"
+    where
+      updateTuple :: Value -> Value -> Value -> Maybe Value
+      updateTuple (Tuple (x : xs)) (Tuple (y : ys)) val = case y of
+        IntVal index ->
+          if index == 0
+            then
+              let returnVal = updateTuple x (Tuple ys) val
+               in case returnVal of
+                    Just a -> Just $ Tuple (a : xs)
+                    Nothing -> Nothing
+            else
+              let returnVal = updateTuple (Tuple xs) (Tuple (IntVal (index - 1) : ys)) val
+               in case returnVal of
+                    Just (Tuple a) -> Just $ Tuple (x : a)
+                    Nothing -> Nothing
+                    _ -> error "Unable to rebuild tuple"
+        _ -> Nothing
+      updateTuple _ (Tuple []) val = Just val
+      updateTuple _ _ _ = Nothing
+
   selectValue (BoolVal True) c _ = c
   selectValue (BoolVal False) _ t = t
   selectValue (IntVal n) c t = if n /= 0 then c else t
   selectValue (StringVal s) c t = if not (null s) then c else t
+  selectValue (Tuple l) c t = if not (null l) then c else t
   selectValue (ClosureVal {}) _ _ = return $ Sad "Type error in select"
 
 spec :: Spec
@@ -186,6 +223,26 @@ spec = do
       let term = BinaryOps Sub (Literal 10) (StringLiteral "hello")
       let (result, _) = reduceFully term initialMachine
       result `shouldBe` Left "Type error in subtraction"
+
+    it "reduces a Tuple" $ do
+      let term = TupleTerm [(Literal 10), (StringLiteral "hello"), (BoolLit True)]
+      let (result, _) = reduceFully term initialMachine
+      result `shouldBe` Right (Tuple [IntVal 10, StringVal "hello", BoolVal True])
+
+    it "access a Tuple" $ do
+      let term = AccessTuple (TupleTerm [(Literal 10), (StringLiteral "hello"), (BoolLit True)]) (Literal 1)
+      let (result, _) = reduceFully term initialMachine
+      result `shouldBe` Right (StringVal "hello")
+
+    it "reduces a let tuple expression" $ do
+      let term = Seq (Let "x" (TupleTerm [(Literal 10), (StringLiteral "hello"), (BoolLit True)])) (SetTuple "x" (TupleTerm [Literal 2]) (BoolLit False))
+      let finalMachine = initialMachine {getMem = M.fromList [("x", Tuple [IntVal 10, StringVal "hello", BoolVal False])]}
+      reduceFully term initialMachine `shouldBe` (Right (BoolVal False), finalMachine)
+
+    it "reduces a let nested tuple expression" $ do
+      let term = Seq (Let "x" (TupleTerm [(Literal 10), TupleTerm [StringLiteral "hello"], (BoolLit True)])) (SetTuple "x" (TupleTerm [Literal 1, Literal 0]) (StringLiteral "goodbye"))
+      let finalMachine = initialMachine {getMem = M.fromList [("x", Tuple [IntVal 10, Tuple [StringVal "goodbye"], BoolVal True])]}
+      reduceFully term initialMachine `shouldBe` (Right (StringVal "goodbye"), finalMachine)
 
     -- Logical Operations Tests
     it "reduces logical AND operation" $ do

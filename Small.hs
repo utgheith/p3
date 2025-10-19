@@ -9,7 +9,7 @@ import qualified Control.Monad.State as S
 import Data.Either
 import Debug.Trace (trace)
 import Term (BinaryOp (..), Term (..), UnaryOp (..))
-import Value (Value (..), valueToInt)
+import Value (Value (..), valueToInt, valueToTuple)
 
 ----- The Machine type class -----
 
@@ -51,6 +51,9 @@ class Machine m where
   andVal :: V m -> V m -> Env m
   orVal :: V m -> V m -> Env m
   notVal :: V m -> Env m
+
+  getTupleValue :: V m -> V m -> Env m
+  setTupleValue :: String -> V m -> V m -> Env m
 
   -- Control flow - selectValue uses boolean semantics
   selectValue :: V m -> Env m -> Env m -> Env m
@@ -157,6 +160,46 @@ reduce_ (ApplyFun tf tas) =
     (reduce tf)
     (`ApplyFun` tas)
     (reduceArgsAndApply tf tas)
+reduce_ (TupleTerm elements) =
+  case elements of
+    (x : xs) ->
+      premise
+        (reduce x)
+        (\term' -> TupleTerm $ term' : xs)
+        ( \v1 ->
+            premise
+              (reduce $ TupleTerm xs)
+              ( \term' ->
+                  case term' of
+                    TupleTerm xs' -> TupleTerm (x : xs')
+                    _ -> error "TupleTerm recursion somehow returned a non TupleTerm continuation"
+              )
+              (\v2 -> return $ Happy $ Tuple $ v1 : (fromRight [] $ valueToTuple v2))
+        )
+    [] -> return $ Happy $ Tuple []
+reduce_ (AccessTuple t i) =
+  premise
+    (reduce t)
+    (\term' -> AccessTuple term' i)
+    ( \v1 ->
+        premise
+          (reduce i)
+          (AccessTuple t)
+          (getTupleValue v1)
+    )
+reduce_ (SetTuple name terms val) =
+  case terms of
+    TupleTerm tupleTerm ->
+      premise
+        (reduce $ TupleTerm tupleTerm)
+        (\terms' -> SetTuple name terms' val)
+        ( \terms' ->
+            premise
+              (reduce val)
+              (\val' -> SetTuple name terms val')
+              (\val' -> setTupleValue name terms' val')
+        )
+    _ -> error "SetTuple should only have tuple term as second argument"
 
 reduceArgsAndApply :: (Machine m, Show m, V m ~ Value) => Term -> [Term] -> Value -> Env m
 reduceArgsAndApply tf args funVal =
