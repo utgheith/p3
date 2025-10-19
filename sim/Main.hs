@@ -12,23 +12,67 @@ import Small (Env, Machine (..), Result (..), reduceFully)
 import Term (Term (..))
 import Value (Value (..))
 
-data Simulator = Simulator (M.Map String Value) [Value] [Value] deriving (Eq, Show)
+data Scope = Scope (M.Map String Value) (Maybe Scope)
+  deriving (Eq, Show)
+
+lookupScope :: String -> Scope -> Maybe Value
+lookupScope name (Scope m parent) =
+  case M.lookup name m of
+    Just v -> Just v
+    Nothing ->
+      case parent of
+        Just p -> lookupScope name p -- Look in parent scope.
+        Nothing -> Nothing
+
+insertScope :: String -> Value -> Scope -> Scope
+insertScope name val (Scope m parent) = Scope (M.insert name val m) parent -- Insert into inner scope.
+
+getAllBindings :: Scope -> [(String, Value)]
+getAllBindings (Scope m parent) =
+  let rest = case parent of
+        Just p -> getAllBindings p
+        Nothing -> []
+  in M.toList (M.union m (M.fromList rest)) -- Keep bindings in inner scopes.
+
+emptyScope :: Scope
+emptyScope = Scope M.empty Nothing
+
+data Simulator = Simulator Scope [Value] [Value] deriving (Eq, Show)
 
 instance Machine Simulator where
   type V Simulator = Value
   getVar :: String -> Env Simulator
   getVar name = do
     (Simulator m _ _) <- S.get
-    case M.lookup name m of
+    case lookupScope name m of
       Just v -> return $ Happy v
       Nothing -> return $ Sad $ "get: " ++ name ++ " not found"
 
   setVar :: String -> Value -> Env Simulator
   setVar name val = do
     (Simulator m inp out) <- S.get
-    let m' = M.insert name val m
+    let m' = insertScope name val m
     S.put (Simulator m' inp out)
     return $ Happy val
+
+  getScope :: Simulator -> [(String, Value)]
+  getScope (Simulator m _ _) = getAllBindings m
+
+  pushScope :: [(String, Value)] -> Env Simulator
+  pushScope vars = do
+    (Simulator m inp out) <- S.get
+    let newScope = Scope (M.fromList vars) (Just m)
+    S.put (Simulator newScope inp out)
+    return $ Happy (IntVal 0)
+
+  popScope :: Env Simulator
+  popScope = do
+    (Simulator m inp out) <- S.get
+    let parent = case m of
+                  Scope _ (Just p) -> p
+                  Scope _ Nothing -> Scope M.empty Nothing
+    S.put (Simulator parent inp out)
+    return $ Happy (IntVal 0)
 
   inputVal :: Env Simulator
   inputVal = do
@@ -137,12 +181,12 @@ prog =
 
 main :: IO ()
 main = do
-  let out = reduceFully prog (Simulator M.empty [] [])
+  let out = reduceFully prog (Simulator emptyScope [] [])
   print out
   putStrLn "-----------------------------"
-  let out2 = reduceFully Progs.prog (Simulator M.empty [] [])
+  let out2 = reduceFully Progs.prog (Simulator emptyScope [] [])
   print out2
   putStrLn "-----------------------------"
   putStrLn "Testing booleans and comparisons:"
-  let out3 = reduceFully Progs.prog3 (Simulator M.empty [] [])
+  let out3 = reduceFully Progs.prog3 (Simulator emptyScope [] [])
   print out3

@@ -27,6 +27,11 @@ class Machine m where
   getVar :: String -> Env m
   setVar :: String -> V m -> Env m
 
+  -- Lexical scoping
+  getScope :: m -> [(String, Value)] -- Variable bindings only.
+  pushScope :: [(String, Value)] -> Env m
+  popScope :: Env m
+
   -- I/O
   inputVal :: Env m
   outputVal :: V m -> Env m
@@ -177,9 +182,10 @@ reduce_ (Not t) =
     (reduce t)
     Not
     notVal
-reduce_ (Fun x t) =
-  -- very minimal closure, for right now we are ignoring the captured environment since im not worrying about scoping for now
-  return $ Happy (ClosureVal x t [])
+reduce_ (Fun x t) = do
+  env <- S.get
+  let vars = getScope env
+  return $ Happy (ClosureVal x t vars)
 reduce_ (App tf ta) =
   premise
     (reduce tf)
@@ -188,10 +194,12 @@ reduce_ (App tf ta) =
 
 apply :: (Machine m, Show m, V m ~ Value) => Value -> Value -> Env m
 apply (ClosureVal x body _caps) arg = do
-  m0 <- S.get -- save the current machine state
-  let (_resSet, m1) = S.runState (setVar x arg) m0
-  let (res, _m2) = reduceFully body m1
-  S.put m0 -- restore the machine state
+  m0 <- S.get
+  let  (_resPush, m1) = S.runState (pushScope _caps) m0
+  let (_resSet, m2) = S.runState (setVar x arg) m1
+  let (res, m3) = reduceFully body m2
+  let (_resPop, m4) = S.runState popScope m3 -- Restore previous scope.
+  S.put m4
   case res of
     Left msg -> return $ Sad msg
     Right v -> return $ Happy v

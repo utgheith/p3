@@ -11,22 +11,64 @@ import Term
 import Test.Hspec
 import Value (Value (..))
 
+data Scope = Scope (M.Map String Value) (Maybe Scope)
+  deriving (Eq, Show)
+
+lookupScope :: String -> Scope -> Maybe Value
+lookupScope name (Scope m parent) =
+  case M.lookup name m of
+    Just v -> Just v
+    Nothing ->
+      case parent of
+        Just p -> lookupScope name p -- Look in parent scope.
+        Nothing -> Nothing
+
+insertScope :: String -> Value -> Scope -> Scope
+insertScope name val (Scope m parent) = Scope (M.insert name val m) parent -- Insert into inner scope.
+
+getAllBindings :: Scope -> [(String, Value)]
+getAllBindings (Scope m parent) =
+  let rest = case parent of
+        Just p -> getAllBindings p
+        Nothing -> []
+  in M.toList (M.union m (M.fromList rest)) -- Keep bindings in inner scopes.
+
+emptyScope :: Scope
+emptyScope = Scope M.empty Nothing
+
+scopeFromList :: [(String, Value)] -> Scope
+scopeFromList vars = Scope (M.fromList vars) Nothing
+
 -- A mock machine for testing
-data MockMachine = MockMachine {getMem :: M.Map String Value, getInput :: [Value], getOutput :: [Value]} deriving (Show, Eq)
+data MockMachine = MockMachine {getMem :: Scope, getInput :: [Value], getOutput :: [Value]} deriving (Show, Eq)
 
 instance Machine MockMachine where
   type V MockMachine = Value
 
   getVar x = do
     m <- S.get
-    case M.lookup x (getMem m) of
+    case lookupScope x (getMem m) of
       Just v -> return $ Happy v
       Nothing -> return $ Sad "variable not found"
 
   setVar x v = do
     m <- S.get
-    S.put (m {getMem = M.insert x v (getMem m)})
+    S.put (m {getMem = insertScope x v (getMem m)})
     return $ Happy v
+  
+  getScope m = getAllBindings (getMem m)
+
+  pushScope vars = do
+    m <- S.get
+    S.put (m {getMem = Scope (M.fromList vars) (Just (getMem m))})
+    return $ Happy (IntVal 0)
+
+  popScope = do
+    m <- S.get
+    case getMem m of
+      Scope _ (Just parent) -> S.put (m {getMem = parent})
+      Scope _ Nothing -> S.put (m {getMem = emptyScope}) -- Reset to empty scope.
+    return $ Happy (IntVal 0)
 
   inputVal = do
     m <- S.get
@@ -102,7 +144,7 @@ instance Machine MockMachine where
 spec :: Spec
 spec = do
   describe "reduceFully" $ do
-    let initialMachine = MockMachine {getMem = M.empty, getInput = [], getOutput = []}
+    let initialMachine = MockMachine {getMem = emptyScope, getInput = [], getOutput = []}
 
     it "reduces an integer literal" $ do
       let term = Literal 10
@@ -114,17 +156,17 @@ spec = do
 
     it "reduces a variable" $ do
       let term = Var "x"
-      let machine = initialMachine {getMem = M.fromList [("x", IntVal 5)]}
+      let machine = initialMachine {getMem = scopeFromList [("x", IntVal 5)]}
       reduceFully term machine `shouldBe` (Right (IntVal 5), machine)
 
     it "reduces a let expression" $ do
       let term = Seq (Let "x" (Literal 5)) (Var "x")
-      let finalMachine = initialMachine {getMem = M.fromList [("x", IntVal 5)]}
+      let finalMachine = initialMachine {getMem = scopeFromList [("x", IntVal 5)]}
       reduceFully term initialMachine `shouldBe` (Right (IntVal 5), finalMachine)
 
     it "reduces a sequence" $ do
       let term = Seq (Let "x" (Literal 5)) (Var "x")
-      let finalMachine = initialMachine {getMem = M.fromList [("x", IntVal 5)]}
+      let finalMachine = initialMachine {getMem = scopeFromList [("x", IntVal 5)]}
       reduceFully term initialMachine `shouldBe` (Right (IntVal 5), finalMachine)
 
     it "reduces an if expression (then)" $ do
@@ -137,13 +179,13 @@ spec = do
 
     it "reduces a while loop" $ do
       let term = Seq (Let "x" (Literal 3)) (While (Var "x") (Let "x" (BinaryOps Sub (Var "x") (Literal 1))))
-      let finalMachine = initialMachine {getMem = M.fromList [("x", IntVal 0)]}
+      let finalMachine = initialMachine {getMem = scopeFromList [("x", IntVal 0)]}
       reduceFully term initialMachine `shouldBe` (Right (IntVal 0), finalMachine)
 
     it "reduces read and write" $ do
       let term = Seq (Read "x") (Write (Var "x"))
       let machine = initialMachine {getInput = [IntVal 42]}
-      let finalMachine = machine {getMem = M.fromList [("x", IntVal 42)], getOutput = [IntVal 42], getInput = []}
+      let finalMachine = machine {getMem = scopeFromList [("x", IntVal 42)], getOutput = [IntVal 42], getInput = []}
       reduceFully term machine `shouldBe` (Right (IntVal 42), finalMachine)
 
     it "reduces subtraction" $ do
@@ -197,3 +239,23 @@ spec = do
       let term = App (Literal 3) (Literal 4)
       let (result, _) = reduceFully term initialMachine
       result `shouldBe` Left "attempt to call a non-function"
+
+    it "returns functions" $ do
+      let f0 = Fun "x" (Literal 12)
+      let f1 = Fun "y" f0
+      let term = App f1 (Literal 5)
+      reduceFully term initialMachine `shouldBe` (Right (ClosureVal "x" (Literal 12) [("y", IntVal 5)]), initialMachine)
+
+    it "creates local variables in functions" $ do
+      let f = Fun "y" (Let "x" (Var "y")) -- Should not affect outside x.
+      let term = Seq (Let "x" (Literal 1)) (App f (Literal 99))
+      let machine = initialMachine {getMem = scopeFromList [("x", IntVal 1)]}
+      reduceFully term machine `shouldBe` (Right (IntVal 99), machine)
+
+    it "captures environment a function was created in" $ do
+      let f0 = Fun "x" (Var "outside") -- Created inside of f1.
+      let f1 = Fun "y" (Seq (Let "outside" (Literal 99)) f0)
+      -- (f1(0))(0) -> f0(0), where outside refers to the 99 captured in f1.
+      let term = Seq (Let "outside" (Literal 1)) (App (App f1 (Literal 0)) (Literal 0))
+      let machine = initialMachine {getMem = scopeFromList [("outside", IntVal 1)]}
+      reduceFully term machine `shouldBe` (Right (IntVal 99), machine)
