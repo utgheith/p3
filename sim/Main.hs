@@ -101,6 +101,7 @@ instance Machine Simulator where
   selectValue (IntVal n) e1 e2 = if n /= 0 then e1 else e2 -- backward compat
   selectValue (StringVal s) e1 e2 = if not (null s) then e1 else e2
   selectValue (Tuple l) e1 e2 = if not (null l) then e1 else e2
+  selectValue (List l) e1 e2 = if not (null l) then e1 else e2
   selectValue (ClosureVal {}) _ _ = return $ Sad "Type error in select"
 
   ltVal :: Value -> Value -> Env Simulator
@@ -181,6 +182,45 @@ instance Machine Simulator where
         _ -> Nothing
       updateTuple _ (Tuple []) val = Just val
       updateTuple _ _ _ = Nothing
+
+  getListValue :: Value -> Value -> Env Simulator
+  getListValue (List (x : xs)) (IntVal pos) = if pos == 0 then return (Happy x) else getListValue (List xs) (IntVal (pos - 1))
+  getListValue _ _ = return $ Sad "List Lookup Bad Input"
+
+  setListValue :: String -> Value -> Value -> Env Simulator
+  setListValue n t v = do
+    (Simulator m inp out) <- S.get
+    case lookupScope n m of
+      Just oldVal -> case oldVal of
+        List _ ->
+          let newVal = updateList oldVal t v
+           in case newVal of
+                Just newVal' -> do
+                  let m' = insertScope n newVal' m
+                  S.put (Simulator m' inp out)
+                  return $ Happy v
+                Nothing -> return $ Sad "Something went wrong while trying to update List value"
+        _ -> return $ Sad "Attempting to Index but didn't find List"
+      Nothing -> return $ Sad "Attempting to Set List That Doesn't Exist"
+    where
+      updateList :: Value -> Value -> Value -> Maybe Value
+      updateList (List (x : xs)) (List (y : ys)) val = case y of
+        IntVal index ->
+          if index == 0
+            then
+              let returnVal = updateList x (List ys) val
+               in case returnVal of
+                    Just a -> Just $ List (a : xs)
+                    Nothing -> Nothing
+            else
+              let returnVal = updateList (List xs) (List (IntVal (index - 1) : ys)) val
+               in case returnVal of
+                    Just (List a) -> Just $ List (x : a)
+                    Nothing -> Nothing
+                    _ -> error "Unable to rebuild list"
+        _ -> Nothing
+      updateList _ (List []) val = Just val
+      updateList _ _ _ = Nothing
 
 infixl 1 ~
 

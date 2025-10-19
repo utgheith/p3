@@ -148,11 +148,48 @@ instance Machine MockMachine where
       updateTuple _ (Tuple []) val = Just val
       updateTuple _ _ _ = Nothing
 
+  getListValue (List (x : xs)) (IntVal pos) = if pos == 0 then return (Happy x) else getListValue (List xs) (IntVal (pos - 1))
+  getListValue _ _ = return $ Sad "List Lookup Bad Input"
+
+  setListValue n t v = do
+    m <- S.get
+    case lookupScope n (getMem m) of
+      Just oldVal -> case oldVal of
+        List _ ->
+          let newVal = updateList oldVal t v
+           in case newVal of
+                Just newVal' -> do
+                  S.put (m {getMem = insertScope n newVal' (getMem m)})
+                  return $ Happy v
+                Nothing -> return $ Sad "Something went wrong while trying to update List value"
+        _ -> return $ Sad "Attempting to Index but didn't find List"
+      Nothing -> return $ Sad "Attempting to Set List That Doesn't Exist"
+    where
+      updateList :: Value -> Value -> Value -> Maybe Value
+      updateList (List (x : xs)) (List (y : ys)) val = case y of
+        IntVal index ->
+          if index == 0
+            then
+              let returnVal = updateList x (List ys) val
+               in case returnVal of
+                    Just a -> Just $ List (a : xs)
+                    Nothing -> Nothing
+            else
+              let returnVal = updateList (List xs) (List (IntVal (index - 1) : ys)) val
+               in case returnVal of
+                    Just (List a) -> Just $ List (x : a)
+                    Nothing -> Nothing
+                    _ -> error "Unable to rebuild list"
+        _ -> Nothing
+      updateList _ (List []) val = Just val
+      updateList _ _ _ = Nothing
+
   selectValue (BoolVal True) c _ = c
   selectValue (BoolVal False) _ t = t
   selectValue (IntVal n) c t = if n /= 0 then c else t
   selectValue (StringVal s) c t = if not (null s) then c else t
   selectValue (Tuple l) c t = if not (null l) then c else t
+  selectValue (List l) c t = if not (null l) then c else t
   selectValue (ClosureVal {}) _ _ = return $ Sad "Type error in select"
 
 spec :: Spec
@@ -257,6 +294,26 @@ spec = do
     it "reduces a let nested tuple expression" $ do
       let term = Seq (Let "x" (TupleTerm [(Literal 10), TupleTerm [StringLiteral "hello"], (BoolLit True)])) (SetTuple "x" (TupleTerm [Literal 1, Literal 0]) (StringLiteral "goodbye"))
       let finalMachine = initialMachine {getMem = scopeFromList [("x", Tuple [IntVal 10, Tuple [StringVal "goodbye"], BoolVal True])]}
+      reduceFully term initialMachine `shouldBe` (Right (StringVal "goodbye"), finalMachine)
+
+    it "reduces a List" $ do
+      let term = ListTerm [(Literal 10), (StringLiteral "hello"), (BoolLit True)]
+      let (result, _) = reduceFully term initialMachine
+      result `shouldBe` Right (List [IntVal 10, StringVal "hello", BoolVal True])
+
+    it "access a List" $ do
+      let term = AccessList (ListTerm [(Literal 10), (StringLiteral "hello"), (BoolLit True)]) (Literal 1)
+      let (result, _) = reduceFully term initialMachine
+      result `shouldBe` Right (StringVal "hello")
+
+    it "reduces a let list expression" $ do
+      let term = Seq (Let "x" (ListTerm [(Literal 10), (StringLiteral "hello"), (BoolLit True)])) (SetList "x" (ListTerm [Literal 2]) (BoolLit False))
+      let finalMachine = initialMachine {getMem = scopeFromList [("x", List [IntVal 10, StringVal "hello", BoolVal False])]}
+      reduceFully term initialMachine `shouldBe` (Right (BoolVal False), finalMachine)
+
+    it "reduces a let nested list expression" $ do
+      let term = Seq (Let "x" (ListTerm [(Literal 10), ListTerm [StringLiteral "hello"], (BoolLit True)])) (SetList "x" (ListTerm [Literal 1, Literal 0]) (StringLiteral "goodbye"))
+      let finalMachine = initialMachine {getMem = scopeFromList [("x", List [IntVal 10, List [StringVal "goodbye"], BoolVal True])]}
       reduceFully term initialMachine `shouldBe` (Right (StringVal "goodbye"), finalMachine)
 
     -- Logical Operations Tests
