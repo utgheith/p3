@@ -156,30 +156,26 @@ reduce_ (ApplyFun tf tas) =
   premise
     (reduce tf)
     (`ApplyFun` tas)
-    (reduceArgsAndApply tas)
+    (reduceArgsAndApply tf tas)
 
-reduceArgsAndApply :: (Machine m, Show m, V m ~ Value) => [Term] -> Value -> Env m
-reduceArgsAndApply args funVal =
+reduceArgsAndApply :: (Machine m, Show m, V m ~ Value) => Term -> [Term] -> Value -> Env m
+reduceArgsAndApply tf args funVal =
   case args of
     [] -> applyFuncNoArg funVal
     (a : rest) ->
       premise
         (reduce a)
-        ( \a' -> ApplyFun funTerm (a' : rest)
-        )
-        (applyFunArgList rest funVal)
-  where
-    funTerm = case funVal of
-      ClosureVal {} -> Fun [] (Literal 0) -- placeholder, not used
-      _ -> Fun [] (Literal 0)
+        (\a' -> ApplyFun tf (a' : rest))
+        (applyFunArgList tf rest funVal)
 
-applyFunArgList :: (Machine m, Show m, V m ~ Value) => [Term] -> Value -> Value -> Env m
-applyFunArgList rest funVal argVal = do
+applyFunArgList :: (Machine m, Show m, V m ~ Value) => Term -> [Term] -> Value -> Value -> Env m
+applyFunArgList tf rest funVal argVal = do
   res1 <- applyFunArg funVal argVal
   case res1 of
     Happy v1 -> case rest of
       [] -> return (Happy v1)
-      _ -> reduceArgsAndApply rest v1
+      _ -> reduceArgsAndApply tf rest v1
+    Continue t -> return (Continue t)
     Sad msg -> return (Sad msg)
 
 applyFunArg :: (Machine m, Show m, V m ~ Value) => Value -> Value -> Env m
