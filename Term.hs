@@ -23,6 +23,9 @@ data Term
   | TupleTerm [Term]
   | AccessTuple Term Term
   | SetTuple String Term Term
+  | ListTerm [Term]
+  | AccessList Term Term
+  | SetList String Term Term
   | Fun [String] Term
   | ApplyFun Term [Term]
   deriving (Eq, Show)
