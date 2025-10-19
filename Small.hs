@@ -183,9 +183,6 @@ reduce_ (UnaryOps op t) =
       ListVal [] -> return (Happy (BoolVal True))
       ListVal _ -> return (Happy (BoolVal False))
       _ -> return (Sad "Type error: IsNil called on non-list")
-reduce_ (Fun xs t) =
-  -- very minimal closure, for right now we are ignoring the captured environment since im not worrying about scoping for now
-  return $ Happy (ClosureVal xs t [])
 reduce_ (Fun xs t) = do
   env <- S.get
   let vars = getScope env

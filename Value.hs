@@ -47,7 +47,6 @@ valueToString (StringVal s) = Right s
 valueToString (IntVal _) = Left "Type error: expected string, got integer"
 valueToString (BoolVal _) = Left "Type error: expected string, got boolean"
 valueToString (ListVal _) = Left "Type error: expected string, got list"
-valueToString (ClosureVal {}) = Left "Type error: expected string, got function"
 valueToString (Tuple _) = Left "Type error: expected string, got tuple"
 valueToString (ClosureVal {}) = Left "Type error: expected string, got function"
 
@@ -56,6 +55,7 @@ valueToTuple (Tuple s) = Right s
 valueToTuple (IntVal _) = Left "Type error: expected tuple, got integer"
 valueToTuple (BoolVal _) = Left "Type error: expected tuple, got boolean"
 valueToTuple (StringVal _) = Left "Type error: expected tuple, got string"
+valueToTuple (ListVal _) = Left "Type error: expected tuple, got list"
 valueToTuple (ClosureVal {}) = Left "Type error: expected tuple, got function"
 
 isIntVal :: Value -> Bool
