@@ -46,7 +46,7 @@ instance Machine Simulator where
     (Simulator m inp out) <- S.get
     let parent = case m of
           Scope _ (Just p) -> p
-          Scope _ Nothing -> Scope M.empty Nothing
+          Scope _ Nothing -> emptyScope
     S.put (Simulator parent inp out)
     return $ Happy (IntVal 0)
 

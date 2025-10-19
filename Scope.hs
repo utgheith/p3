@@ -27,11 +27,12 @@ insertScope :: String -> Value -> Scope -> Scope
 insertScope name val (Scope m parent) = Scope (M.insert name val m) parent -- Insert into inner scope.
 
 getAllBindings :: Scope -> [(String, Value)]
-getAllBindings (Scope m parent) =
-  let rest = case parent of
+getAllBindings (Scope m parent) = reverse vars
+  where
+    vars =
+      M.toList m ++ case parent of
         Just p -> getAllBindings p
         Nothing -> []
-   in rest ++ M.toList m -- Keep bindings in inner scopes.
 
 emptyScope :: Scope
 emptyScope = Scope M.empty Nothing
