@@ -165,9 +165,7 @@ reduceArgsAndApply args funVal =
     (a : rest) ->
       premise
         (reduce a)
-        ( \a' -> case funVal of
-            ClosureVal (_ : _) _ _ -> ApplyFun funTerm (a' : rest)
-            _ -> ApplyFun funTerm (a' : rest)
+        ( \a' -> ApplyFun funTerm (a' : rest)
         )
         (applyFunArgList rest funVal)
   where
