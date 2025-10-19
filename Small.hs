@@ -195,7 +195,7 @@ applyFunArg (ClosureVal (x : xs) body caps) arg = do
 applyFunArg _ _ = return $ Sad "attempt to call a non-function"
 
 applyFuncNoArg :: (Machine m, Show m, V m ~ Value) => Value -> Env m
-applyFuncNoArg (ClosureVal [] body caps) = evalClosureBody body (reverse caps)
+applyFuncNoArg (ClosureVal [] body caps) = evalClosureBody body caps
 applyFuncNoArg (ClosureVal (_ : _) _ _) = return $ Sad "missing arguments: function requires parameters"
 applyFuncNoArg _ = return $ Sad "attempt to call a non-function"
 
