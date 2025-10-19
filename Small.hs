@@ -108,7 +108,7 @@ reduce_ (If cond tThen tElse) = do
     (\cond' -> If cond' tThen tElse)
     (\v -> selectValue v (return $ Continue tThen) (return $ Continue tElse))
 reduce_ (Try tTry catchableErrorKindOrAny tCatch) = do
-  vTry <- (reduce tTry)
+  vTry <- reduce tTry
   case vTry of
     Continue tTry' -> return $ Continue (Try tTry' catchableErrorKindOrAny tCatch)
     Happy n -> return $ Happy n
