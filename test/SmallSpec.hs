@@ -288,7 +288,7 @@ spec = do
       let finalMachine = initialMachine {getMem = M.fromList [("x", IntVal 10), ("y", IntVal 5)]}
       reduceFully term initialMachine `shouldBe` (Right (IntVal 15), finalMachine)
 
-    -- Function application tests (single-arg functions)
+    -- Function application tests
     it "applies a simple function" $ do
       let inc = Fun ["x"] (BinaryOps Add (Var "x") (Literal 1))
       let term = ApplyFun inc (Literal 41)
