@@ -28,8 +28,7 @@ data Term
   | VarRef String
   | While Term Term
   deriving
-    ( -- | more term constructors
-      Show,
+    ( Show,
       Eq
     )
 
@@ -56,6 +55,8 @@ checkSymbol :: (String -> Bool) -> Parser Token String
 checkSymbol predicate = satisfy $ \case
   Symbol s | predicate s -> Just s
   _ -> Nothing
+
+-- try/catch parsing can be added later if language supports it
 
 ----------
 -- term --

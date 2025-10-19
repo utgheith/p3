@@ -20,4 +20,6 @@ data Term
   | While Term Term
   | Write Term
   | BoolLit Bool
+  | Fun String Term
+  | App Term Term
   deriving (Eq, Show)

@@ -101,6 +101,7 @@ instance Machine MockMachine where
   selectValue (BoolVal False) _ t = t
   selectValue (IntVal n) c t = if n /= 0 then c else t
   selectValue (StringVal s) c t = if not (null s) then c else t
+  selectValue (ClosureVal _ _ _) _ _ = return $ Sad "Type error in select"
 
 spec :: Spec
 spec = do
@@ -286,3 +287,19 @@ spec = do
               )
       let finalMachine = initialMachine {getMem = M.fromList [("x", IntVal 10), ("y", IntVal 5)]}
       reduceFully term initialMachine `shouldBe` (Right (IntVal 15), finalMachine)
+
+    -- Function application tests (single-arg functions)
+    it "applies a simple function" $ do
+      let inc = Fun "x" (BinaryOps Add (Var "x") (Literal 1))
+      let term = App inc (Literal 41)
+      reduceFully term initialMachine `shouldBe` (Right (IntVal 42), initialMachine)
+
+    it "binds parameter in environment for body" $ do
+      let f = Fun "x" (Var "x")
+      let term = App f (Literal 7)
+      reduceFully term initialMachine `shouldBe` (Right (IntVal 7), initialMachine)
+
+    it "errors when applying a non-function" $ do
+      let term = App (Literal 3) (Literal 4)
+      let (result, _) = reduceFully term initialMachine
+      result `shouldBe` Left "attempt to call a non-function"

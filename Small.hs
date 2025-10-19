@@ -149,6 +149,29 @@ reduce_ (UnaryOps op t) =
   where
     applyUnaryOp Neg = negVal
     applyUnaryOp Not = notVal
+reduce_ (Fun x t) =
+  return $ Happy (ClosureVal x t [])
+reduce_ (App tf ta) =
+  premise
+    (reduce tf)
+    (\tf' -> App tf' ta)
+    ( \vf ->
+        premise
+          (reduce ta)
+          (\ta' -> App tf ta')
+          (\va -> apply vf va)
+    )
+
+apply :: (Machine m, Show m, V m ~ Value) => Value -> Value -> Env m
+apply (ClosureVal x body _caps) arg = do
+  m0 <- S.get
+  let (_resSet, m1) = S.runState (setVar x arg) m0
+  let (res, _m2) = reduceFully body m1
+  S.put m0
+  case res of
+    Left msg -> return $ Sad msg
+    Right v -> return $ Happy v
+apply _ _ = return $ Sad "attempt to call a non-function"
 
 reduce :: (Machine m, Show m, V m ~ Value) => Term -> Env m
 reduce t = do
