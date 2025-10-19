@@ -144,7 +144,7 @@ reduce_ (BinaryOps op t1 t2) =
     applyBinaryOp Cons = \v1 v2 ->
       case v2 of
         ListVal xs -> return $ Happy $ ListVal (v1 : xs)
-        _ -> return $ Happy $ ListVal (v1 : [v2])
+        _ -> return $ Sad $ "Type error: Cons operator expects a list as its second argument"
 reduce_ (BoolLit b) =
   return $ Happy $ BoolVal b
 reduce_ (UnaryOps op t) =
