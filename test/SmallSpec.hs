@@ -285,7 +285,7 @@ spec = do
       let term = ApplyFun f [Literal 7]
       reduceFully term initialMachine `shouldBe` (Right (IntVal 7), initialMachine)
 
-    it "applies a two-argument function via currying" $ do
+    it "applies a two-argument function" $ do
       let add2 = Fun ["x", "y"] (BinaryOps Add (Var "x") (Var "y"))
       let term = ApplyFun add2 [Literal 2, Literal 3]
       reduceFully term initialMachine `shouldBe` (Right (IntVal 5), initialMachine)
