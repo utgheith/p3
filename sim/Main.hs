@@ -8,27 +8,47 @@ module Main (main) where
 import qualified Control.Monad.State as S
 import qualified Data.Map as M
 import qualified Progs
+import Scope (Scope (..), emptyScope, getAllBindings, insertScope, lookupScope)
 import Small (Env, Machine (..), Result (..), reduceFully)
 import Term (Term (..))
 import Value (Value (..))
 
-data Simulator = Simulator (M.Map String Value) [Value] [Value] deriving (Eq, Show)
+data Simulator = Simulator Scope [Value] [Value] deriving (Eq, Show)
 
 instance Machine Simulator where
   type V Simulator = Value
   getVar :: String -> Env Simulator
   getVar name = do
     (Simulator m _ _) <- S.get
-    case M.lookup name m of
+    case lookupScope name m of
       Just v -> return $ Happy v
       Nothing -> return $ Sad $ "get: " ++ name ++ " not found"
 
   setVar :: String -> Value -> Env Simulator
   setVar name val = do
     (Simulator m inp out) <- S.get
-    let m' = M.insert name val m
+    let m' = insertScope name val m
     S.put (Simulator m' inp out)
     return $ Happy val
+
+  getScope :: Simulator -> [(String, Value)]
+  getScope (Simulator m _ _) = getAllBindings m
+
+  pushScope :: [(String, Value)] -> Env Simulator
+  pushScope vars = do
+    (Simulator m inp out) <- S.get
+    let newScope = Scope (M.fromList vars) (Just m)
+    S.put (Simulator newScope inp out)
+    return $ Happy (IntVal 0)
+
+  popScope :: Env Simulator
+  popScope = do
+    (Simulator m inp out) <- S.get
+    let parent = case m of
+          Scope _ (Just p) -> p
+          Scope _ Nothing -> emptyScope
+    S.put (Simulator parent inp out)
+    return $ Happy (IntVal 0)
 
   inputVal :: Env Simulator
   inputVal = do
@@ -81,6 +101,8 @@ instance Machine Simulator where
   selectValue (IntVal n) e1 e2 = if n /= 0 then e1 else e2 -- backward compat
   selectValue (StringVal s) e1 e2 = if not (null s) then e1 else e2
   selectValue (ListVal xs) e1 e2 = if not (null xs) then e1 else e2
+  selectValue (Tuple l) e1 e2 = if not (null l) then e1 else e2
+  selectValue (ClosureVal {}) _ _ = return $ Sad "Type error in select"
 
   ltVal :: Value -> Value -> Env Simulator
   ltVal (IntVal v1) (IntVal v2) = return $ Happy (BoolVal (v1 < v2))
@@ -124,6 +146,45 @@ instance Machine Simulator where
   notVal (BoolVal v) = return $ Happy (BoolVal (not v))
   notVal _ = return $ Sad "Type error in !"
 
+  getTupleValue :: Value -> Value -> Env Simulator
+  getTupleValue (Tuple (x : xs)) (IntVal pos) = if pos == 0 then return (Happy x) else getTupleValue (Tuple xs) (IntVal (pos - 1))
+  getTupleValue _ _ = return $ Sad "Tuple Lookup Bad Input"
+
+  setTupleValue :: String -> Value -> Value -> Env Simulator
+  setTupleValue n t v = do
+    (Simulator m inp out) <- S.get
+    case lookupScope n m of
+      Just oldVal -> case oldVal of
+        Tuple _ ->
+          let newVal = updateTuple oldVal t v
+           in case newVal of
+                Just newVal' -> do
+                  let m' = insertScope n newVal' m
+                  S.put (Simulator m' inp out)
+                  return $ Happy v
+                Nothing -> return $ Sad "Something went wrong while trying to update Tuple value"
+        _ -> return $ Sad "Attempting to Index but didn't find Tuple"
+      Nothing -> return $ Sad "Attempting to Set Tuple That Doesn't Exist"
+    where
+      updateTuple :: Value -> Value -> Value -> Maybe Value
+      updateTuple (Tuple (x : xs)) (Tuple (y : ys)) val = case y of
+        IntVal index ->
+          if index == 0
+            then
+              let returnVal = updateTuple x (Tuple ys) val
+               in case returnVal of
+                    Just a -> Just $ Tuple (a : xs)
+                    Nothing -> Nothing
+            else
+              let returnVal = updateTuple (Tuple xs) (Tuple (IntVal (index - 1) : ys)) val
+               in case returnVal of
+                    Just (Tuple a) -> Just $ Tuple (x : a)
+                    Nothing -> Nothing
+                    _ -> error "Unable to rebuild tuple"
+        _ -> Nothing
+      updateTuple _ (Tuple []) val = Just val
+      updateTuple _ _ _ = Nothing
+
 infixl 1 ~
 
 (~) :: Term -> Term -> Term
@@ -142,12 +203,12 @@ prog =
 
 main :: IO ()
 main = do
-  let out = reduceFully prog (Simulator M.empty [] [])
+  let out = reduceFully prog (Simulator emptyScope [] [])
   print out
   putStrLn "-----------------------------"
-  let out2 = reduceFully Progs.prog (Simulator M.empty [] [])
+  let out2 = reduceFully Progs.prog (Simulator emptyScope [] [])
   print out2
   putStrLn "-----------------------------"
   putStrLn "Testing booleans and comparisons:"
-  let out3 = reduceFully Progs.prog3 (Simulator M.empty [] [])
+  let out3 = reduceFully Progs.prog3 (Simulator emptyScope [] [])
   print out3

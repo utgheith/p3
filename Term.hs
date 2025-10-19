@@ -21,4 +21,9 @@ data Term
   | Write Term
   | BoolLit Bool
   | Nil
+  | TupleTerm [Term]
+  | AccessTuple Term Term
+  | SetTuple String Term Term
+  | Fun [String] Term
+  | ApplyFun Term [Term]
   deriving (Eq, Show)
