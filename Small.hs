@@ -51,6 +51,8 @@ class Machine m where
   orVal :: V m -> V m -> Env m
   notVal :: V m -> Env m
 
+  getTupleValue :: V m -> V m -> Env m
+
   -- Control flow - selectValue uses boolean semantics
   selectValue :: V m -> Env m -> Env m -> Env m
 
@@ -194,16 +196,16 @@ reduce_ (TupleTerm elements) =
             (\v2 -> return $ Happy $ Tuple $ v1 : (fromRight [] $ valueToTuple v2))
         ) 
     [] -> return $ Happy $ Tuple []
--- reduce_ (AccessTuple t i) =
---   premise
---     (reduce t)
---     (\term' -> AccessTuple term' i)
---     ( \v1 ->
---         premise
---           (reduce i)
---           (\term' -> AccessTuple t term')
---           (\v2 -> return $ Happy )
---     )
+reduce_ (AccessTuple t i) =
+  premise
+    (reduce t)
+    (\term' -> AccessTuple term' i)
+    ( \v1 ->
+      premise
+        (reduce i)
+        (\term' -> AccessTuple t term')
+        (\v2 -> getTupleValue v1 v2)
+    )
 
 reduce :: (Machine m, Show m, V m ~ Value) => Term -> Env m
 reduce t = do

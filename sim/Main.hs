@@ -119,6 +119,10 @@ instance Machine Simulator where
   notVal (BoolVal v) = return $ Happy (BoolVal (not v))
   notVal _ = return $ Sad "Type error in !"
 
+  getTupleValue :: Value -> Value -> Env Simulator
+  getTupleValue (Tuple (x:xs)) (IntVal pos) = if pos == 0 then return (Happy x) else getTupleValue (Tuple xs) (IntVal (pos - 1))
+  getTupleValue _ _ = return $ Sad "Tuple Lookup Bad Input"
+
 infixl 1 ~
 
 (~) :: Term -> Term -> Term
