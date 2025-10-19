@@ -147,6 +147,10 @@ instance Machine Simulator where
 
   getTupleValue :: Value -> Value -> Env Simulator
   getTupleValue (Tuple (x : xs)) (IntVal pos) = if pos == 0 then return (Happy x) else getTupleValue (Tuple xs) (IntVal (pos - 1))
+  getTupleValue (Dictionary d) (IntVal val) = case M.lookup val d of
+    Just v -> return $ Happy v
+    Nothing -> return $ Sad "Unable to find element in dictionary"
+  getTupleValue (Dictionary _) _ = return $ Sad "Unable to index into dictionary with type"
   getTupleValue _ _ = return $ Sad "Tuple Lookup Bad Input"
 
   setTupleValue :: String -> Value -> Value -> Env Simulator
@@ -162,6 +166,14 @@ instance Machine Simulator where
                   S.put (Simulator m' inp out)
                   return $ Happy v
                 Nothing -> return $ Sad "Something went wrong while trying to update Tuple value"
+        Dictionary _ -> 
+          let newVal = updateTuple oldVal t v
+           in case newVal of
+              Just newVal' -> do
+                let m' = insertScope n newVal' m
+                S.put (Simulator m' inp out)
+                return $ Happy v
+              Nothing -> return $ Sad "Something went wrong while trying to update Tuple value"
         _ -> return $ Sad "Attempting to Index but didn't find Tuple"
       Nothing -> return $ Sad "Attempting to Set Tuple That Doesn't Exist"
     where
@@ -178,8 +190,16 @@ instance Machine Simulator where
               let returnVal = updateTuple (Tuple xs) (Tuple (IntVal (index - 1) : ys)) val
                in case returnVal of
                     Just (Tuple a) -> Just $ Tuple (x : a)
+                    Just _ -> error "Unable to rebuild tuple"
                     Nothing -> Nothing
-                    _ -> error "Unable to rebuild tuple"
+        _ -> Nothing
+      updateTuple (Dictionary d) (Tuple (y : ys)) val = case y of
+        IntVal index -> case M.lookup index d of
+          Just r -> let returnVal = updateTuple r (Tuple ys) val in
+            case returnVal of
+              Just w -> Just (Dictionary (M.insert index w d))
+              Nothing -> Nothing
+          Nothing -> Nothing
         _ -> Nothing
       updateTuple _ (Tuple []) val = Just val
       updateTuple _ _ _ = Nothing

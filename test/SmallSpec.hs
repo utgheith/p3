@@ -113,6 +113,10 @@ instance Machine MockMachine where
   notVal _ = return $ Sad "Type error in !"
 
   getTupleValue (Tuple (x : xs)) (IntVal pos) = if pos == 0 then return (Happy x) else getTupleValue (Tuple xs) (IntVal (pos - 1))
+  getTupleValue (Dictionary d) (IntVal val) = case M.lookup val d of
+    Just v -> return $ Happy v
+    Nothing -> return $ Sad "Unable to find element in dictionary"
+  getTupleValue (Dictionary _) _ = return $ Sad "Unable to index into dictionary with type"
   getTupleValue _ _ = return $ Sad "Tuple Lookup Bad Input"
 
   setTupleValue n t v = do
@@ -126,6 +130,13 @@ instance Machine MockMachine where
                   S.put (m {getMem = insertScope n newVal' (getMem m)})
                   return $ Happy v
                 Nothing -> return $ Sad "Something went wrong while trying to update Tuple value"
+        Dictionary _ -> 
+          let newVal = updateTuple oldVal t v
+           in case newVal of
+                Just newVal' -> do
+                  S.put (m {getMem = insertScope n newVal' (getMem m)})
+                  return $ Happy v
+                Nothing -> return $ Sad "Something went wrong while trying to update Dictionary value"
         _ -> return $ Sad "Attempting to Index but didn't find Tuple"
       Nothing -> return $ Sad "Attempting to Set Tuple That Doesn't Exist"
     where
@@ -144,6 +155,17 @@ instance Machine MockMachine where
                     Just (Tuple a) -> Just $ Tuple (x : a)
                     Nothing -> Nothing
                     _ -> error "Unable to rebuild tuple"
+        _ -> Nothing
+      updateTuple (Dictionary d) (Tuple (y : ys)) val = case y of
+        IntVal index -> case M.lookup index d of
+          Just r -> let returnVal = updateTuple r (Tuple ys) val in
+            case returnVal of
+              Just w -> Just (Dictionary (M.insert index w d))
+              Nothing -> Nothing
+          Nothing -> let returnVal = updateTuple (IntVal 0) (Tuple ys) val in
+            case returnVal of
+              Just w -> Just (Dictionary (M.insert index w d))
+              Nothing -> Nothing
         _ -> Nothing
       updateTuple _ (Tuple []) val = Just val
       updateTuple _ _ _ = Nothing
@@ -460,3 +482,17 @@ spec = do
     it "reduces inequality comparison" $ do
       let term = BinaryOps Neq (Literal 5) (Literal 10)
       reduceFully term initialMachine `shouldBe` (Right (BoolVal True), initialMachine)
+
+    it "reduces new dictionary" $ do
+      let term = NewDictionary
+      reduceFully term initialMachine `shouldBe` (Right (Dictionary (M.fromList [])), initialMachine)
+    
+    it "set dictionary" $ do
+      let term = Seq (Let "x" (NewDictionary) ) (SetTuple "x" (TupleTerm [Literal 3]) (StringLiteral "hello"))
+      let finalMachine = initialMachine {getMem = scopeFromList [("x", Dictionary (M.fromList [(3, StringVal "hello")]))]}
+      reduceFully term initialMachine `shouldBe` (Right (StringVal "hello"), finalMachine)
+
+    it "access dictionary" $ do
+      let term = Seq (Let "x" (NewDictionary) ) (Seq (SetTuple "x" (TupleTerm [Literal 3]) (StringLiteral "hello")) (AccessTuple (Var "x") (Literal 3)))
+      let finalMachine = initialMachine {getMem = scopeFromList [("x", Dictionary (M.fromList [(3, StringVal "hello")]))]}
+      reduceFully term initialMachine `shouldBe` (Right (StringVal "hello"), finalMachine)

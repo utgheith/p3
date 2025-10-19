@@ -22,7 +22,7 @@ data Value
   | StringVal String
   | Tuple [Value]
   | ClosureVal [String] Term [(String, Value)]
-  | Dictionary (M.Map Value Value)
+  | Dictionary (M.Map Integer Value)
   deriving (Eq, Show)
 
 valueToInt :: Value -> Either String Integer
