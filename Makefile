@@ -6,7 +6,7 @@ all :
 	stack build
 
 test :
-	stack test
+	(stack test 2> test.stderr) || (echo "tests failed. More data in test.stderr"; false)
 
 format :
 	stack exec -- which ormolu > /dev/null 2>&1 || stack install ormolu ; stack exec -- ormolu -i ${HS_FILES}

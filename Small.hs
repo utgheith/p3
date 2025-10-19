@@ -27,6 +27,11 @@ class Machine m where
   getVar :: String -> Env m
   setVar :: String -> V m -> Env m
 
+  -- Lexical scoping
+  getScope :: m -> [(String, Value)] -- Variable bindings only.
+  pushScope :: [(String, Value)] -> Env m
+  popScope :: Env m
+
   -- I/O
   inputVal :: Env m
   outputVal :: V m -> Env m
@@ -152,9 +157,10 @@ reduce_ (UnaryOps op t) =
   where
     applyUnaryOp Neg = negVal
     applyUnaryOp Not = notVal
-reduce_ (Fun xs t) =
-  -- very minimal closure, for right now we are ignoring the captured environment since im not worrying about scoping for now
-  return $ Happy (ClosureVal xs t [])
+reduce_ (Fun xs t) = do
+  env <- S.get
+  let vars = getScope env
+  return $ Happy (ClosureVal xs t vars)
 reduce_ (ApplyFun tf tas) =
   premise
     (reduce tf)
@@ -225,14 +231,14 @@ applyFunArg :: (Machine m, Show m, V m ~ Value) => Value -> Value -> Env m
 applyFunArg (ClosureVal [] _ _) _ = do
   return $ Sad "too many arguments: function takes 0 arguments"
 applyFunArg (ClosureVal (x : xs) body caps) arg = do
-  let newCaps = (x, arg) : caps
+  let newCaps = caps ++ [(x, arg)]
   if null xs
-    then evalClosureBody body (reverse newCaps)
+    then evalClosureBody body newCaps
     else return $ Happy (ClosureVal xs body newCaps)
 applyFunArg _ _ = return $ Sad "attempt to call a non-function"
 
 applyFuncNoArg :: (Machine m, Show m, V m ~ Value) => Value -> Env m
-applyFuncNoArg (ClosureVal [] body caps) = evalClosureBody body (reverse caps)
+applyFuncNoArg (ClosureVal [] body caps) = evalClosureBody body caps
 applyFuncNoArg (ClosureVal (_ : _) _ _) = return $ Sad "missing arguments: function requires parameters"
 applyFuncNoArg _ = return $ Sad "attempt to call a non-function"
 
@@ -240,11 +246,13 @@ applyFuncNoArg _ = return $ Sad "attempt to call a non-function"
 evalClosureBody :: (Machine m, Show m, V m ~ Value) => Term -> [(String, Value)] -> Env m
 evalClosureBody body caps = do
   m0 <- S.get
-  case bindMany caps m0 of
+  let (_resPush, m1) = S.runState (pushScope []) m0
+  case bindMany caps m1 of
     Left msg -> return (Sad msg)
-    Right m1 -> do
-      let (res, _m2) = reduceFully body m1
-      S.put m0
+    Right m2 -> do
+      let (res, m3) = reduceFully body m2
+      let (_resPop, m4) = S.runState popScope m3 -- Restore previous scope.
+      S.put m4
       case res of
         Left msg -> return $ Sad msg
         Right v -> return $ Happy v
