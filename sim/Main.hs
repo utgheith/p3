@@ -32,7 +32,7 @@ getAllBindings (Scope m parent) =
   let rest = case parent of
         Just p -> getAllBindings p
         Nothing -> []
-  in M.toList (M.union m (M.fromList rest)) -- Keep bindings in inner scopes.
+   in M.toList (M.union m (M.fromList rest)) -- Keep bindings in inner scopes.
 
 emptyScope :: Scope
 emptyScope = Scope M.empty Nothing
@@ -69,8 +69,8 @@ instance Machine Simulator where
   popScope = do
     (Simulator m inp out) <- S.get
     let parent = case m of
-                  Scope _ (Just p) -> p
-                  Scope _ Nothing -> Scope M.empty Nothing
+          Scope _ (Just p) -> p
+          Scope _ Nothing -> Scope M.empty Nothing
     S.put (Simulator parent inp out)
     return $ Happy (IntVal 0)
 

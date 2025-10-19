@@ -167,7 +167,7 @@ reduce_ (App tf ta) =
 apply :: (Machine m, Show m, V m ~ Value) => Value -> Value -> Env m
 apply (ClosureVal x body _caps) arg = do
   m0 <- S.get
-  let  (_resPush, m1) = S.runState (pushScope _caps) m0
+  let (_resPush, m1) = S.runState (pushScope _caps) m0
   let (_resSet, m2) = S.runState (setVar x arg) m1
   let (res, m3) = reduceFully body m2
   let (_resPop, m4) = S.runState popScope m3 -- Restore previous scope.

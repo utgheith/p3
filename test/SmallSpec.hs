@@ -31,7 +31,7 @@ getAllBindings (Scope m parent) =
   let rest = case parent of
         Just p -> getAllBindings p
         Nothing -> []
-  in M.toList (M.union m (M.fromList rest)) -- Keep bindings in inner scopes.
+   in M.toList (M.union m (M.fromList rest)) -- Keep bindings in inner scopes.
 
 emptyScope :: Scope
 emptyScope = Scope M.empty Nothing
@@ -55,7 +55,7 @@ instance Machine MockMachine where
     m <- S.get
     S.put (m {getMem = insertScope x v (getMem m)})
     return $ Happy v
-  
+
   getScope m = getAllBindings (getMem m)
 
   pushScope vars = do
