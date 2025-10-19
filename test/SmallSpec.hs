@@ -202,6 +202,162 @@ spec = do
       let (result, _) = reduceFully term initialMachine
       result `shouldBe` Left "Type error in subtraction"
 
+    it "invokes a zero-argument function" $ do
+      let f0 = Fun [] (Literal 42)
+      let term = ApplyFun f0 []
+      reduceFully term initialMachine `shouldBe` (Right (IntVal 42), initialMachine)
+
+    it "errors when invoking a function that expects arguments" $ do
+      let f1 = Fun ["x"] (Var "x")
+      let term = ApplyFun f1 []
+      let (result, _) = reduceFully term initialMachine
+      result `shouldBe` Left "missing arguments: function requires parameters"
+
+    it "errors when applying an argument to a zero-arg function" $ do
+      let f0 = Fun [] (Literal 1)
+      let term = ApplyFun f0 [Literal 0]
+      let (result, _) = reduceFully term initialMachine
+      result `shouldBe` Left "too many arguments: function takes 0 arguments"
+
+    -- (Removed duplicated comparison block; the canonical one lives later in the file)
+
+    -- Logical Operations Tests
+    it "reduces logical AND operation" $ do
+      let term = BinaryOps And (BoolLit True) (BoolLit True)
+      reduceFully term initialMachine `shouldBe` (Right (BoolVal True), initialMachine)
+
+    it "reduces logical OR operation" $ do
+      let term = BinaryOps Or (BoolLit False) (BoolLit True)
+      reduceFully term initialMachine `shouldBe` (Right (BoolVal True), initialMachine)
+
+    it "reduces logical NOT operation" $ do
+      let term = UnaryOps Not (BoolLit False)
+      reduceFully term initialMachine `shouldBe` (Right (BoolVal True), initialMachine)
+
+    -- Complex Scenarios Tests
+    it "reduces nested if statements" $ do
+      let term =
+            If
+              (BinaryOps Gt (Literal 10) (Literal 5))
+              ( If
+                  (BinaryOps Lt (Literal 3) (Literal 7))
+                  (Literal 1)
+                  (Literal 2)
+              )
+              (Literal 3)
+      reduceFully term initialMachine `shouldBe` (Right (IntVal 1), initialMachine)
+
+    it "reduces while loop with complex condition" $ do
+      let term =
+            Seq
+              (Let "x" (Literal 5))
+              ( Seq
+                  ( While
+                      ( BinaryOps
+                          And
+                          (BinaryOps Gt (Var "x") (Literal 0))
+                          (BinaryOps Lt (Var "x") (Literal 10))
+                      )
+                      (Let "x" (BinaryOps Add (Var "x") (Literal 1)))
+                  )
+                  (Var "x")
+              )
+      let finalMachine = initialMachine {getMem = scopeFromList [("x", IntVal 10)]}
+      reduceFully term initialMachine `shouldBe` (Right (IntVal 10), finalMachine)
+
+    it "reduces combination of arithmetic and logical operations" $ do
+      let term =
+            BinaryOps
+              And
+              (BinaryOps Gt (BinaryOps Add (Literal 5) (Literal 5)) (Literal 8))
+              (BinaryOps Lt (BinaryOps Mul (Literal 2) (Literal 3)) (Literal 7))
+      reduceFully term initialMachine `shouldBe` (Right (BoolVal True), initialMachine)
+
+    it "handles type error in comparison" $ do
+      let term = BinaryOps Lt (Literal 5) (BoolLit True)
+      let (result, _) = reduceFully term initialMachine
+      result `shouldBe` Left "Type error in <"
+
+    it "handles multiple variables in scope" $ do
+      let term =
+            Seq
+              (Let "x" (Literal 10))
+              ( Seq
+                  (Let "y" (Literal 5))
+                  (BinaryOps Add (Var "x") (Var "y"))
+              )
+      let finalMachine = initialMachine {getMem = scopeFromList [("x", IntVal 10), ("y", IntVal 5)]}
+      reduceFully term initialMachine `shouldBe` (Right (IntVal 15), finalMachine)
+
+    -- Function Application Tests
+    it "applies a simple function" $ do
+      let inc = Fun ["x"] (BinaryOps Add (Var "x") (Literal 1))
+      let term = ApplyFun inc [Literal 41]
+      reduceFully term initialMachine `shouldBe` (Right (IntVal 42), initialMachine)
+
+    it "binds parameter in environment for body" $ do
+      let f = Fun ["x"] (Var "x")
+      let term = ApplyFun f [Literal 7]
+      reduceFully term initialMachine `shouldBe` (Right (IntVal 7), initialMachine)
+
+    it "applies a two-argument function" $ do
+      let add2 = Fun ["x", "y"] (BinaryOps Add (Var "x") (Var "y"))
+      let term = ApplyFun add2 [Literal 2, Literal 3]
+      reduceFully term initialMachine `shouldBe` (Right (IntVal 5), initialMachine)
+
+    it "applies a three-argument function via currying" $ do
+      let add3 = Fun ["x", "y", "z"] (BinaryOps Add (BinaryOps Add (Var "x") (Var "y")) (Var "z"))
+      let term = ApplyFun add3 [Literal 1, Literal 2, Literal 3]
+      reduceFully term initialMachine `shouldBe` (Right (IntVal 6), initialMachine)
+
+    it "errors when applying a non-function" $ do
+      let term = ApplyFun (Literal 3) [Literal 4]
+      let (result, _) = reduceFully term initialMachine
+      result `shouldBe` Left "attempt to call a non-function"
+
+    it "returns functions" $ do
+      let f0 = Fun ["x"] (Literal 12)
+      let f1 = Fun ["y"] f0
+      let term = ApplyFun f1 [Literal 5]
+      reduceFully term initialMachine `shouldBe` (Right (ClosureVal ["x"] (Literal 12) [("y", IntVal 5)]), initialMachine)
+
+    it "creates local variables in functions" $ do
+      let f = Fun ["y"] (Let "x" (Var "y")) -- Should not affect outside x.
+      let term = Seq (Let "x" (Literal 1)) (ApplyFun f [Literal 99])
+      let machine = initialMachine {getMem = scopeFromList [("x", IntVal 1)]}
+      reduceFully term initialMachine `shouldBe` (Right (IntVal 99), machine)
+
+    -- Variable Capture Tests
+    it "captures environment for functions" $ do
+      let f0 = Fun ["x"] (Var "outside") -- Created inside of f1.
+      let f1 = Fun ["y"] (Seq (Let "outside" (Literal 99)) f0)
+      -- (f1(0))(0) -> f0(0), where outside refers to the 99 captured in f1.
+      let term = Seq (Let "outside" (Literal 1)) (ApplyFun (ApplyFun f1 [Literal 0]) [Literal 0])
+      let machine = initialMachine {getMem = scopeFromList [("outside", IntVal 1)]}
+      reduceFully term initialMachine `shouldBe` (Right (IntVal 99), machine)
+
+    it "captures only the environment at function creation time" $ do
+      let f0 = Fun ["x"] (Var "outside")
+      let setupTerm = Seq (Let "outside" (Literal 1)) (Let "f" f0) -- Function f created here.
+      let f1 = Fun ["y"] (Seq (Let "outside" (Literal 99)) (ApplyFun (Var "f") [Literal 0])) -- 99 should not be captured.
+      let term = Seq setupTerm (ApplyFun f1 [Literal 0])
+      let closureVal = ClosureVal ["x"] (Var "outside") [("outside", IntVal 1)] -- Captured 1 from outside.
+      let machine = initialMachine {getMem = scopeFromList [("outside", IntVal 1), ("f", closureVal)]}
+      reduceFully term initialMachine `shouldBe` (Right (IntVal 1), machine)
+
+    it "captures all variables in nested scopes" $ do
+      let f0 = Fun ["x"] (BinaryOps Add (Var "a") (Var "b"))
+      let f1 = Fun ["y"] (Seq (Let "b" (Literal 4)) f0) -- b created (parent of f0).
+      let f2 = Fun ["z"] (Seq (Let "a" (Literal 3)) f1) -- a created (parent of f1).
+      let term = ApplyFun (ApplyFun (ApplyFun f2 [Literal 0]) [Literal 0]) [Literal 0]
+      reduceFully term initialMachine `shouldBe` (Right (IntVal 7), initialMachine)
+
+    it "handles parameter shadowing" $ do
+      let f = Fun ["x"] (Var "x")
+      let term = Seq (Let "x" (Literal 1)) (ApplyFun f [Literal 5]) -- Parameter x is 5.
+      let machine = initialMachine {getMem = scopeFromList [("x", IntVal 1)]}
+      reduceFully term initialMachine `shouldBe` (Right (IntVal 5), machine)
+
     -- Comparison Operations Tests
     it "reduces less than comparison" $ do
       let term = BinaryOps Lt (Literal 5) (Literal 10)
@@ -302,60 +458,3 @@ spec = do
               )
       let finalMachine = initialMachine {getMem = scopeFromList [("x", IntVal 10), ("y", IntVal 5)]}
       reduceFully term initialMachine `shouldBe` (Right (IntVal 15), finalMachine)
-
-    it "applies a simple function" $ do
-      let inc = Fun "x" (BinaryOps Add (Var "x") (Literal 1))
-      let term = App inc (Literal 41)
-      reduceFully term initialMachine `shouldBe` (Right (IntVal 42), initialMachine)
-
-    it "binds parameter in environment for body" $ do
-      let f = Fun "x" (Var "x")
-      let term = App f (Literal 7)
-      reduceFully term initialMachine `shouldBe` (Right (IntVal 7), initialMachine)
-
-    it "errors when applying a non-function" $ do
-      let term = App (Literal 3) (Literal 4)
-      let (result, _) = reduceFully term initialMachine
-      result `shouldBe` Left "attempt to call a non-function"
-
-    it "returns functions" $ do
-      let f0 = Fun "x" (Literal 12)
-      let f1 = Fun "y" f0
-      let term = App f1 (Literal 5)
-      reduceFully term initialMachine `shouldBe` (Right (ClosureVal "x" (Literal 12) [("y", IntVal 5)]), initialMachine)
-
-    it "creates local variables in functions" $ do
-      let f = Fun "y" (Let "x" (Var "y")) -- Should not affect outside x.
-      let term = Seq (Let "x" (Literal 1)) (App f (Literal 99))
-      let machine = initialMachine {getMem = scopeFromList [("x", IntVal 1)]}
-      reduceFully term initialMachine `shouldBe` (Right (IntVal 99), machine)
-
-    it "captures environment for functions" $ do
-      let f0 = Fun "x" (Var "outside") -- Created inside of f1.
-      let f1 = Fun "y" (Seq (Let "outside" (Literal 99)) f0)
-      -- (f1(0))(0) -> f0(0), where outside refers to the 99 captured in f1.
-      let term = Seq (Let "outside" (Literal 1)) (App (App f1 (Literal 0)) (Literal 0))
-      let machine = initialMachine {getMem = scopeFromList [("outside", IntVal 1)]}
-      reduceFully term initialMachine `shouldBe` (Right (IntVal 99), machine)
-
-    it "captures only the environment at function creation time" $ do
-      let f0 = Fun "x" (Var "outside")
-      let setupTerm = Seq (Let "outside" (Literal 1)) (Let "f" f0) -- Function f created here.
-      let f1 = Fun "y" (Seq (Let "outside" (Literal 99)) (App (Var "f") (Literal 0))) -- 99 should not be captured.
-      let term = Seq setupTerm (App f1 (Literal 0))
-      let closureVal = ClosureVal "x" (Var "outside") [("outside", IntVal 1)] -- Captured 1 from outside.
-      let machine = initialMachine {getMem = scopeFromList [("outside", IntVal 1), ("f", closureVal)]}
-      reduceFully term initialMachine `shouldBe` (Right (IntVal 1), machine)
-
-    it "captures all variables in nested scopes" $ do
-      let f0 = Fun "x" (BinaryOps Add (Var "a") (Var "b"))
-      let f1 = Fun "y" (Seq (Let "b" (Literal 4)) f0) -- b created (parent of f0).
-      let f2 = Fun "z" (Seq (Let "a" (Literal 3)) f1) -- a created (parent of f1).
-      let term = App (App (App f2 (Literal 0)) (Literal 0)) (Literal 0)
-      reduceFully term initialMachine `shouldBe` (Right (IntVal 7), initialMachine)
-
-    it "handles parameter shadowing" $ do
-      let f = Fun "x" (Var "x")
-      let term = Seq (Let "x" (Literal 1)) (App f (Literal 5)) -- Parameter x is 5.
-      let machine = initialMachine {getMem = scopeFromList [("x", IntVal 1)]}
-      reduceFully term initialMachine `shouldBe` (Right (IntVal 5), machine)
