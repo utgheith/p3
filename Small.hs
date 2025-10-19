@@ -174,7 +174,7 @@ reduce_ (UnaryOps op t) =
     applyUnaryOp IsNil = \v -> case v of
       ListVal [] -> return (Happy (BoolVal True))
       ListVal _  -> return (Happy (BoolVal False))
-      _ -> return (Sad "Type error: isnil called on non-list")
+      _ -> return (Sad "Type error: IsNil called on non-list")
 
 reduce :: (Machine m, Show m, V m ~ Value) => Term -> Env m
 reduce t = do
