@@ -64,7 +64,7 @@ instance Machine MockMachine where
 
   negVal (IntVal v) =
     return $ Happy (IntVal (-v))
-  negVal _ = return $ Sad "Type error in neg"
+  negVal _ = return $ Sad (Type, "Type error in neg")
 
   ltVal (IntVal v1) (IntVal v2) = return $ Happy (BoolVal (v1 < v2))
   ltVal _ _ = return $ Sad (Type, "Type error in <")

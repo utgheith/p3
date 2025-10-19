@@ -73,7 +73,7 @@ instance Machine Simulator where
   modVal _ _ = return $ Sad (Type, "Type error in modulus")
 
   negVal (IntVal v) = return $ Happy (IntVal (-v))
-  negVal _ = return $ Sad "Type error in neg"
+  negVal _ = return $ Sad (Type, "Type error in neg")
 
   selectValue :: Value -> Env Simulator -> Env Simulator -> Env Simulator
   selectValue (BoolVal True) e1 _ = e1
