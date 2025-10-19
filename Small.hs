@@ -169,7 +169,7 @@ reduce_ (UnaryOps op t) =
       BoolVal _ -> return $ Happy $ IntVal 1
       IntVal n ->
         let m = abs n
-        in return $ Happy $ IntVal (fromIntegral (length (show m)))
+         in return $ Happy $ IntVal (fromIntegral (length (show m)))
       _ -> return $ Sad "Type error: Length called on unsupported type"
     applyUnaryOp IsNil = \v -> case v of
       ListVal [] -> return (Happy (BoolVal True))
