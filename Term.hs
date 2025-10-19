@@ -20,6 +20,9 @@ data Term
   | While Term Term
   | Write Term
   | BoolLit Bool
+  | TupleTerm [Term]
+  | AccessTuple Term Term
+  | SetTuple String Term Term
   | Fun [String] Term
   | ApplyFun Term [Term]
   deriving (Eq, Show)
