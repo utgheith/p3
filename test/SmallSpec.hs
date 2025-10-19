@@ -187,8 +187,6 @@ spec = do
       let (result, _) = reduceFully term initialMachine
       result `shouldBe` Left "Type error in subtraction"
 
-    
-
     -- Logical Operations Tests
     it "reduces logical AND operation" $ do
       let term = BinaryOps And (BoolLit True) (BoolLit True)
