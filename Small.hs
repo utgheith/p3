@@ -157,7 +157,6 @@ reduce_ (CallWithArg tf ta) =
     (reduce tf)
     (`CallWithArg` ta)
     (premise (reduce ta) (CallWithArg tf) . applyFunArg)
-
 reduce_ (CallNoArgs tf) =
   premise
     (reduce tf)
