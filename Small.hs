@@ -157,12 +157,12 @@ reduce_ (UnaryOps op t) =
     applyUnaryOp Not = notVal
     applyUnaryOp Head = \v -> case v of
       ListVal (x : _) -> return $ Happy x
-      ListVal [] -> return $ Sad $ "head called on empty list"
-      _ -> return $ Sad $ "Type error: head called on non-list"
+      ListVal [] -> return $ Sad $ "Head called on empty list"
+      _ -> return $ Sad $ "Type error: Head called on non-list"
     applyUnaryOp Tail = \v -> case v of
       ListVal (_ : xs) -> return $ Happy $ ListVal xs
-      ListVal [] -> return $ Sad $ "tail called on empty list"
-      _ -> return $ Sad $ "Type error: tail called on non-list"
+      ListVal [] -> return $ Sad $ "Tail called on empty list"
+      _ -> return $ Sad $ "Type error: Tail called on non-list"
     applyUnaryOp Length = \v -> case v of
       ListVal xs -> return $ Happy $ IntVal (fromIntegral (length xs))
       StringVal s -> return $ Happy $ IntVal (fromIntegral (length s))
