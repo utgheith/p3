@@ -1,6 +1,9 @@
-module Term (Term (..), BinaryOp (..), ErrorKind(..), ErrorKindOrAny(..)) where
+module Term (Term (..), BinaryOp (..), UnaryOp (..), ErrorKind(..), ErrorKindOrAny(..)) where
 
-data BinaryOp = Add | Sub | Mul | Div | Mod
+data BinaryOp = Add | Sub | Mul | Div | Mod | Lt | Gt | Lte | Gte | Eq | Neq | And | Or
+  deriving (Eq, Show)
+
+data UnaryOp = Neg | Not
   deriving (Eq, Show)
 
 data ErrorKind = Arithmetic | Type | Input | VariableNotFound deriving (Eq, Show)
@@ -16,17 +19,9 @@ data Term
   | Seq Term Term
   | Skip
   | BinaryOps BinaryOp Term Term
+  | UnaryOps UnaryOp Term
   | Var String
   | While Term Term
   | Write Term
   | BoolLit Bool
-  | Lt Term Term
-  | Gt Term Term
-  | Lte Term Term
-  | Gte Term Term
-  | Eq Term Term
-  | Neq Term Term
-  | And Term Term
-  | Or Term Term
-  | Not Term
   deriving (Eq, Show)

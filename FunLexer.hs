@@ -14,7 +14,7 @@ data Token
   deriving (Show, Eq)
 
 symbols :: S.Set Char
-symbols = S.fromList "-*+(){}=,"
+symbols = S.fromList "-*+/(){}=,><!"
 
 keywords :: S.Set String
 keywords =
@@ -51,7 +51,13 @@ lexer = unfoldr step
        in case rest2 of
             ('"' : rest3) -> Just (StringLiteral str, rest3)
             _ -> Just (Error "Unclosed string literal", "")
-    -- symbols
+    -- multi-character symbols
+    step ('<' : '=' : rest) = Just (Symbol "<=", rest)
+    step ('>' : '=' : rest) = Just (Symbol ">=", rest)
+    step ('=' : '=' : rest) = Just (Symbol "==", rest)
+    step ('|' : '|' : rest) = Just (Symbol "||", rest)
+    step ('&' : '&' : rest) = Just (Symbol "&&", rest)
+    -- single-character symbols
     step (c : rest)
       | S.member c symbols =
           Just (Symbol [c], rest)
