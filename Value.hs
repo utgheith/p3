@@ -21,41 +21,33 @@ data Value
   | BoolVal Bool
   | StringVal String
   | Tuple [Value]
---   | ClosureVal [String] Term [(String, Value)]
+  | ClosureVal [String] Term [(String, Value)]
   | Dictionary (M.Map Integer Value)
   deriving (Eq, Show)
 
+valueToDebugString :: Value -> String
+valueToDebugString(IntVal _) = "Integer"
+valueToDebugString(BoolVal _) = "Boolean"
+valueToDebugString(StringVal _) = "String"
+valueToDebugString(Tuple _) = "Tuple"
+valueToDebugString(ClosureVal {}) = "Function"
+valueToDebugString(Dictionary _) = "Dictionary"
+
 valueToInt :: Value -> Either String Integer
 valueToInt (IntVal n) = Right n
-valueToInt (BoolVal _) = Left "Type error: expected integer, got boolean"
-valueToInt (StringVal _) = Left "Type error: expected integer, got string"
-valueToInt (Tuple _) = Left "Type error: expected integer, got tuple"
-valueToInt (ClosureVal {}) = Left "Type error: expected integer, got function"
-valueToInt (Dictionary _) = Left "Type error: expected integer, got dictionary"
+valueToInt x = Left $ "Type error: expected integer, got " ++ valueToDebugString x
 
 valueToBool :: Value -> Either String Bool
 valueToBool (BoolVal b) = Right b
-valueToBool (IntVal _) = Left "Type error: expected boolean, got integer"
-valueToBool (StringVal _) = Left "Type error: expected boolean, got string"
-valueToBool (Tuple _) = Left "Type error: expected boolean, got tuple"
-valueToBool (ClosureVal {}) = Left "Type error: expected boolean, got function"
-valueToBool (Dictionary _) = Left "Type error: expected boolean, got dictionary"
+valueToBool x = Left $ "Type error: expected boolean, got " ++ valueToDebugString x
 
 valueToString :: Value -> Either String String
 valueToString (StringVal s) = Right s
-valueToString (IntVal _) = Left "Type error: expected string, got integer"
-valueToString (BoolVal _) = Left "Type error: expected string, got boolean"
-valueToString (Tuple _) = Left "Type error: expected string, got tuple"
-valueToString (ClosureVal {}) = Left "Type error: expected string, got function"
-valueToString (Dictionary _) = Left "Type error: expected string, got dictionary"
+valueToString x = Left $ "Type error: expected string, got " ++ valueToDebugString x
 
 valueToTuple :: Value -> Either String [Value]
 valueToTuple (Tuple s) = Right s
-valueToTuple (IntVal _) = Left "Type error: expected tuple, got integer"
-valueToTuple (BoolVal _) = Left "Type error: expected tuple, got boolean"
-valueToTuple (StringVal _) = Left "Type error: expected tuple, got string"
-valueToTuple (ClosureVal {}) = Left "Type error: expected tuple, got function"
-valueToTuple (Dictionary _) = Left "Type error: expected tuple, got dictionary"
+valueToTuple x = Left $ "Type error: expected tuple, got " ++ valueToDebugString x
 
 isIntVal :: Value -> Bool
 isIntVal (IntVal _) = True
