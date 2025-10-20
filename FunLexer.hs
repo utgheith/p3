@@ -21,23 +21,24 @@ symbols =
     [ "-",
       "*",
       "+",
-      "/", -- arithmetic operators
+      "/",
       ">=",
       "<=",
       "<",
       ">",
-      "==", -- comparison operators
+      "==",
       "!",
       "||",
-      "&&", -- boolean operators
+      "&&",
       "(",
       ")",
       "{",
       "}",
       "[",
-      "]", -- delimiters
+      "]",
       "=",
-      "," -- miscellaneous
+      ","
+      "#"
     ]
 
 keywords :: S.Set String

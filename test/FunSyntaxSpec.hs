@@ -135,6 +135,14 @@ spec = do
               return t
         result `shouldBe` Right (AccessBracket (Var "t") (Literal 0), [])
 
+    describe "dictionary" $ do
+      it "parses dictionary creation" $ do
+        let result = parse "#[]" $ do
+              t <- prog
+              _ <- eof
+              return t
+        result `shouldBe` Right (NewDictionary, [])
+
     describe "try-catch" $ do
       it "parses try-catch creation" $ do
         let result = parse "try x catch Arithmetic 1" $ do
