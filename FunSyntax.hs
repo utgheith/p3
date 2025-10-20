@@ -16,25 +16,6 @@ import FunLexer (Token (Ident, Keyword, Num, StringLiteralLexed, Symbol), lexer)
 import ParserCombinators (Parser, Result, oneof, opt, rpt, rptDropSep, satisfy, token)
 import Term (BinaryOp (..), ErrorKind (..), ErrorKindOrAny (..), Term (..), UnaryOp (..))
 
--- data Term
---   = Assign String Term
---   | BinaryOp String Term Term
---   | Block [Term]
---   | Call Term [Term]
---   | Const Integer
---   | ConstString String
---   | FunDef String [String] Term
---   | IfThenElse Term Term (Maybe Term)
---   | Negate Term
---   | VarDef String (Maybe Term)
---   | VarRef String
---   | While Term Term
---   deriving
---     ( -- | more term constructors
---       Show,
---       Eq
---     )
-
 -- succeed if the next token is the given symbol
 symbol :: String -> Parser Token ()
 -- using explicit bind
@@ -192,22 +173,25 @@ whileTerm = do
   body <- term
   return $ While cond body
 
+inBrackets :: Parser Token v -> Parser Token v
+inBrackets p = do
+  _ <- symbol "["
+  tok <- p
+  _ <- symbol "]"
+  return tok
+
 tupleSet :: Parser Token Term
 tupleSet = do
   name <- ident
-  _ <- symbol "["
-  index <- term
-  _ <- symbol "]"
+  index <- rpt (inBrackets term)
   _ <- symbol "="
   value <- term
-  return $ SetBracket name index value
+  return $ SetBracket name (TupleTerm index) value
 
 tupleAccess :: Parser Token Term
 tupleAccess = do
   tupleName <- varRef
-  _ <- symbol "["
-  index <- term
-  _ <- symbol "]"
+  index <- inBrackets term
   return $ AccessBracket tupleName index
 
 tryCatch :: Parser Token Term
