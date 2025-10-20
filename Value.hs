@@ -23,7 +23,8 @@ data Value
   | Tuple [Value]
   | ClosureVal [String] Term [(String, Value)]
   | Dictionary (M.Map Integer Value)
-  | Class String Value -- solely denote the name of the class, value is used for a dictionary of class variables
+  | Object Value (M.Map String Value) -- class, field value mapping
+  | Class [String] Value (M.Map String Value) -- class variables, constructor, methods
   deriving (Eq, Show)
 
 valueToInt :: Value -> Either String Integer
@@ -33,7 +34,8 @@ valueToInt (StringVal _) = Left "Type error: expected integer, got string"
 valueToInt (Tuple _) = Left "Type error: expected integer, got tuple"
 valueToInt (ClosureVal {}) = Left "Type error: expected integer, got function"
 valueToInt (Dictionary _) = Left "Type error: expected integer, got dictionary"
-valueToInt (Class _ _) = Left "Type error: expected integer, got class"
+valueToInt (Object _ _) = Left "Type error: expected integer, got object"
+valueToInt (Class _ _ _) = Left "Type error: expected integer, got class"
 
 valueToBool :: Value -> Either String Bool
 valueToBool (BoolVal b) = Right b
@@ -42,7 +44,8 @@ valueToBool (StringVal _) = Left "Type error: expected boolean, got string"
 valueToBool (Tuple _) = Left "Type error: expected boolean, got tuple"
 valueToBool (ClosureVal {}) = Left "Type error: expected boolean, got function"
 valueToBool (Dictionary _) = Left "Type error: expected boolean, got dictionary"
-valueToBool (Class _ _) = Left "Type error: expected boolean, got class"
+valueToBool (Object _ _) = Left "Type error: expected boolean, got object"
+valueToBool (Class _ _ _) = Left "Type error: expected boolean, got class"
 
 valueToString :: Value -> Either String String
 valueToString (StringVal s) = Right s
@@ -51,7 +54,8 @@ valueToString (BoolVal _) = Left "Type error: expected string, got boolean"
 valueToString (Tuple _) = Left "Type error: expected string, got tuple"
 valueToString (ClosureVal {}) = Left "Type error: expected string, got function"
 valueToString (Dictionary _) = Left "Type error: expected string, got dictionary"
-valueToString (Class _ _) = Left "Type error: expected string, got class"
+valueToString (Object _ _) = Left "Type error: expected string, got object"
+valueToString (Class _ _ _) = Left "Type error: expected string, got class"
 
 valueToTuple :: Value -> Either String [Value]
 valueToTuple (Tuple s) = Right s
@@ -60,7 +64,8 @@ valueToTuple (BoolVal _) = Left "Type error: expected tuple, got boolean"
 valueToTuple (StringVal _) = Left "Type error: expected tuple, got string"
 valueToTuple (ClosureVal {}) = Left "Type error: expected tuple, got function"
 valueToTuple (Dictionary _) = Left "Type error: expected tuple, got dictionary"
-valueToTuple (Class _ _) = Left "Type error: expected tuple, got class"
+valueToTuple (Object _ _) = Left "Type error: expected tuple, got object"
+valueToTuple (Class _ _ _) = Left "Type error: expected tuple, got class"
 
 isIntVal :: Value -> Bool
 isIntVal (IntVal _) = True
