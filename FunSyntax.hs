@@ -70,7 +70,7 @@ term = binaryExp precedence
 
 -- precedence levels, from lowest to highest
 precedence :: [S.Set String]
-precedence = [S.fromList ["||"], S.fromList ["&&"], S.fromList ["==", "!="], S.fromList ["<", ">", "<=", ">="], S.fromList ["+", "-"], S.fromList ["*", "/", "%"]]
+precedence = [S.fromList ["||"], S.fromList ["^"], S.fromList ["&&"], S.fromList ["==", "!="], S.fromList ["<", ">", "<=", ">="], S.fromList ["+", "-"], S.fromList ["*", "/", "%"], S.fromList ["**"]]
 
 binaryExp :: [S.Set String] -> Parser Token Term
 binaryExp [] = unaryExp
@@ -102,6 +102,8 @@ stringToBinaryOp "==" = Eq
 stringToBinaryOp "!=" = Neq
 stringToBinaryOp "&&" = And
 stringToBinaryOp "||" = Or
+stringToBinaryOp "**" = Pow
+stringToBinaryOp "^" = Xor
 stringToBinaryOp _ = error "Unknown binary operator"
 
 ------------------- unary operators  -------------------
@@ -112,6 +114,33 @@ assign = [Let name expr | name <- ident, _ <- symbol "=", expr <- term]
 -- We can use monad comprehensions (GHC extension) to make parsers more concise
 minus :: Parser Token Term
 minus = [UnaryOps Neg e | _ <- symbol "-", e <- unaryExp]
+
+bitnot :: Parser Token Term
+bitnot = [UnaryOps BitNot e | _ <- symbol "~", e <- unaryExp]
+
+preIncrement :: Parser Token Term
+preIncrement = do
+  _ <- symbol "++"
+  var <- ident
+  return $ PreIncrement var
+
+preDecrement :: Parser Token Term
+preDecrement = do
+  _ <- symbol "--"
+  var <- ident
+  return $ PreDecrement var
+
+postIncrement :: Parser Token Term
+postIncrement = do
+  var <- ident
+  _ <- symbol "++"
+  return $ PostIncrement var
+
+postDecrement :: Parser Token Term
+postDecrement = do
+  var <- ident
+  _ <- symbol "--"
+  return $ PostDecrement var
 
 num :: Parser Token Term
 num = do
@@ -248,7 +277,7 @@ printStmt = do
   return $ Write expr
 
 unaryExp :: Parser Token Term
-unaryExp = oneof [assign, ifExpr, block, funDef, minus, num, string, bool, tuple, dictionary, bracketSet, bracketAccess, tryCatch, parens, varDef, funCall, varRef, whileTerm, printStmt]
+unaryExp = oneof [assign, ifExpr, block, funDef, minus, bitnot, preIncrement, preDecrement, num, string, bool, tuple, dictionary, bracketSet, bracketAccess, tryCatch, parens, varDef, funCall, postIncrement, postDecrement, varRef, whileTerm, printStmt]
 
 ----------- prog ----------
 
