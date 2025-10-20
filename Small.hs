@@ -45,6 +45,7 @@ class Machine m where
   mulVal :: V m -> V m -> Env m
   divVal :: V m -> V m -> Env m
   modVal :: V m -> V m -> Env m
+  powVal :: V m -> V m -> Env m
   negVal :: V m -> Env m
 
   -- Comparison operations (operate on integers, return booleans)
@@ -58,7 +59,15 @@ class Machine m where
   -- Logical operations (operate on booleans)
   andVal :: V m -> V m -> Env m
   orVal :: V m -> V m -> Env m
+  xorVal :: V m -> V m -> Env m
   notVal :: V m -> Env m
+  bitNotVal :: V m -> Env m
+
+  -- Increment/Decrement operations (modify variables)
+  preIncrementVal :: String -> Env m -- ++x: increment then return new value
+  preDecrementVal :: String -> Env m -- --x: decrement then return new value
+  postIncrementVal :: String -> Env m -- x++: return old value then increment
+  postDecrementVal :: String -> Env m -- x--: return old value then decrement
 
   -- Access/Manage Bracket Values
   getBracketValue :: V m -> V m -> Env m
@@ -180,6 +189,7 @@ reduce_ (BinaryOps op t1 t2) =
     applyBinaryOp Mul = mulVal
     applyBinaryOp Div = divVal
     applyBinaryOp Mod = modVal
+    applyBinaryOp Pow = powVal
     applyBinaryOp Lt = ltVal
     applyBinaryOp Gt = gtVal
     applyBinaryOp Lte = lteVal
@@ -188,6 +198,7 @@ reduce_ (BinaryOps op t1 t2) =
     applyBinaryOp Neq = neqVal
     applyBinaryOp And = andVal
     applyBinaryOp Or = orVal
+    applyBinaryOp Xor = xorVal
 reduce_ (BoolLit b) =
   return $ Happy $ BoolVal b
 reduce_ (UnaryOps op t) =
@@ -198,6 +209,7 @@ reduce_ (UnaryOps op t) =
   where
     applyUnaryOp Neg = negVal
     applyUnaryOp Not = notVal
+    applyUnaryOp BitNot = bitNotVal
 reduce_ BreakSignal =
   return $ Continue BreakSignal
 reduce_ ContinueSignal =
@@ -211,6 +223,14 @@ reduce_ (ApplyFun tf tas) =
     (reduce tf)
     (`ApplyFun` tas)
     (reduceArgsAndApply tf tas)
+reduce_ (PreIncrement x) =
+  preIncrementVal x
+reduce_ (PreDecrement x) =
+  preDecrementVal x
+reduce_ (PostIncrement x) =
+  postIncrementVal x
+reduce_ (PostDecrement x) =
+  postDecrementVal x
 reduce_ (TupleTerm elements) =
   case elements of
     (x : xs) ->

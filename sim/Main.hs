@@ -6,6 +6,7 @@
 module Main (main) where
 
 import qualified Control.Monad.State as S
+import Data.Bits (complement)
 import qualified Data.Map as M
 import qualified Progs
 import Scope (Scope (..), emptyScope, getAllBindings, insertScope, lookupScope)
@@ -92,6 +93,13 @@ instance Machine Simulator where
       else return $ Happy (IntVal (v1 `mod` v2)) -- I don't want the actual interpreter to crash
   modVal _ _ = return $ Sad (Type, "Type error in modulus")
 
+  powVal :: Value -> Value -> Env Simulator
+  powVal (IntVal v1) (IntVal v2) =
+    if v2 < 0
+      then return $ Sad (Arithmetic, "Negative exponent not supported")
+      else return $ Happy (IntVal (v1 ^ v2))
+  powVal _ _ = return $ Sad (Type, "Type error in exponentiation")
+
   negVal (IntVal v) = return $ Happy (IntVal (-v))
   negVal _ = return $ Sad (Type, "Type error in neg")
 
@@ -124,13 +132,13 @@ instance Machine Simulator where
   eqVal (IntVal v1) (IntVal v2) = return $ Happy (BoolVal (v1 == v2))
   eqVal (BoolVal v1) (BoolVal v2) = return $ Happy (BoolVal (v1 == v2))
   eqVal (StringVal v1) (StringVal v2) = return $ Happy (BoolVal (v1 == v2))
-  eqVal v1 v2 = return $ Sad $ (Type, "Type error in ==: cannot compare " ++ show v1 ++ " and " ++ show v2)
+  eqVal v1 v2 = return $ Sad (Type, "Type error in ==: cannot compare " ++ show v1 ++ " and " ++ show v2)
 
   neqVal :: Value -> Value -> Env Simulator
   neqVal (IntVal v1) (IntVal v2) = return $ Happy (BoolVal (v1 /= v2))
   neqVal (BoolVal v1) (BoolVal v2) = return $ Happy (BoolVal (v1 /= v2))
   neqVal (StringVal v1) (StringVal v2) = return $ Happy (BoolVal (v1 /= v2))
-  neqVal v1 v2 = return $ Sad $ (Type, "Type error in !=: cannot compare " ++ show v1 ++ " and " ++ show v2)
+  neqVal v1 v2 = return $ Sad (Type, "Type error in !=: cannot compare " ++ show v1 ++ " and " ++ show v2)
 
   andVal :: Value -> Value -> Env Simulator
   andVal (BoolVal v1) (BoolVal v2) = return $ Happy (BoolVal (v1 && v2))
@@ -140,9 +148,62 @@ instance Machine Simulator where
   orVal (BoolVal v1) (BoolVal v2) = return $ Happy (BoolVal (v1 || v2))
   orVal _ _ = return $ Sad (Type, "Type error in ||")
 
+  xorVal :: Value -> Value -> Env Simulator
+  xorVal (BoolVal v1) (BoolVal v2) = return $ Happy (BoolVal (v1 /= v2))
+  xorVal _ _ = return $ Sad (Type, "Type error in ^")
+
   notVal :: Value -> Env Simulator
   notVal (BoolVal v) = return $ Happy (BoolVal (not v))
   notVal _ = return $ Sad (Type, "Type error in !")
+
+  bitNotVal :: Value -> Env Simulator
+  bitNotVal (IntVal v) = return $ Happy (IntVal (complement v))
+  bitNotVal _ = return $ Sad (Type, "Type error in ~")
+
+  preIncrementVal :: String -> Env Simulator
+  preIncrementVal x = do
+    (Simulator m inp out) <- S.get
+    case lookupScope x m of
+      Just (IntVal v) -> do
+        let newVal = IntVal (v + 1)
+        let m' = insertScope x newVal m
+        S.put (Simulator m' inp out)
+        return $ Happy newVal
+      Just _ -> return $ Sad (Type, "Type error: can only increment integers")
+      Nothing -> return $ Sad (VariableNotFound, "Variable " ++ x ++ " not found")
+  preDecrementVal :: String -> Env Simulator
+  preDecrementVal x = do
+    (Simulator m inp out) <- S.get
+    case lookupScope x m of
+      Just (IntVal v) -> do
+        let newVal = IntVal (v - 1)
+        let m' = insertScope x newVal m
+        S.put (Simulator m' inp out)
+        return $ Happy newVal
+      Just _ -> return $ Sad (Type, "Type error: can only decrement integers")
+      Nothing -> return $ Sad (VariableNotFound, "Variable " ++ x ++ " not found")
+  postIncrementVal :: String -> Env Simulator
+  postIncrementVal x = do
+    (Simulator m inp out) <- S.get
+    case lookupScope x m of
+      Just (IntVal v) -> do
+        let newVal = IntVal (v + 1)
+        let m' = insertScope x newVal m
+        S.put (Simulator m' inp out)
+        return $ Happy (IntVal v) -- Return old value
+      Just _ -> return $ Sad (Type, "Type error: can only increment integers")
+      Nothing -> return $ Sad (VariableNotFound, "Variable " ++ x ++ " not found")
+  postDecrementVal :: String -> Env Simulator
+  postDecrementVal x = do
+    (Simulator m inp out) <- S.get
+    case lookupScope x m of
+      Just (IntVal v) -> do
+        let newVal = IntVal (v - 1)
+        let m' = insertScope x newVal m
+        S.put (Simulator m' inp out)
+        return $ Happy (IntVal v) -- Return old value
+      Just _ -> return $ Sad (Type, "Type error: can only decrement integers")
+      Nothing -> return $ Sad (VariableNotFound, "Variable " ++ x ++ " not found")
 
   getBracketValue :: Value -> Value -> Env Simulator
   getBracketValue (Tuple (x : xs)) (IntVal pos) = if pos == 0 then return (Happy x) else getBracketValue (Tuple xs) (IntVal (pos - 1))
