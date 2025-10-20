@@ -151,7 +151,7 @@ instance Machine MockMachine where
       Just (IntVal v) -> do
         let newVal = IntVal (v + 1)
         S.put (m {getMem = insertScope x newVal (getMem m)})
-        return $ Happy (IntVal v)  -- Return old value
+        return $ Happy (IntVal v) -- Return old value
       Just _ -> return $ Sad (Type, "Type error: can only increment integers")
       Nothing -> return $ Sad (VariableNotFound, "Variable " ++ x ++ " not found")
 
@@ -161,7 +161,7 @@ instance Machine MockMachine where
       Just (IntVal v) -> do
         let newVal = IntVal (v - 1)
         S.put (m {getMem = insertScope x newVal (getMem m)})
-        return $ Happy (IntVal v)  -- Return old value
+        return $ Happy (IntVal v) -- Return old value
       Just _ -> return $ Sad (Type, "Type error: can only decrement integers")
       Nothing -> return $ Sad (VariableNotFound, "Variable " ++ x ++ " not found")
 

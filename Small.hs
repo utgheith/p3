@@ -64,10 +64,10 @@ class Machine m where
   bitNotVal :: V m -> Env m
 
   -- Increment/Decrement operations (modify variables)
-  preIncrementVal :: String -> Env m   -- ++x: increment then return new value
-  preDecrementVal :: String -> Env m   -- --x: decrement then return new value
-  postIncrementVal :: String -> Env m  -- x++: return old value then increment
-  postDecrementVal :: String -> Env m  -- x--: return old value then decrement
+  preIncrementVal :: String -> Env m -- ++x: increment then return new value
+  preDecrementVal :: String -> Env m -- --x: decrement then return new value
+  postIncrementVal :: String -> Env m -- x++: return old value then increment
+  postDecrementVal :: String -> Env m -- x--: return old value then decrement
 
   -- Access/Manage Bracket Values
   getBracketValue :: V m -> V m -> Env m
