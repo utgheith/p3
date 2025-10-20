@@ -6,6 +6,7 @@
 
 module Small (reduceFully, Machine (..), Result (..), Env) where
 
+import Control.Arrow ((>>>))
 import qualified Control.Monad.State as S
 import Data.Either
 import qualified Data.Map as M
@@ -216,21 +217,17 @@ reduce_ (AccessBracket t i) =
   premise
     (reduce t)
     (`AccessBracket` i)
-    ( premise
-        (reduce i)
-        (AccessBracket t)
-        . getBracketValue
-    )
+    (getBracketValue >>> premise (reduce i) (AccessBracket t)) -- (f >>> g) == (g . f) == (\x -> g (f x))
 reduce_ (SetBracket name terms val) =
   case terms of
     TupleTerm tupleTerm ->
       premise
         (reduce $ TupleTerm tupleTerm)
         (\terms' -> SetBracket name terms' val)
-        ( premise
-            (reduce val)
-            (SetBracket name terms)
-            . setBracketValue name
+        ( setBracketValue name
+            >>> premise
+              (reduce val)
+              (SetBracket name terms)
         )
     _ -> error "SetBracket should only have tuple term as second argument"
 reduce_ NewDictionary =
