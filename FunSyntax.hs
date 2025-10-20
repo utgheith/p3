@@ -192,6 +192,18 @@ whileTerm = do
   body <- term
   return $ While cond body
 
+finalTerm :: Parser Token Term
+finalTerm = do
+  _ <- keyword "final"
+  name <- ident
+  return $ Final name
+
+globalTerm :: Parser Token Term
+globalTerm = do
+  _ <- keyword "global"
+  name <- ident
+  return $ Global name
+
 tupleSet :: Parser Token Term
 tupleSet = do
   name <- ident
@@ -225,7 +237,7 @@ printStmt = do
   return $ Write expr
 
 unaryExp :: Parser Token Term
-unaryExp = oneof [assign, ifExpr, block, funDef, minus, num, string, bool, tuple, tupleSet, tupleAccess, parens, varDef, funCall, varRef, whileTerm, printStmt]
+unaryExp = oneof [assign, ifExpr, block, funDef, minus, num, string, bool, tuple, tupleSet, tupleAccess, parens, varDef, funCall, finalTerm, globalTerm, varRef, whileTerm, printStmt]
 
 ----------- prog ----------
 

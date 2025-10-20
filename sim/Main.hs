@@ -8,7 +8,7 @@ module Main (main) where
 import qualified Control.Monad.State as S
 import qualified Data.Map as M
 import qualified Progs
-import Scope (Scope (..), emptyScope, getAllBindings, insertScope, lookupScope)
+import Scope (Scope (..), emptyScope, getAllBindings, insertScope, lookupScope, markFinal, isFinal, moveToGlobal)
 import Small (Env, Machine (..), Result (..), reduceFully)
 import Term (Term (..))
 import Value (Value (..))
@@ -27,9 +27,26 @@ instance Machine Simulator where
   setVar :: String -> Value -> Env Simulator
   setVar name val = do
     (Simulator m inp out) <- S.get
-    let m' = insertScope name val m
+    if isFinal name m
+      then return $ Sad $ "Cannot reassign final variable: " ++ name
+      else do
+        let m' = insertScope name val m
+        S.put (Simulator m' inp out)
+        return $ Happy val
+  -- Mark a variable as final in the current scope
+  markFinalVar :: String -> Env Simulator
+  markFinalVar name = do
+    (Simulator m inp out) <- S.get
+    let m' = markFinal name m
     S.put (Simulator m' inp out)
-    return $ Happy val
+    return $ Happy (IntVal 0)
+
+  moveToGlobal :: String -> Env Simulator
+  moveToGlobal name = do
+    (Simulator m inp out) <- S.get
+    let m' = Scope.moveToGlobal name m
+    S.put (Simulator m' inp out)
+    return $ Happy (IntVal 0)
 
   getScope :: Simulator -> [(String, Value)]
   getScope (Simulator m _ _) = getAllBindings m
@@ -37,7 +54,7 @@ instance Machine Simulator where
   pushScope :: [(String, Value)] -> Env Simulator
   pushScope vars = do
     (Simulator m inp out) <- S.get
-    let newScope = Scope (M.fromList vars) (Just m)
+    let newScope = Scope (M.fromList (map (\(k, v) -> (k, (v, False))) vars)) (Just m)
     S.put (Simulator newScope inp out)
     return $ Happy (IntVal 0)
 

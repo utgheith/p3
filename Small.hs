@@ -67,6 +67,11 @@ class Machine m where
   -- Control flow - selectValue uses boolean semantics
   selectValue :: V m -> Env m -> Env m -> Env m
 
+  -- Final variable support
+  markFinalVar :: String -> Env m
+  -- Move variable to global scope
+  moveToGlobal :: String -> Env m
+
 ----- The Result type -----
 
 data Result a
@@ -105,6 +110,9 @@ reduce_ (Let x t) = do
     (reduce t)
     (Let x)
     (setVar x)
+reduce_ (Final x) =
+  markFinalVar x
+reduce_ (Global x) = moveToGlobal x
 reduce_ (Seq t1 t2) = do
   res1 <- reduce t1 -- run t1 normally
   case res1 of
