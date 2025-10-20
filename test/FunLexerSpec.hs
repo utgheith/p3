@@ -32,3 +32,20 @@ spec = do
 
     it "handles an unexpected character" $ do
       lexer "@" `shouldBe` [Error "Unexpected character: @"]
+
+    it "handles an empty class" $ do
+      lexer "class MyClass {}" `shouldBe` [Keyword "class", Ident "MyClass", Symbol "{", Symbol "}"]
+    
+    it "handles a class with a method" $ do
+      lexer "class MyClass { fun myMethod() {} }" `shouldBe` 
+        [ Keyword "class", Ident "MyClass", Symbol "{"
+        , Keyword "fun", Ident "myMethod", Symbol "(", Symbol ")", Symbol "{", Symbol "}", Symbol "}"
+        ]
+    it "handles a class with an instance variable and a method" $ do
+      lexer "class MyClass { var x = 10 fun getX() { return x; } }" `shouldBe` 
+        [ Keyword "class", Ident "MyClass", Symbol "{"
+        , Keyword "var", Ident "x", Symbol "=", Num 10
+        , Keyword "fun", Ident "getX", Symbol "(", Symbol ")", Symbol "{"
+        , Keyword "return", Ident "x", Symbol ";"
+        , Symbol "}", Symbol "}"
+        ]
