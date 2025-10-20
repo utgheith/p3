@@ -131,7 +131,7 @@ spec = do
               t <- prog
               _ <- eof
               return t
-        result `shouldBe` Right (AccessTuple (Var "t") (Literal 0), [])
+        result `shouldBe` Right (AccessBracket (Var "t") (Literal 0), [])
 
     describe "error cases" $ do
       it "fails on invalid syntax" $ do
