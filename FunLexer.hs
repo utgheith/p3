@@ -1,7 +1,9 @@
 module FunLexer (lexer, Token (Num, Ident, Keyword, Symbol, StringLiteralLexed, Error)) where
 
 import Data.Char (isAlpha, isAlphaNum, isNumber, isSpace)
-import Data.List (unfoldr)
+import Data.List (unfoldr, stripPrefix, sortOn)
+import Data.Ord (Down(Down))
+import Data.Maybe (isJust)
 import qualified Data.Set as S
 
 data Token
@@ -13,8 +15,16 @@ data Token
   | Error String
   deriving (Show, Eq)
 
-symbols :: S.Set Char
-symbols = S.fromList "-*+/(){}=,><![]"
+symbols :: [String] -- sorted in decreasing order of length to allow prefix detection
+symbols = sortOn (Data.Ord.Down . length) [
+    "-", "*", "+", "/", -- arithmetic operators
+    ">=", "<=", "<", ">", "==", -- comparison operators
+    "!", "||", "&&", -- boolean operators
+    "(", ")", "{", "}", "[", "]", -- delimiters
+    "=", "," -- miscellanous
+    ]
+
+    -- S.fromList "-*+/(){}=,><![]"
 
 keywords :: S.Set String
 keywords =
@@ -31,6 +41,14 @@ keywords =
       "false" -- force boolean literals to be tokens in the parser
     ]
 
+-- a lexer combinator, i suppose
+matches :: [Char] -> [String] -> Maybe (String, [Char])
+matches s (p : ps)  =
+    case stripPrefix p s of
+        Just rest -> Just (p, rest)
+        Nothing -> matches s ps
+matches _ [] = Nothing
+
 lexer :: [Char] -> [Token]
 lexer = unfoldr step
   where
@@ -38,13 +56,16 @@ lexer = unfoldr step
     -- skip spaces and new lines
     step (c : rest) | isSpace c = step rest
     -- numbers
-    step s@(c : _)
-      | isNumber c =
+    step s@(c : _) | isNumber c =
           let (num, rest) = span isNumber s
            in Just (Num $ read num, rest)
-    -- identifiers and keywords
-    step s@(c : _)
-      | isAlpha c =
+    -- special tokens
+    step s | Data.Maybe.isJust (matches s symbols) = -- ideally we wouldn't compute this twice
+        case matches s symbols of
+            Just (p, rest) -> Just (Symbol p, rest)
+            _ -> error "unreachable"
+    -- identifiers
+    step s@(c : _) | isAlpha c = -- 
           let (var, rest) = span isAlphaNum s
            in Just (if S.member var keywords then Keyword var else Ident var, rest)
     -- string literals
@@ -54,15 +75,15 @@ lexer = unfoldr step
             ('"' : rest3) -> Just (StringLiteralLexed str, rest3)
             _ -> Just (Error "Unclosed string literal", "")
     -- multi-character symbols
-    step ('<' : '=' : rest) = Just (Symbol "<=", rest)
-    step ('>' : '=' : rest) = Just (Symbol ">=", rest)
-    step ('=' : '=' : rest) = Just (Symbol "==", rest)
-    step ('|' : '|' : rest) = Just (Symbol "||", rest)
-    step ('&' : '&' : rest) = Just (Symbol "&&", rest)
-    -- single-character symbols
-    step (c : rest)
-      | S.member c symbols =
-          Just (Symbol [c], rest)
+    -- step ('<' : '=' : rest) = Just (Symbol "<=", rest)
+    -- step ('>' : '=' : rest) = Just (Symbol ">=", rest)
+    -- step ('=' : '=' : rest) = Just (Symbol "==", rest)
+    -- step ('|' : '|' : rest) = Just (Symbol "||", rest)
+    -- step ('&' : '&' : rest) = Just (Symbol "&&", rest)
+    -- -- single-character symbols
+    -- step (c : rest)
+    --   | S.member c symbols =
+    --       Just (Symbol [c], rest)
     -- comments
     step ('$' : rest) =
       let (_, rest2) = span (/= '$') rest
