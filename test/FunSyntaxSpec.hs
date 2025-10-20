@@ -1,3 +1,5 @@
+{-# LANGUAGE LambdaCase #-}
+
 module FunSyntaxSpec (spec) where
 
 import FunLexer (Token (..))
@@ -150,7 +152,7 @@ spec = do
       case result of
         Left err -> fail $ "Parse error: " ++ err
         Right (ast, _) -> do
-          ast `shouldSatisfy` \t -> case t of
+          ast `shouldSatisfy` \case
             Seq _ _ -> True
             _ -> False
 
@@ -162,7 +164,7 @@ spec = do
             case result of
               Left err -> fail $ "Failed to parse " ++ file ++ ": " ++ err
               Right (ast, _) -> do
-                ast `shouldSatisfy` (const True) -- Just check it parses successfully
+                ast `shouldSatisfy` const True -- Just check it parses successfully
         )
         testFiles
 
@@ -185,4 +187,4 @@ spec = do
       case result of
         Left err -> fail $ "Parse error: " ++ err
         Right (ast, _) -> do
-          ast `shouldSatisfy` (const True)
+          ast `shouldSatisfy` const True
