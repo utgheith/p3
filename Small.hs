@@ -100,7 +100,7 @@ reduce_ (Var x) =
 reduce_ (Let x t) = do
   premise
     (reduce t)
-    (trace "let continuing " Let x)
+    (Let x)
     (setVar x)
 reduce_ (Seq t1 t2) = do
   premise
@@ -111,21 +111,21 @@ reduce_ (ConcurSeq t1 t2) = do
   m <- S.get
   selectRandom m 
     (premise 
-      (trace "after reduction in concurseq " $ reduce t1)
+      (reduce t1)
       (`ConcurSeq` t2)
-      (\v1 -> 
-        premise 
-        (trace "we hit value" reduce t2)
-        id
+      (\v1 ->
+        premise
+          (reduce t2)
+          id
         (\v2 -> selectRandom m (return $ Happy v1) (return $ Happy v2))
       )
     )
-    (premise 
-      (trace "after reduction in concurseq " $ reduce t2)
-      (ConcurSeq (trace "back to concurseq" t1))
-      (\v2 -> 
+    (premise
+      (reduce t2)
+      (ConcurSeq t1)
+      (\v2 ->
         premise 
-        (trace "we hit value" reduce t1)
+        (reduce t1)
         id
         (\v1 -> selectRandom m (return $ Happy v1) (return $ Happy v2))
       )
