@@ -48,7 +48,7 @@ instance Machine MockMachine where
 
   markFinalVar x = do
     m <- S.get
-    S.put (m {getMem = Scope.markFinal x (getMem m)})
+    S.put (m {getMem = markFinal x (getMem m)})
     return $ Happy (IntVal 0)
 
   moveToGlobal x = do
