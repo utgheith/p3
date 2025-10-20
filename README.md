@@ -1,4 +1,6 @@
 [![CI](https://github.com/utgheith/p3/actions/workflows/haskell.yml/badge.svg)](https://github.com/utgheith/p3/actions/workflows/haskell.yml)
+[![Ormolu Check](https://github.com/utgheith/p3/actions/workflows/ormulu-check.yml/badge.svg)](https://github.com/utgheith/p3/actions/workflows/ormulu-check.yml)
+[![Scan code with HLint](https://github.com/utgheith/p3/actions/workflows/hlint.yml/badge.svg)](https://github.com/utgheith/p3/actions/workflows/hlint.yml)
 
 # p3
 
