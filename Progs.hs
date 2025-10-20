@@ -1,4 +1,4 @@
-module Progs (prog, prog2, prog3) where
+module Progs (prog, prog2, prog3, prog4, prog5) where
 
 import Term
 
@@ -41,3 +41,17 @@ prog3 =
       ( Write (Var "y")
           ~ "y" <=> BinaryOps Sub (Var "y") (Literal 1)
       )
+
+prog4 :: Term 
+prog4 = 
+  ConcurSeq (Let "x" (Literal 2)) (Let "y" (Literal 3))
+
+prog5 :: Term
+prog5 =
+  let addop = BinaryOps Add (Var "x") (Literal 1) in
+  Seq 
+      (Let "x" (Literal 0))
+    ( ConcurSeq
+        (Let "x" (If (Literal 1) (addop) (addop)))
+        (Let "x" (If (Literal 1) (addop) (addop))))
+    

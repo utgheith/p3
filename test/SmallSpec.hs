@@ -242,22 +242,22 @@ spec = do
       result `shouldBe` Left "Type error in subtraction"
 
     it "reduces a Tuple" $ do
-      let term = TupleTerm [(Literal 10), (StringLiteral "hello"), (BoolLit True)]
+      let term = TupleTerm [Literal 10, StringLiteral "hello", BoolLit True]
       let (result, _) = reduceFully term initialMachine
       result `shouldBe` Right (Tuple [IntVal 10, StringVal "hello", BoolVal True])
 
     it "access a Tuple" $ do
-      let term = AccessTuple (TupleTerm [(Literal 10), (StringLiteral "hello"), (BoolLit True)]) (Literal 1)
+      let term = AccessTuple (TupleTerm [Literal 10, StringLiteral "hello", BoolLit True]) (Literal 1)
       let (result, _) = reduceFully term initialMachine
       result `shouldBe` Right (StringVal "hello")
 
     it "reduces a let tuple expression" $ do
-      let term = Seq (Let "x" (TupleTerm [(Literal 10), (StringLiteral "hello"), (BoolLit True)])) (SetTuple "x" (TupleTerm [Literal 2]) (BoolLit False))
+      let term = Seq (Let "x" (TupleTerm [Literal 10, StringLiteral "hello", BoolLit True])) (SetTuple "x" (TupleTerm [Literal 2]) (BoolLit False))
       let finalMachine = initialMachine {getMem = scopeFromList [("x", Tuple [IntVal 10, StringVal "hello", BoolVal False])]}
       reduceFully term initialMachine `shouldBe` (Right (BoolVal False), finalMachine)
 
     it "reduces a let nested tuple expression" $ do
-      let term = Seq (Let "x" (TupleTerm [(Literal 10), TupleTerm [StringLiteral "hello"], (BoolLit True)])) (SetTuple "x" (TupleTerm [Literal 1, Literal 0]) (StringLiteral "goodbye"))
+      let term = Seq (Let "x" (TupleTerm [Literal 10, TupleTerm [StringLiteral "hello"], BoolLit True])) (SetTuple "x" (TupleTerm [Literal 1, Literal 0]) (StringLiteral "goodbye"))
       let finalMachine = initialMachine {getMem = scopeFromList [("x", Tuple [IntVal 10, Tuple [StringVal "goodbye"], BoolVal True])]}
       reduceFully term initialMachine `shouldBe` (Right (StringVal "goodbye"), finalMachine)
 
