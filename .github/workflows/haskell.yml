@@ -16,11 +16,6 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
-    - uses: haskell-actions/setup@v2
-      with:
-        ghc-version: '9.6.7'
-        stack-version: '2.15.1'
-
     - name: Cache Stack dependencies
       uses: actions/cache@v4
       with:
@@ -32,9 +27,11 @@ jobs:
         key: ${{ runner.os }}-stack-${{ hashFiles('stack.yaml', 'package.yaml', 'stack.yaml.lock') }}
         restore-keys: |
           ${{ runner.os }}-stack-
-
+    - uses: haskell-actions/setup@v2
+      with:
+        ghc-version: '9.6.7'
+        stack-version: '2.15.1'
     - name: Build
       run: stack build
-
     - name: Run tests
       run: stack test
