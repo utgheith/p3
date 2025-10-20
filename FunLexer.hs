@@ -1,8 +1,8 @@
 module FunLexer (lexer, Token (Num, Ident, Keyword, Symbol, StringLiteralLexed, Error)) where
 
 import Data.Char (isAlpha, isAlphaNum, isNumber, isSpace)
-import Data.List (unfoldr, stripPrefix, sortOn)
-import Data.Ord (Down(Down))
+import Data.List (sortOn, stripPrefix, unfoldr)
+import Data.Ord (Down (Down))
 import qualified Data.Set as S
 
 data Token
@@ -15,12 +15,29 @@ data Token
   deriving (Show, Eq)
 
 symbols :: [String] -- sorted in decreasing order of length to allow prefix detection
-symbols = sortOn (Data.Ord.Down . length) [
-    "-", "*", "+", "/", -- arithmetic operators
-    ">=", "<=", "<", ">", "==", -- comparison operators
-    "!", "||", "&&", -- boolean operators
-    "(", ")", "{", "}", "[", "]", -- delimiters
-    "=", "," -- miscellaneous
+symbols =
+  sortOn
+    (Data.Ord.Down . length)
+    [ "-",
+      "*",
+      "+",
+      "/", -- arithmetic operators
+      ">=",
+      "<=",
+      "<",
+      ">",
+      "==", -- comparison operators
+      "!",
+      "||",
+      "&&", -- boolean operators
+      "(",
+      ")",
+      "{",
+      "}",
+      "[",
+      "]", -- delimiters
+      "=",
+      "," -- miscellaneous
     ]
 
 keywords :: S.Set String
@@ -40,10 +57,10 @@ keywords =
 
 -- a lexer combinator, i suppose
 matches :: [Char] -> [String] -> Maybe (String, [Char])
-matches s (p : ps)  =
-    case stripPrefix p s of
-        Just rest -> Just (p, rest)
-        Nothing -> matches s ps
+matches s (p : ps) =
+  case stripPrefix p s of
+    Just rest -> Just (p, rest)
+    Nothing -> matches s ps
 matches _ [] = Nothing
 
 lexer :: [Char] -> [Token]
@@ -53,11 +70,13 @@ lexer = unfoldr step
     -- skip spaces and new lines
     step (c : rest) | isSpace c = step rest
     -- numbers
-    step s@(c : _) | isNumber c =
+    step s@(c : _)
+      | isNumber c =
           let (num, rest) = span isNumber s
            in Just (Num $ read num, rest)
     -- identifiers
-    step s@(c : _) | isAlpha c = -- 
+    step s@(c : _)
+      | isAlpha c =
           let (var, rest) = span isAlphaNum s
            in Just (if S.member var keywords then Keyword var else Ident var, rest)
     -- string literals
@@ -74,5 +93,5 @@ lexer = unfoldr step
             _ -> Just (Error "Unclosed comment", "")
     -- special tokens
     step s = case matches s symbols of
-        Just (p, rest) -> Just (Symbol p, rest)
-        Nothing -> Just (Error ("Unexpected character: " ++ take 20 s), "") -- syntax error
+      Just (p, rest) -> Just (Symbol p, rest)
+      Nothing -> Just (Error ("Unexpected character: " ++ take 20 s), "") -- syntax error
