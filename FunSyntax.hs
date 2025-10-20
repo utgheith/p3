@@ -218,7 +218,12 @@ tryCatch = do
   errorType <- ident
   catchBranch <- term
   case errorType of
+    ("Any") -> return $ Try tryBranch (Any) catchBranch
     ("Arithmetic") -> return $ Try tryBranch (Specific Arithmetic) catchBranch
+    ("Type") -> return $ Try tryBranch (Specific Type) catchBranch
+    ("Input") -> return $ Try tryBranch (Specific Input) catchBranch
+    ("VariableNotFound") -> return $ Try tryBranch (Specific VariableNotFound) catchBranch
+    ("Arguments") -> return $ Try tryBranch (Specific Arguments) catchBranch
     _ -> error "Invalid Error Type Provided"
 
 funCall :: Parser Token Term
