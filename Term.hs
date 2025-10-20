@@ -22,8 +22,11 @@ data Term
   | BoolLit Bool
   | Nil
   | TupleTerm [Term]
-  | AccessTuple Term Term
-  | SetTuple String Term Term
+  | NewDictionary
+  | AccessBracket Term Term
+  | SetBracket String Term Term
   | Fun [String] Term
   | ApplyFun Term [Term]
+  | BreakSignal
+  | ContinueSignal
   deriving (Eq, Show)
