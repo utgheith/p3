@@ -14,7 +14,7 @@ import Data.Maybe (fromMaybe)
 import qualified Data.Set as S
 import FunLexer (Token (Ident, Keyword, Num, StringLiteralLexed, Symbol), lexer)
 import ParserCombinators (Parser, Result, oneof, opt, rpt, rptDropSep, satisfy, token)
-import Term (BinaryOp (..), Term (..), UnaryOp (..))
+import Term (BinaryOp (..), ErrorKindOrAny(..), ErrorKind(..), Term (..), UnaryOp (..))
 
 -- data Term
 --   = Assign String Term
@@ -210,6 +210,17 @@ tupleAccess = do
   _ <- symbol "]"
   return $ AccessBracket tupleName index
 
+tryCatch :: Parser Token Term
+tryCatch = do
+  _ <- keyword "try"
+  tryBranch <- term
+  _ <- keyword "catch"
+  errorType <- ident
+  catchBranch <- term
+  case errorType of
+    ("Arithmetic") -> return $ Try tryBranch (Specific Arithmetic) catchBranch
+    _ -> error "Invalid Error Type Provided"
+
 funCall :: Parser Token Term
 funCall = do
   name <- ident
@@ -225,7 +236,7 @@ printStmt = do
   return $ Write expr
 
 unaryExp :: Parser Token Term
-unaryExp = oneof [assign, ifExpr, block, funDef, minus, num, string, bool, tuple, tupleSet, tupleAccess, parens, varDef, funCall, varRef, whileTerm, printStmt]
+unaryExp = oneof [assign, ifExpr, block, funDef, minus, num, string, bool, tuple, tupleSet, tupleAccess, tryCatch, parens, varDef, funCall, varRef, whileTerm, printStmt]
 
 ----------- prog ----------
 
