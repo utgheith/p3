@@ -142,6 +142,13 @@ tuple = do
   _ <- symbol "]"
   return $ TupleTerm elems
 
+dictionary :: Parser Token Term
+dictionary = do
+  _ <- symbol "#"
+  _ <- symbol "["
+  _ <- symbol "]"
+  return $ NewDictionary
+
 parens :: Parser Token Term
 parens = [t | _ <- symbol "(", t <- term, _ <- symbol ")"]
 
@@ -192,8 +199,8 @@ whileTerm = do
   body <- term
   return $ While cond body
 
-tupleSet :: Parser Token Term
-tupleSet = do
+bracketSet :: Parser Token Term
+bracketSet = do
   name <- ident
   _ <- symbol "["
   index <- term
@@ -202,8 +209,8 @@ tupleSet = do
   value <- term
   return $ SetBracket name index value
 
-tupleAccess :: Parser Token Term
-tupleAccess = do
+bracketAccess :: Parser Token Term
+bracketAccess = do
   tupleName <- varRef
   _ <- symbol "["
   index <- term
@@ -241,7 +248,7 @@ printStmt = do
   return $ Write expr
 
 unaryExp :: Parser Token Term
-unaryExp = oneof [assign, ifExpr, block, funDef, minus, num, string, bool, tuple, tupleSet, tupleAccess, tryCatch, parens, varDef, funCall, varRef, whileTerm, printStmt]
+unaryExp = oneof [assign, ifExpr, block, funDef, minus, num, string, bool, tuple, dictionary, bracketSet, bracketAccess, tryCatch, parens, varDef, funCall, varRef, whileTerm, printStmt]
 
 ----------- prog ----------
 
