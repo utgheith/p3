@@ -35,7 +35,7 @@ jobs:
       run: stack build --coverage
 
     - name: Run tests
-      run: stack test --coverage --hpc-json
+      run: stack test --coverage
 
     - name: Generate Code Coverage Report
       uses: 8c6794b6/hpc-codecov-action@v4
