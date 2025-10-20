@@ -4,34 +4,36 @@
 
 {-# HLINT ignore "Use <$>" #-}
 
-module FunSyntax (parse, prog, term, Term (Assign, BinaryOp, Block, Call, Const, ConstString, FunDef, IfThenElse, Negate, VarDef, VarRef, While)) where
+module FunSyntax (parse, prog, term, Term (Let, BinaryOps, Seq, Skip, UnaryOps, Var, While, Write, BoolLit, Literal, StringLiteral, Fun, ApplyFun)) where
 
 import qualified Control.Monad as M
 import Control.Monad.State.Lazy (runStateT)
+import Data.Maybe (fromMaybe)
 -- import Debug.Trace (trace)
 
 import qualified Data.Set as S
-import FunLexer (Token (Ident, Keyword, Num, StringLiteral, Symbol), lexer)
+import FunLexer (Token (Ident, Keyword, Num, StringLiteralLexed, Symbol), lexer)
 import ParserCombinators (Parser, Result, oneof, opt, rpt, rptDropSep, satisfy, token)
+import Term (Term (..), BinaryOp (..), UnaryOp (..))
 
-data Term
-  = Assign String Term
-  | BinaryOp String Term Term
-  | Block [Term]
-  | Call Term [Term]
-  | Const Integer
-  | ConstString String
-  | FunDef String [String] Term
-  | IfThenElse Term Term (Maybe Term)
-  | Negate Term
-  | VarDef String (Maybe Term)
-  | VarRef String
-  | While Term Term
-  deriving
-    ( -- | more term constructors
-      Show,
-      Eq
-    )
+-- data Term
+--   = Assign String Term
+--   | BinaryOp String Term Term
+--   | Block [Term]
+--   | Call Term [Term]
+--   | Const Integer
+--   | ConstString String
+--   | FunDef String [String] Term
+--   | IfThenElse Term Term (Maybe Term)
+--   | Negate Term
+--   | VarDef String (Maybe Term)
+--   | VarRef String
+--   | While Term Term
+--   deriving
+--     ( -- | more term constructors
+--       Show,
+--       Eq
+--     )
 
 -- succeed if the next token is the given symbol
 symbol :: String -> Parser Token ()
@@ -68,7 +70,7 @@ term = binaryExp precedence
 
 -- precedence levels, from lowest to highest
 precedence :: [S.Set String]
-precedence = [S.fromList ["+"], S.fromList ["*", "/"]]
+precedence = [S.fromList ["||"], S.fromList ["&&"], S.fromList ["==", "!="], S.fromList ["<", ">", "<=", ">="], S.fromList ["+", "-"], S.fromList ["*", "/", "%"]]
 
 binaryExp :: [S.Set String] -> Parser Token Term
 binaryExp [] = unaryExp
@@ -84,48 +86,80 @@ binaryExp (ops : rest) = do
     return (op, rhs)
 
   -- combine results left to right
-  return $ foldl (\acc (op, rhs) -> BinaryOp op acc rhs) lhs rhss
+  return $ foldl (\acc (op, rhs) -> BinaryOps (stringToBinaryOp op) acc rhs) lhs rhss
+
+stringToBinaryOp :: String -> BinaryOp
+stringToBinaryOp "+" = Add
+stringToBinaryOp "-" = Sub
+stringToBinaryOp "*" = Mul
+stringToBinaryOp "/" = Div
+stringToBinaryOp "%" = Mod
+stringToBinaryOp "<" = Lt
+stringToBinaryOp ">" = Gt
+stringToBinaryOp "<=" = Lte
+stringToBinaryOp ">=" = Gte
+stringToBinaryOp "==" = Eq
+stringToBinaryOp "!=" = Neq
+stringToBinaryOp "&&" = And
+stringToBinaryOp "||" = Or
+stringToBinaryOp _ = error "Unknown binary operator"
 
 ------------------- unary operators  -------------------
 
 assign :: Parser Token Term
-assign = [Assign name expr | name <- ident, _ <- symbol "=", expr <- term]
+assign = [Let name expr | name <- ident, _ <- symbol "=", expr <- term]
 
 -- We can use monad comprehensions (GHC extension) to make parsers more concise
 minus :: Parser Token Term
-minus = [Negate e | _ <- symbol "-", e <- unaryExp]
+minus = [UnaryOps Neg e | _ <- symbol "-", e <- unaryExp]
 
 num :: Parser Token Term
 num = do
   n <- satisfy $ \case
     Num n -> Just n
     _ -> Nothing
-  return $ Const n
+  return $ Literal n
 
 string :: Parser Token Term
 string = do
   s <- satisfy $ \case
-    StringLiteral s -> Just s
+    StringLiteralLexed s -> Just s
     _ -> Nothing
-  return $ ConstString s
+  return $ StringLiteral s
+
+bool :: Parser Token Term
+bool = do
+  b <- satisfy $ \case
+    Keyword "true" -> Just True
+    Keyword "false" -> Just False
+    _ -> Nothing
+  return $ BoolLit b
 
 parens :: Parser Token Term
 parens = [t | _ <- symbol "(", t <- term, _ <- symbol ")"]
 
 funDef :: Parser Token Term
-funDef =
-  [ FunDef name params body | _ <- keyword "fun", name <- ident, _ <- symbol "(", params <- rptDropSep ident (symbol ","), _ <- symbol ")", body <- term
-  ]
+funDef = do
+  _ <- keyword "fun"
+  name <- ident
+  _ <- symbol "("
+  params <- rptDropSep ident (symbol ",")
+  _ <- symbol ")"
+  body <- term
+  return $ Let name (Fun params body)
 
 varRef :: Parser Token Term
-varRef = VarRef <$> ident
+varRef = Var <$> ident
 
 block :: Parser Token Term
 block = do
   _ <- token $ Symbol "{"
   ts <- rpt term
   _ <- token $ Symbol "}"
-  return $ Block ts
+  return $ case ts of
+    [] -> Skip
+    [t] -> t
+    _ -> foldl1 Seq ts
 
 ifExpr :: Parser Token Term
 ifExpr = do
@@ -133,14 +167,16 @@ ifExpr = do
   cond <- term
   thenTerm <- term
   elseTerm <- opt $ keyword "else" >> term
-  return $ IfThenElse cond thenTerm elseTerm
+  return $ If cond thenTerm (fromMaybe Skip elseTerm)
 
 varDef :: Parser Token Term
 varDef = do
   _ <- keyword "var"
   name <- ident
   expr <- opt $ symbol "=" >> term
-  return $ VarDef name expr
+  return $ case expr of
+    Nothing -> Let name (Literal 0)
+    Just e -> Let name e
 
 whileTerm :: Parser Token Term
 whileTerm = do
@@ -149,13 +185,33 @@ whileTerm = do
   body <- term
   return $ While cond body
 
+funCall :: Parser Token Term
+funCall = do
+  name <- ident
+  _ <- symbol "("
+  args <- rptDropSep term (symbol ",")
+  _ <- symbol ")"
+  return $ ApplyFun (Var name) args
+
+printStmt :: Parser Token Term
+printStmt = do
+  _ <- keyword "print"
+  expr <- term
+  return $ Write expr
+
 unaryExp :: Parser Token Term
-unaryExp = oneof [assign, ifExpr, block, funDef, minus, num, string, parens, varDef, varRef, whileTerm]
+unaryExp = oneof [assign, ifExpr, block, funDef, minus, num, string, bool, parens, varDef, funCall, varRef, whileTerm, printStmt]
 
 ----------- prog ----------
 
 prog :: Parser Token Term
-prog = Block <$> rpt term
+prog = do
+  ts <- rpt term
+  return $ case ts of
+    [] -> Skip
+    [t] -> t
+    _ -> foldl1 Seq ts
+-- since we don't have a block constructor, this was a temporary fix
 
 ----------- parse ----------
 

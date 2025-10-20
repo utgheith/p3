@@ -1,4 +1,4 @@
-module FunLexer (lexer, Token (Num, Ident, Keyword, Symbol, StringLiteral, Error)) where
+module FunLexer (lexer, Token (Num, Ident, Keyword, Symbol, StringLiteralLexed, Error)) where
 
 import Data.Char (isAlpha, isAlphaNum, isNumber, isSpace)
 import Data.List (unfoldr)
@@ -9,7 +9,7 @@ data Token
   | Ident String
   | Keyword String
   | Symbol String
-  | StringLiteral String
+  | StringLiteralLexed String
   | Error String
   deriving (Show, Eq)
 
@@ -26,7 +26,9 @@ keywords =
       "while",
       "print",
       "try",
-      "catch"
+      "catch",
+      "true",
+      "false" -- force boolean literals to be tokens in the parser
     ]
 
 lexer :: [Char] -> [Token]
@@ -49,7 +51,7 @@ lexer = unfoldr step
     step ('"' : rest) =
       let (str, rest2) = span (/= '"') rest
        in case rest2 of
-            ('"' : rest3) -> Just (StringLiteral str, rest3)
+            ('"' : rest3) -> Just (StringLiteralLexed str, rest3)
             _ -> Just (Error "Unclosed string literal", "")
     -- multi-character symbols
     step ('<' : '=' : rest) = Just (Symbol "<=", rest)
