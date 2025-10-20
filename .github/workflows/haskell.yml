@@ -26,7 +26,7 @@ jobs:
       with:
         path: |
           ~/.ghcup
-          ~/.cacble/store
+          ~/.cabal/store
           ~/.stack
           .stack-work
         key: ${{ runner.os }}-stack-${{ hashFiles('stack.yaml', 'package.yaml', 'stack.yaml.lock') }}
