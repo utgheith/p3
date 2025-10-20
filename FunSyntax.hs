@@ -14,26 +14,27 @@ import Data.Maybe (fromMaybe)
 import qualified Data.Set as S
 import FunLexer (Token (Ident, Keyword, Num, StringLiteralLexed, Symbol), lexer)
 import ParserCombinators (Parser, Result, oneof, opt, rpt, rptDropSep, satisfy, token)
-import Term (BinaryOp (..), Term (..), UnaryOp (..))
 
--- data Term
---   = Assign String Term
---   | BinaryOp String Term Term
---   | Block [Term]
---   | Call Term [Term]
---   | Const Integer
---   | ConstString String
---   | FunDef String [String] Term
---   | IfThenElse Term Term (Maybe Term)
---   | Negate Term
---   | VarDef String (Maybe Term)
---   | VarRef String
---   | While Term Term
---   deriving
---     ( -- | more term constructors
---       Show,
---       Eq
---     )
+data Term
+  = Assign String Term
+  | BinaryOp String Term Term
+  | Block [Term]
+  | Call Term [Term]
+  | Const Integer
+  | ConstString String
+  | FunDef String [String] Term
+  | IfThenElse Term Term (Maybe Term)
+  | Negate Term
+  | VarDef String (Maybe Term)
+  | VarRef String
+  | While Term Term
+  | Break
+  | Continue
+  deriving
+    ( -- | more term constructors
+      Show,
+      Eq
+    )
 
 -- succeed if the next token is the given symbol
 symbol :: String -> Parser Token ()
@@ -192,6 +193,16 @@ whileTerm = do
   body <- term
   return $ While cond body
 
+breakTerm :: Parser Token Term
+breakTerm = do
+  _ <- keyword "break"
+  return Break
+
+continueTerm :: Parser Token Term
+continueTerm = do
+  _ <- keyword "continue"
+  return Continue
+
 tupleSet :: Parser Token Term
 tupleSet = do
   name <- ident
@@ -225,7 +236,7 @@ printStmt = do
   return $ Write expr
 
 unaryExp :: Parser Token Term
-unaryExp = oneof [assign, ifExpr, block, funDef, minus, num, string, bool, tuple, tupleSet, tupleAccess, parens, varDef, funCall, varRef, whileTerm, printStmt]
+unaryExp = oneof [assign, ifExpr, block, funDef, minus, num, string, bool, tuple, tupleSet, tupleAccess, parens, varDef, funCall, varRef, whileTerm, printStmt, breakTerm, continueTerm]
 
 ----------- prog ----------
 
