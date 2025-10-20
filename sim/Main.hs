@@ -9,7 +9,7 @@ import qualified Control.Monad.State as S
 import qualified Data.Map as M
 import qualified Progs
 import Scope (Scope (..), emptyScope, getAllBindings, insertScope, lookupScope)
-import Small (Env, Machine (..), Result (..), Error, reduceFully)
+import Small (Env, Error, Machine (..), Result (..), reduceFully)
 import Term (ErrorKind (..), Term (..))
 import Value (Value (..))
 
@@ -192,7 +192,7 @@ instance Machine Simulator where
                     Left _ -> returnVal
                     _ -> error "Unable to rebuild tuple"
         _ -> Left (Type, "Provided non integer to index by")
-      updateBracket (Dictionary d) (Tuple (y : ys)) val =  case y of
+      updateBracket (Dictionary d) (Tuple (y : ys)) val = case y of
         IntVal index -> case M.lookup index d of
           Just r ->
             let returnVal = updateBracket r (Tuple ys) val

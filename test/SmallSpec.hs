@@ -148,7 +148,7 @@ instance Machine MockMachine where
               let returnVal = updateBracket x (Tuple ys) val
                in case returnVal of
                     Right a -> Right $ Tuple (a : xs)
-                    _ -> returnVal 
+                    _ -> returnVal
             else
               let returnVal = updateBracket (Tuple xs) (Tuple (IntVal (index - 1) : ys)) val
                in case returnVal of
