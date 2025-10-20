@@ -283,12 +283,11 @@ reduce_ (ForEach varName iterable body) = do
     (\iter' -> ForEach varName iter' body)
     ( \case
         Tuple [] -> return $ Continue Skip
-        Tuple (x : xs) ->
-          return $
-            Continue $
-              Seq
-                (Let varName (valueToTerm x))
-                (Seq body (ForEach varName (TupleTerm (map valueToTerm xs)) body))
+        Tuple (x : xs) -> do
+          let restIterable = TupleTerm (map valueToTerm xs)
+              currentIteration = Let varName (valueToTerm x)
+              nextIterations = ForEach varName restIterable body
+          return $ Continue $ Seq currentIteration (Seq body nextIterations)
         _ -> return $ Sad (Type, "for-each requires a tuple/list")
     )
 
@@ -330,7 +329,7 @@ valueToTerm (IntVal n) = Literal n
 valueToTerm (BoolVal b) = BoolLit b
 valueToTerm (StringVal s) = StringLiteral s
 valueToTerm (Tuple vs) = TupleTerm (map valueToTerm vs)
-valueToTerm _ = error "valueToTerm: unsupported value type"
+valueToTerm v = error $ "valueToTerm: unsupported value type: " ++ show v
 
 reduceArgsAndApply :: (Machine m, Show m, V m ~ Value) => Term -> [Term] -> Value -> Env m
 reduceArgsAndApply tf args funVal =
