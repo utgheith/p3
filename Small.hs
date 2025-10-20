@@ -66,9 +66,9 @@ class Machine m where
 ----- The Result type -----
 
 data Result a
-  = Happy a -- produced an answer
-  | Continue Term -- need to keep going
-  | Sad String -- error
+  = Happy a         -- produced an answer
+  | Continue Term   -- need to keep going
+  | Sad String      -- error
   deriving (Eq, Show)
 
 ----- The Env monad -----
@@ -81,6 +81,8 @@ premise :: Env m -> (Term -> Term) -> (V m -> Env m) -> Env m
 premise e l r = do
   v <- e
   case v of
+    Continue BreakSignal -> return $ Continue BreakSignal
+    Continue ContinueSignal -> return $ Continue ContinueSignal
     Continue t' -> return $ Continue (l t')
     Happy n -> r n
     Sad _ -> return v
@@ -100,17 +102,56 @@ reduce_ (Let x t) = do
     (Let x)
     (setVar x)
 reduce_ (Seq t1 t2) = do
-  premise
-    (reduce t1)
-    (`Seq` t2)
-    (\_ -> return $ Continue t2)
+  res1 <- reduce t1   -- run t1 normally
+  case res1 of
+    Continue BreakSignal    -> return $ Continue BreakSignal
+    Continue ContinueSignal -> return $ Continue ContinueSignal
+    Continue t'             -> return $ Continue (Seq t' t2)
+    Happy _                 -> reduce t2          -- normal: continue with t2
+    Sad msg                 -> return $ Sad msg
 reduce_ (If cond tThen tElse) = do
   premise
     (reduce cond)
     (\cond' -> If cond' tThen tElse)
     (\v -> selectValue v (return $ Continue tThen) (return $ Continue tElse))
-reduce_ w@(While cond body) =
-  return $ Continue (If cond (Seq body w) Skip)
+reduce_ (While cond body) = do
+  trace ("[While] evaluating condition: " ++ show cond) () `seq` return ()
+  premise
+    (reduce cond)
+    (\cond' -> While cond' body)
+    ( \v -> do
+        trace ("[While] condition evaluated to: " ++ show v) () `seq` return ()
+        selectValue
+          v
+          (do
+             trace "[While] condition true; entering body" () `seq` return ()
+             res <- reduce body
+             trace ("[While] body result: " ++ show res) () `seq` return ()
+             case res of
+               Continue BreakSignal -> do
+                 trace "[While] break encountered" () `seq` return ()
+                --  return $ Continue Skip
+                 return $ Happy (IntVal 0)
+               Continue ContinueSignal -> do
+                 trace "[While] continue encountered" () `seq` return ()
+                 return $ Continue (While cond body)
+               Continue t -> do
+                 trace ("[While] partial reduction: " ++ show t) () `seq` return ()
+                 return $ Continue (Seq t (While cond body))
+               Happy _ -> do
+                 trace "[While] body completed normally; repeating" () `seq` return ()
+                 return $ Continue (While cond body)
+               Sad msg -> do
+                 trace ("[While] error: " ++ msg) () `seq` return ()
+                 return $ Sad msg
+          )
+          (do
+             trace "[While] condition false; exiting loop" () `seq` return ()
+             return $ Continue Skip
+          )
+    )
+
+
 reduce_ (Read x) =
   premise
     inputVal
@@ -157,6 +198,10 @@ reduce_ (UnaryOps op t) =
   where
     applyUnaryOp Neg = negVal
     applyUnaryOp Not = notVal
+reduce_ (BreakSignal) = 
+  return $ Continue BreakSignal
+reduce_ (ContinueSignal) = 
+  return $ Continue ContinueSignal
 reduce_ (Fun xs t) = do
   env <- S.get
   let vars = getScope env
@@ -276,5 +321,9 @@ reduceFully :: (Machine m, Show m, V m ~ Value) => Term -> m -> (Either String (
 reduceFully term machine =
   case S.runState (reduce term) machine of
     (Sad msg, m) -> (Left msg, m)
-    (Continue t, m) -> reduceFully t m
+    (Continue t, m) -> do
+      case t of
+        BreakSignal -> (Left "unhandled break signal", m)
+        ContinueSignal -> (Left "unhandled continue signal", m)
+        _ -> reduceFully t m
     (Happy n, m) -> (Right n, m)
