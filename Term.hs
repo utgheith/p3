@@ -21,10 +21,13 @@ data Term
   | Write Term
   | BoolLit Bool
   | TupleTerm [Term]
-  | AccessTuple Term Term
-  | SetTuple String Term Term
+  | NewDictionary
+  | AccessBracket Term Term
+  | SetBracket String Term Term
   | Fun [String] Term
   | ApplyFun Term [Term]
-  | Final String           -- final x
-  | Global String          -- global x
+  | Final String
+  | Global String
+  | BreakSignal
+  | ContinueSignal
   deriving (Eq, Show)

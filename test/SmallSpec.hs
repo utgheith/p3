@@ -125,41 +125,65 @@ instance Machine MockMachine where
   notVal (BoolVal v) = return $ Happy (BoolVal (not v))
   notVal _ = return $ Sad "Type error in !"
 
-  getTupleValue (Tuple (x : xs)) (IntVal pos) = if pos == 0 then return (Happy x) else getTupleValue (Tuple xs) (IntVal (pos - 1))
-  getTupleValue _ _ = return $ Sad "Tuple Lookup Bad Input"
+  getBracketValue (Tuple (x : xs)) (IntVal pos) = if pos == 0 then return (Happy x) else getBracketValue (Tuple xs) (IntVal (pos - 1))
+  getBracketValue (Dictionary d) (IntVal val) = case M.lookup val d of
+    Just v -> return $ Happy v
+    Nothing -> return $ Sad "Unable to find element in dictionary"
+  getBracketValue (Dictionary _) _ = return $ Sad "Unable to index into dictionary with type"
+  getBracketValue _ _ = return $ Sad "Tuple Lookup Bad Input"
 
-  setTupleValue n t v = do
+  setBracketValue n t v = do
     m <- S.get
     case lookupScope n (getMem m) of
       Just oldVal -> case oldVal of
         Tuple _ ->
-          let newVal = updateTuple oldVal t v
+          let newVal = updateBracket oldVal t v
            in case newVal of
                 Just newVal' -> do
                   S.put (m {getMem = insertScope n newVal' (getMem m)})
                   return $ Happy v
                 Nothing -> return $ Sad "Something went wrong while trying to update Tuple value"
+        Dictionary _ ->
+          let newVal = updateBracket oldVal t v
+           in case newVal of
+                Just newVal' -> do
+                  S.put (m {getMem = insertScope n newVal' (getMem m)})
+                  return $ Happy v
+                Nothing -> return $ Sad "Something went wrong while trying to update Dictionary value"
         _ -> return $ Sad "Attempting to Index but didn't find Tuple"
       Nothing -> return $ Sad "Attempting to Set Tuple That Doesn't Exist"
     where
-      updateTuple :: Value -> Value -> Value -> Maybe Value
-      updateTuple (Tuple (x : xs)) (Tuple (y : ys)) val = case y of
+      updateBracket :: Value -> Value -> Value -> Maybe Value
+      updateBracket (Tuple (x : xs)) (Tuple (y : ys)) val = case y of
         IntVal index ->
           if index == 0
             then
-              let returnVal = updateTuple x (Tuple ys) val
+              let returnVal = updateBracket x (Tuple ys) val
                in case returnVal of
                     Just a -> Just $ Tuple (a : xs)
                     Nothing -> Nothing
             else
-              let returnVal = updateTuple (Tuple xs) (Tuple (IntVal (index - 1) : ys)) val
+              let returnVal = updateBracket (Tuple xs) (Tuple (IntVal (index - 1) : ys)) val
                in case returnVal of
                     Just (Tuple a) -> Just $ Tuple (x : a)
                     Nothing -> Nothing
                     _ -> error "Unable to rebuild tuple"
         _ -> Nothing
-      updateTuple _ (Tuple []) val = Just val
-      updateTuple _ _ _ = Nothing
+      updateBracket (Dictionary d) (Tuple (y : ys)) val = case y of
+        IntVal index -> case M.lookup index d of
+          Just r ->
+            let returnVal = updateBracket r (Tuple ys) val
+             in case returnVal of
+                  Just w -> Just (Dictionary (M.insert index w d))
+                  Nothing -> Nothing
+          Nothing ->
+            let returnVal = updateBracket (IntVal 0) (Tuple ys) val
+             in case returnVal of
+                  Just w -> Just (Dictionary (M.insert index w d))
+                  Nothing -> Nothing
+        _ -> Nothing
+      updateBracket _ (Tuple []) val = Just val
+      updateBracket _ _ _ = Nothing
 
   selectValue (BoolVal True) c _ = c
   selectValue (BoolVal False) _ t = t
@@ -167,6 +191,7 @@ instance Machine MockMachine where
   selectValue (StringVal s) c t = if not (null s) then c else t
   selectValue (Tuple l) c t = if not (null l) then c else t
   selectValue (ClosureVal {}) _ _ = return $ Sad "Type error in select"
+  selectValue (Dictionary _) _ _ = return $ Sad "Type error in select"
 
 spec :: Spec
 spec = do
@@ -258,17 +283,17 @@ spec = do
       result `shouldBe` Right (Tuple [IntVal 10, StringVal "hello", BoolVal True])
 
     it "access a Tuple" $ do
-      let term = AccessTuple (TupleTerm [(Literal 10), (StringLiteral "hello"), (BoolLit True)]) (Literal 1)
+      let term = AccessBracket (TupleTerm [(Literal 10), (StringLiteral "hello"), (BoolLit True)]) (Literal 1)
       let (result, _) = reduceFully term initialMachine
       result `shouldBe` Right (StringVal "hello")
 
     it "reduces a let tuple expression" $ do
-      let term = Seq (Let "x" (TupleTerm [(Literal 10), (StringLiteral "hello"), (BoolLit True)])) (SetTuple "x" (TupleTerm [Literal 2]) (BoolLit False))
+      let term = Seq (Let "x" (TupleTerm [(Literal 10), (StringLiteral "hello"), (BoolLit True)])) (SetBracket "x" (TupleTerm [Literal 2]) (BoolLit False))
       let finalMachine = initialMachine {getMem = scopeFromList [("x", Tuple [IntVal 10, StringVal "hello", BoolVal False])]}
       reduceFully term initialMachine `shouldBe` (Right (BoolVal False), finalMachine)
 
     it "reduces a let nested tuple expression" $ do
-      let term = Seq (Let "x" (TupleTerm [(Literal 10), TupleTerm [StringLiteral "hello"], (BoolLit True)])) (SetTuple "x" (TupleTerm [Literal 1, Literal 0]) (StringLiteral "goodbye"))
+      let term = Seq (Let "x" (TupleTerm [(Literal 10), TupleTerm [StringLiteral "hello"], (BoolLit True)])) (SetBracket "x" (TupleTerm [Literal 1, Literal 0]) (StringLiteral "goodbye"))
       let finalMachine = initialMachine {getMem = scopeFromList [("x", Tuple [IntVal 10, Tuple [StringVal "goodbye"], BoolVal True])]}
       reduceFully term initialMachine `shouldBe` (Right (StringVal "goodbye"), finalMachine)
 
@@ -315,6 +340,178 @@ spec = do
               )
       let finalMachine = initialMachine {getMem = scopeFromList [("x", IntVal 10)]}
       reduceFully term initialMachine `shouldBe` (Right (IntVal 10), finalMachine)
+
+    it "reduces a while loop with a break statement" $ do
+      let term =
+            Seq
+              (Let "x" (Literal 5))
+              ( Seq
+                  ( While
+                      (Var "x")
+                      ( Seq
+                          (If (BinaryOps Eq (Var "x") (Literal 3)) BreakSignal Skip)
+                          (Let "x" (BinaryOps Sub (Var "x") (Literal 1)))
+                      )
+                  )
+                  (Var "x")
+              )
+      let finalMachine = initialMachine {getMem = scopeFromList [("x", IntVal 3)]}
+      reduceFully term initialMachine `shouldBe` (Right (IntVal 3), finalMachine)
+
+    it "reduces a while loop with a complex break statement" $ do
+      let term =
+            Seq
+              (Let "x" (Literal 5))
+              ( Seq
+                  (Let "y" (Literal 0))
+                  ( Seq
+                      ( While
+                          (Var "x")
+                          ( Seq
+                              (Let "x" (BinaryOps Sub (Var "x") (Literal 1)))
+                              ( Seq
+                                  (If (BinaryOps Eq (Var "x") (Literal 3)) BreakSignal Skip)
+                                  (Let "y" (BinaryOps Add (Var "y") (Var "x")))
+                              )
+                          )
+                      )
+                      (Var "y")
+                  )
+              )
+
+      let finalMachine = initialMachine {getMem = scopeFromList [("x", IntVal 3), ("y", IntVal 4)]}
+      reduceFully term initialMachine `shouldBe` (Right (IntVal 4), finalMachine)
+
+    it "reduces a while loop with a continue statement" $ do
+      let term =
+            Seq
+              (Let "x" (Literal 5))
+              ( Seq
+                  (Let "y" (Literal 0))
+                  ( Seq
+                      ( While
+                          (Var "x")
+                          ( Seq
+                              (Let "x" (BinaryOps Sub (Var "x") (Literal 1)))
+                              ( Seq
+                                  (If (BinaryOps Eq (Var "x") (Literal 3)) ContinueSignal Skip)
+                                  (Let "y" (BinaryOps Add (Var "y") (Var "x")))
+                              )
+                          )
+                      )
+                      (Var "y")
+                  )
+              )
+
+      let finalMachine = initialMachine {getMem = scopeFromList [("x", IntVal 0), ("y", IntVal 7)]}
+      reduceFully term initialMachine `shouldBe` (Right (IntVal 7), finalMachine)
+
+    it "makes break signals outside of while loops invalid" $ do
+      let term =
+            Seq
+              (Let "x" (Literal 5))
+              ( Seq
+                  BreakSignal
+                  (Let "y" (BinaryOps Add (Var "x") (Literal 2)))
+              )
+
+      let (result, _) = reduceFully term initialMachine
+      result `shouldBe` Left "unhandled break signal"
+
+    it "makes continue signals outside of while loops invalid" $ do
+      let term =
+            Seq
+              (Let "x" (Literal 5))
+              ( Seq
+                  ContinueSignal
+                  (Let "y" (BinaryOps Add (Var "x") (Literal 2)))
+              )
+
+      let (result, _) = reduceFully term initialMachine
+      result `shouldBe` Left "unhandled continue signal"
+
+    it "break inside an if statement exits the while loop" $ do
+      let term =
+            Seq
+              (Let "x" (Literal 5))
+              ( Seq
+                  (Let "y" (Literal 0))
+                  ( While
+                      (Var "x")
+                      ( If
+                          (BinaryOps Eq (Var "x") (Literal 3))
+                          BreakSignal
+                          ( Seq
+                              (Let "y" (BinaryOps Add (Var "y") (Var "x")))
+                              (Let "x" (BinaryOps Sub (Var "x") (Literal 1)))
+                          )
+                      )
+                  )
+              )
+
+      let finalMachine = initialMachine {getMem = scopeFromList [("x", IntVal 3), ("y", IntVal 9)]}
+      reduceFully term initialMachine `shouldBe` (Right (IntVal 0), finalMachine)
+
+    it "inner loop break exits only the inner loop" $ do
+      let term =
+            Seq
+              (Let "x" (Literal 3))
+              ( Seq
+                  (Let "y" (Literal 0))
+                  ( While
+                      (Var "x")
+                      ( Seq
+                          (Let "z" (Literal 2))
+                          ( Seq
+                              ( While
+                                  (Var "z")
+                                  ( If
+                                      (BinaryOps Eq (Var "z") (Literal 1))
+                                      BreakSignal
+                                      ( Seq
+                                          (Let "y" (BinaryOps Add (Var "y") (Var "z")))
+                                          (Let "z" (BinaryOps Sub (Var "z") (Literal 1)))
+                                      )
+                                  )
+                              )
+                              (Let "x" (BinaryOps Sub (Var "x") (Literal 1)))
+                          )
+                      )
+                  )
+              )
+
+      let finalMachine = initialMachine {getMem = scopeFromList [("x", IntVal 0), ("y", IntVal 6), ("z", IntVal 1)]}
+      reduceFully term initialMachine `shouldBe` (Right (IntVal 0), finalMachine)
+
+    it "inner loop continue skips to next iteration" $ do
+      let term =
+            Seq
+              (Let "x" (Literal 3))
+              ( Seq
+                  (Let "y" (Literal 0))
+                  ( While
+                      (Var "x")
+                      ( Seq
+                          (Let "z" (Literal 3))
+                          ( Seq
+                              ( While
+                                  (Var "z")
+                                  ( Seq
+                                      (Let "z" (BinaryOps Sub (Var "z") (Literal 1)))
+                                      ( Seq
+                                          (Let "y" (BinaryOps Add (Var "y") (Var "z")))
+                                          (If (BinaryOps Eq (Var "z") (Literal 2)) ContinueSignal Skip)
+                                      )
+                                  )
+                              )
+                              (Let "x" (BinaryOps Sub (Var "x") (Literal 1)))
+                          )
+                      )
+                  )
+              )
+
+      let finalMachine = initialMachine {getMem = scopeFromList [("x", IntVal 0), ("y", IntVal 9), ("z", IntVal 0)]}
+      reduceFully term initialMachine `shouldBe` (Right (IntVal 0), finalMachine)
 
     it "reduces combination of arithmetic and logical operations" $ do
       let term =
@@ -503,3 +700,16 @@ spec = do
             )
       let finalMachine = initialMachine {getMem = scopeFromList [("x", IntVal 1), ("g", IntVal 99)]}
       reduceFully term initialMachine `shouldBe` (Right (IntVal 99), finalMachine)
+    it "reduces new dictionary" $ do
+      let term = NewDictionary
+      reduceFully term initialMachine `shouldBe` (Right (Dictionary (M.fromList [])), initialMachine)
+
+    it "set dictionary" $ do
+      let term = Seq (Let "x" (NewDictionary)) (SetBracket "x" (TupleTerm [Literal 3]) (StringLiteral "hello"))
+      let finalMachine = initialMachine {getMem = scopeFromList [("x", Dictionary (M.fromList [(3, StringVal "hello")]))]}
+      reduceFully term initialMachine `shouldBe` (Right (StringVal "hello"), finalMachine)
+
+    it "access dictionary" $ do
+      let term = Seq (Let "x" (NewDictionary)) (Seq (SetBracket "x" (TupleTerm [Literal 3]) (StringLiteral "hello")) (AccessBracket (Var "x") (Literal 3)))
+      let finalMachine = initialMachine {getMem = scopeFromList [("x", Dictionary (M.fromList [(3, StringVal "hello")]))]}
+      reduceFully term initialMachine `shouldBe` (Right (StringVal "hello"), finalMachine)
