@@ -194,6 +194,7 @@ spec = do
     it "reduces greater than comparison" $ do
       let term = BinaryOps Gt (Literal 10) (Literal 5)
       reduceFully term initialMachine `shouldBe` (Right (BoolVal True), initialMachine)
+<<<<<<< HEAD
 
     it "reduces less than or equal comparison" $ do
       let term = BinaryOps Lte (Literal 5) (Literal 5)
@@ -215,6 +216,29 @@ spec = do
       let term = BinaryOps Eq (StringLiteral "hello") (StringLiteral "hello")
       reduceFully term initialMachine `shouldBe` (Right (BoolVal True), initialMachine)
 
+=======
+
+    it "reduces less than or equal comparison" $ do
+      let term = BinaryOps Lte (Literal 5) (Literal 5)
+      reduceFully term initialMachine `shouldBe` (Right (BoolVal True), initialMachine)
+
+    it "reduces greater than or equal comparison" $ do
+      let term = BinaryOps Gte (Literal 10) (Literal 5)
+      reduceFully term initialMachine `shouldBe` (Right (BoolVal True), initialMachine)
+
+    it "reduces equality comparison for integers" $ do
+      let term = BinaryOps Eq (Literal 5) (Literal 5)
+      reduceFully term initialMachine `shouldBe` (Right (BoolVal True), initialMachine)
+
+    it "reduces equality comparison for booleans" $ do
+      let term = BinaryOps Eq (BoolLit True) (BoolLit True)
+      reduceFully term initialMachine `shouldBe` (Right (BoolVal True), initialMachine)
+
+    it "reduces equality comparison for strings" $ do
+      let term = BinaryOps Eq (StringLiteral "hello") (StringLiteral "hello")
+      reduceFully term initialMachine `shouldBe` (Right (BoolVal True), initialMachine)
+
+>>>>>>> 8b904d0254447aa10f27ef13d9076454159b5a7b
     it "reduces inequality comparison" $ do
       let term = BinaryOps Neq (Literal 5) (Literal 10)
       reduceFully term initialMachine `shouldBe` (Right (BoolVal True), initialMachine)
@@ -509,4 +533,8 @@ spec = do
                   (BinaryOps Add (Var "x") (Var "y"))
               )
       let finalMachine = initialMachine {getMem = M.fromList [("x", IntVal 10), ("y", IntVal 5)]}
+<<<<<<< HEAD
       reduceFully term initialMachine `shouldBe` (Right (IntVal 15), finalMachine)
+=======
+      reduceFully term initialMachine `shouldBe` (Right (IntVal 15), finalMachine)
+>>>>>>> 8b904d0254447aa10f27ef13d9076454159b5a7b

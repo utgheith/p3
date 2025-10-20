@@ -325,6 +325,6 @@ reduceFully term machine =
   case S.runState (reduce term) machine of
     (Sad msg, m) -> (Left msg, m)
     (StepContinue t, m) -> reduceFully t m
-    (BreakLoop, m) -> (Right (IntVal 0), m)
-    (ContinueLoop, m) -> (Right (IntVal 0), m)
+    (BreakLoop, m) -> (Left "unhandled break signal", m)
+    (ContinueLoop, m) -> (Left "unhandled continue signal", m)
     (Happy n, m) -> (Right n, m)
