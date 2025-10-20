@@ -716,3 +716,18 @@ spec = do
               (BinaryOps Add (Literal 1) (Literal 2))
               (BinaryOps Mul (Literal 3) (Literal 4))
       reduceFully term initialMachine `shouldBe` (Right (IntVal 3), initialMachine)
+
+    it "reduces right-associative ternary operators" $ do
+      -- This represents: false ? 1 : (true ? 2 : 3) which should equal 2
+      let term = TernaryOp (BoolLit False) (Literal 1) (TernaryOp (BoolLit True) (Literal 2) (Literal 3))
+      reduceFully term initialMachine `shouldBe` (Right (IntVal 2), initialMachine)
+
+    it "handles ternary operator precedence correctly" $ do
+      -- This represents: (1 + 2) > 2 ? 10 : 20, which should equal 10
+      let term = TernaryOp (BinaryOps Gt (BinaryOps Add (Literal 1) (Literal 2)) (Literal 2)) (Literal 10) (Literal 20)
+      reduceFully term initialMachine `shouldBe` (Right (IntVal 10), initialMachine)
+
+    it "reduces chained ternary operators (right-associative)" $ do
+      -- This represents: true ? 1 : (false ? 2 : 3) which should equal 1
+      let chainedTernary = TernaryOp (BoolLit True) (Literal 1) (TernaryOp (BoolLit False) (Literal 2) (Literal 3))
+      reduceFully chainedTernary initialMachine `shouldBe` (Right (IntVal 1), initialMachine)

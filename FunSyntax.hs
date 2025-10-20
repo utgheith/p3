@@ -66,6 +66,8 @@ checkSymbol predicate = satisfy $ \case
 term :: Parser Token Term
 term = ternaryExp
 
+-- Ternary operator has lower precedence than binary operators
+-- Right-associative: a ? b : c ? d : e parses as a ? b : (c ? d : e)
 ternaryExp :: Parser Token Term
 ternaryExp = do
   cond <- binaryExp precedence
@@ -77,9 +79,9 @@ ternaryRest cond = oneof [ternaryOp cond, return cond]
 ternaryOp :: Term -> Parser Token Term
 ternaryOp cond = do
   _ <- symbol "?"
-  trueBranch <- ternaryExp
+  trueBranch <- binaryExp precedence -- Only allow binary expressions in true branch
   _ <- symbol ":"
-  falseBranch <- ternaryExp
+  falseBranch <- ternaryExp -- Allow ternary in false branch for right-associativity
   return $ TernaryOp cond trueBranch falseBranch
 
 ------------------- binary operators (left associative) -------------------
