@@ -3,6 +3,7 @@ module Value
     valueToInt,
     valueToBool,
     valueToString,
+    valueToTuple,
     isIntVal,
     isBoolVal,
     isStringVal,
@@ -12,32 +13,49 @@ module Value
   )
 where
 
+import qualified Data.Map as M
 import Term (Term)
 
 data Value
   = IntVal Integer
   | BoolVal Bool
   | StringVal String
+  | Tuple [Value]
   | ClosureVal [String] Term [(String, Value)]
+  | Dictionary (M.Map Integer Value)
   deriving (Eq, Show)
 
 valueToInt :: Value -> Either String Integer
 valueToInt (IntVal n) = Right n
 valueToInt (BoolVal _) = Left "Type error: expected integer, got boolean"
 valueToInt (StringVal _) = Left "Type error: expected integer, got string"
+valueToInt (Tuple _) = Left "Type error: expected integer, got tuple"
 valueToInt (ClosureVal {}) = Left "Type error: expected integer, got function"
+valueToInt (Dictionary _) = Left "Type error: expected integer, got dictionary"
 
 valueToBool :: Value -> Either String Bool
 valueToBool (BoolVal b) = Right b
 valueToBool (IntVal _) = Left "Type error: expected boolean, got integer"
 valueToBool (StringVal _) = Left "Type error: expected boolean, got string"
+valueToBool (Tuple _) = Left "Type error: expected boolean, got tuple"
 valueToBool (ClosureVal {}) = Left "Type error: expected boolean, got function"
+valueToBool (Dictionary _) = Left "Type error: expected boolean, got dictionary"
 
 valueToString :: Value -> Either String String
 valueToString (StringVal s) = Right s
 valueToString (IntVal _) = Left "Type error: expected string, got integer"
 valueToString (BoolVal _) = Left "Type error: expected string, got boolean"
+valueToString (Tuple _) = Left "Type error: expected string, got tuple"
 valueToString (ClosureVal {}) = Left "Type error: expected string, got function"
+valueToString (Dictionary _) = Left "Type error: expected string, got dictionary"
+
+valueToTuple :: Value -> Either String [Value]
+valueToTuple (Tuple s) = Right s
+valueToTuple (IntVal _) = Left "Type error: expected tuple, got integer"
+valueToTuple (BoolVal _) = Left "Type error: expected tuple, got boolean"
+valueToTuple (StringVal _) = Left "Type error: expected tuple, got string"
+valueToTuple (ClosureVal {}) = Left "Type error: expected tuple, got function"
+valueToTuple (Dictionary _) = Left "Type error: expected tuple, got dictionary"
 
 isIntVal :: Value -> Bool
 isIntVal (IntVal _) = True

@@ -20,6 +20,12 @@ data Term
   | While Term Term
   | Write Term
   | BoolLit Bool
+  | TupleTerm [Term]
+  | NewDictionary
+  | AccessBracket Term Term
+  | SetBracket String Term Term
   | Fun [String] Term
   | ApplyFun Term [Term]
+  | BreakSignal
+  | ContinueSignal
   deriving (Eq, Show)

@@ -7,9 +7,10 @@ module Small (reduceFully, Machine (..), Result (..), Env) where
 
 import qualified Control.Monad.State as S
 import Data.Either
+import qualified Data.Map as M
 import Debug.Trace (trace)
 import Term (BinaryOp (..), Term (..), UnaryOp (..))
-import Value (Value (..), valueToInt)
+import Value (Value (..), valueToInt, valueToTuple)
 
 ----- The Machine type class -----
 
@@ -26,6 +27,11 @@ class Machine m where
   -- Get and set variables
   getVar :: String -> Env m
   setVar :: String -> V m -> Env m
+
+  -- Lexical scoping
+  getScope :: m -> [(String, Value)] -- Variable bindings only.
+  pushScope :: [(String, Value)] -> Env m
+  popScope :: Env m
 
   -- I/O
   inputVal :: Env m
@@ -52,6 +58,10 @@ class Machine m where
   orVal :: V m -> V m -> Env m
   notVal :: V m -> Env m
 
+  -- Access/Manage Bracket Values
+  getBracketValue :: V m -> V m -> Env m
+  setBracketValue :: String -> V m -> V m -> Env m
+
   -- Control flow - selectValue uses boolean semantics
   selectValue :: V m -> Env m -> Env m -> Env m
 
@@ -73,6 +83,8 @@ premise :: Env m -> (Term -> Term) -> (V m -> Env m) -> Env m
 premise e l r = do
   v <- e
   case v of
+    Continue BreakSignal -> return $ Continue BreakSignal
+    Continue ContinueSignal -> return $ Continue ContinueSignal
     Continue t' -> return $ Continue (l t')
     Happy n -> r n
     Sad _ -> return v
@@ -92,17 +104,38 @@ reduce_ (Let x t) = do
     (Let x)
     (setVar x)
 reduce_ (Seq t1 t2) = do
-  premise
-    (reduce t1)
-    (`Seq` t2)
-    (\_ -> return $ Continue t2)
+  res1 <- reduce t1 -- run t1 normally
+  case res1 of
+    Continue BreakSignal -> return $ Continue BreakSignal
+    Continue ContinueSignal -> return $ Continue ContinueSignal
+    Continue t' -> return $ Continue (Seq t' t2)
+    Happy _ -> reduce t2 -- normal: continue with t2
+    Sad msg -> return $ Sad msg
 reduce_ (If cond tThen tElse) = do
   premise
     (reduce cond)
     (\cond' -> If cond' tThen tElse)
     (\v -> selectValue v (return $ Continue tThen) (return $ Continue tElse))
-reduce_ w@(While cond body) =
-  return $ Continue (If cond (Seq body w) Skip)
+reduce_ (While cond body) = do
+  premise
+    (reduce cond)
+    (\cond' -> While cond' body)
+    ( \v -> do
+        selectValue
+          v
+          ( do
+              res <- reduce body
+              case res of
+                Continue BreakSignal -> do return $ Happy (IntVal 0)
+                Continue ContinueSignal -> do return $ Continue (While cond body)
+                Continue t -> do return $ Continue (Seq t (While cond body))
+                Happy _ -> do return $ Continue (While cond body)
+                Sad msg -> do return $ Sad msg
+          )
+          ( do
+              return $ Continue Skip
+          )
+    )
 reduce_ (Read x) =
   premise
     inputVal
@@ -149,14 +182,61 @@ reduce_ (UnaryOps op t) =
   where
     applyUnaryOp Neg = negVal
     applyUnaryOp Not = notVal
-reduce_ (Fun xs t) =
-  -- very minimal closure, for right now we are ignoring the captured environment since im not worrying about scoping for now
-  return $ Happy (ClosureVal xs t [])
+reduce_ (BreakSignal) =
+  return $ Continue BreakSignal
+reduce_ (ContinueSignal) =
+  return $ Continue ContinueSignal
+reduce_ (Fun xs t) = do
+  env <- S.get
+  let vars = getScope env
+  return $ Happy (ClosureVal xs t vars)
 reduce_ (ApplyFun tf tas) =
   premise
     (reduce tf)
     (`ApplyFun` tas)
     (reduceArgsAndApply tf tas)
+reduce_ (TupleTerm elements) =
+  case elements of
+    (x : xs) ->
+      premise
+        (reduce x)
+        (\term' -> TupleTerm $ term' : xs)
+        ( \v1 ->
+            premise
+              (reduce $ TupleTerm xs)
+              ( \term' ->
+                  case term' of
+                    TupleTerm xs' -> TupleTerm (x : xs')
+                    _ -> error "TupleTerm recursion somehow returned a non TupleTerm continuation"
+              )
+              (\v2 -> return $ Happy $ Tuple $ v1 : (fromRight [] $ valueToTuple v2))
+        )
+    [] -> return $ Happy $ Tuple []
+reduce_ (AccessBracket t i) =
+  premise
+    (reduce t)
+    (\term' -> AccessBracket term' i)
+    ( \v1 ->
+        premise
+          (reduce i)
+          (AccessBracket t)
+          (getBracketValue v1)
+    )
+reduce_ (SetBracket name terms val) =
+  case terms of
+    TupleTerm tupleTerm ->
+      premise
+        (reduce $ TupleTerm tupleTerm)
+        (\terms' -> SetBracket name terms' val)
+        ( \terms' ->
+            premise
+              (reduce val)
+              (\val' -> SetBracket name terms val')
+              (\val' -> setBracketValue name terms' val')
+        )
+    _ -> error "SetBracket should only have tuple term as second argument"
+reduce_ (NewDictionary) =
+  return $ Happy $ Dictionary M.empty
 
 reduceArgsAndApply :: (Machine m, Show m, V m ~ Value) => Term -> [Term] -> Value -> Env m
 reduceArgsAndApply tf args funVal =
@@ -182,14 +262,14 @@ applyFunArg :: (Machine m, Show m, V m ~ Value) => Value -> Value -> Env m
 applyFunArg (ClosureVal [] _ _) _ = do
   return $ Sad "too many arguments: function takes 0 arguments"
 applyFunArg (ClosureVal (x : xs) body caps) arg = do
-  let newCaps = (x, arg) : caps
+  let newCaps = caps ++ [(x, arg)]
   if null xs
-    then evalClosureBody body (reverse newCaps)
+    then evalClosureBody body newCaps
     else return $ Happy (ClosureVal xs body newCaps)
 applyFunArg _ _ = return $ Sad "attempt to call a non-function"
 
 applyFuncNoArg :: (Machine m, Show m, V m ~ Value) => Value -> Env m
-applyFuncNoArg (ClosureVal [] body caps) = evalClosureBody body (reverse caps)
+applyFuncNoArg (ClosureVal [] body caps) = evalClosureBody body caps
 applyFuncNoArg (ClosureVal (_ : _) _ _) = return $ Sad "missing arguments: function requires parameters"
 applyFuncNoArg _ = return $ Sad "attempt to call a non-function"
 
@@ -197,11 +277,13 @@ applyFuncNoArg _ = return $ Sad "attempt to call a non-function"
 evalClosureBody :: (Machine m, Show m, V m ~ Value) => Term -> [(String, Value)] -> Env m
 evalClosureBody body caps = do
   m0 <- S.get
-  case bindMany caps m0 of
+  let (_resPush, m1) = S.runState (pushScope []) m0
+  case bindMany caps m1 of
     Left msg -> return (Sad msg)
-    Right m1 -> do
-      let (res, _m2) = reduceFully body m1
-      S.put m0
+    Right m2 -> do
+      let (res, m3) = reduceFully body m2
+      let (_resPop, m4) = S.runState popScope m3 -- Restore previous scope.
+      S.put m4
       case res of
         Left msg -> return $ Sad msg
         Right v -> return $ Happy v
@@ -225,5 +307,9 @@ reduceFully :: (Machine m, Show m, V m ~ Value) => Term -> m -> (Either String (
 reduceFully term machine =
   case S.runState (reduce term) machine of
     (Sad msg, m) -> (Left msg, m)
-    (Continue t, m) -> reduceFully t m
+    (Continue t, m) -> do
+      case t of
+        BreakSignal -> (Left "unhandled break signal", m)
+        ContinueSignal -> (Left "unhandled continue signal", m)
+        _ -> reduceFully t m
     (Happy n, m) -> (Right n, m)
