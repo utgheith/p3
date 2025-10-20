@@ -5,7 +5,7 @@ module FunSyntaxSpec (spec) where
 import FunLexer (Token (..))
 import FunSyntax (parse, prog)
 import ParserCombinators (eof)
-import Term (BinaryOp (..), ErrorKind(..), ErrorKindOrAny(..), Term (..))
+import Term (BinaryOp (..), ErrorKind (..), ErrorKindOrAny (..), Term (..))
 import Test.Hspec
 
 -- Helper function to parse from a string
@@ -134,7 +134,7 @@ spec = do
               _ <- eof
               return t
         result `shouldBe` Right (AccessBracket (Var "t") (Literal 0), [])
-    
+
     describe "try-catch" $ do
       it "parses try-catch creation" $ do
         let result = parse "try x catch Arithmetic 1" $ do

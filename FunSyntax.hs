@@ -14,7 +14,7 @@ import Data.Maybe (fromMaybe)
 import qualified Data.Set as S
 import FunLexer (Token (Ident, Keyword, Num, StringLiteralLexed, Symbol), lexer)
 import ParserCombinators (Parser, Result, oneof, opt, rpt, rptDropSep, satisfy, token)
-import Term (BinaryOp (..), ErrorKindOrAny(..), ErrorKind(..), Term (..), UnaryOp (..))
+import Term (BinaryOp (..), ErrorKind (..), ErrorKindOrAny (..), Term (..), UnaryOp (..))
 
 -- data Term
 --   = Assign String Term
