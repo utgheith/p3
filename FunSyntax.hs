@@ -9,31 +9,11 @@ module FunSyntax (parse, prog, term, Term (Let, BinaryOps, Seq, Skip, UnaryOps, 
 import qualified Control.Monad as M
 import Control.Monad.State.Lazy (runStateT)
 import Data.Maybe (fromMaybe)
--- import Debug.Trace (trace)
 
 import qualified Data.Set as S
 import FunLexer (Token (Ident, Keyword, Num, StringLiteralLexed, Symbol), lexer)
 import ParserCombinators (Parser, Result, oneof, opt, rpt, rptDropSep, satisfy, token)
 import Term (BinaryOp (..), ErrorKind (..), ErrorKindOrAny (..), Term (..), UnaryOp (..))
-
--- data Term
---   = Assign String Term
---   | BinaryOp String Term Term
---   | Block [Term]
---   | Call Term [Term]
---   | Const Integer
---   | ConstString String
---   | FunDef String [String] Term
---   | IfThenElse Term Term (Maybe Term)
---   | Negate Term
---   | VarDef String (Maybe Term)
---   | VarRef String
---   | While Term Term
---   deriving
---     ( -- | more term constructors
---       Show,
---       Eq
---     )
 
 -- succeed if the next token is the given symbol
 symbol :: String -> Parser Token ()
