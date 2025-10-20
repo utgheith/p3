@@ -462,7 +462,7 @@ spec = do
       let term = BinaryOps Neq (Literal 5) (Literal 10)
       reduceFully term initialMachine `shouldBe` (Right (BoolVal True), initialMachine)
 
-    it "selectRandom can select first term" $ do 
+    it "selectRandom can select first term" $ do
       let term = ConcurSeq (Literal 1) (Literal 2)
       reduceFully term initialMachine `shouldBe` (Right (IntVal 1), initialMachine)
 

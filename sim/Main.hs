@@ -10,18 +10,18 @@ import qualified Data.Map as M
 import qualified Progs
 import Scope (Scope (..), emptyScope, getAllBindings, insertScope, lookupScope)
 import Small (Env, Machine (..), Result (..), reduceFully)
+import System.Random as R
 import Term (Term (..))
 import Value (Value (..))
-import System.Random as R
 
 -- TODO: this should really be refactored to use random monads
 data Simulator = Simulator Scope [Value] [Value] R.StdGen deriving (Eq, Show)
 
-decide :: R.RandomGen g => g -> a -> a -> (a, g)
-decide rng a1 a2 = 
-  let (num, rng') = R.uniformR (0 :: Int, 1 :: Int) rng in
-    (if num == 0 then a1 else a2, rng')
-    
+decide :: (R.RandomGen g) => g -> a -> a -> (a, g)
+decide rng a1 a2 =
+  let (num, rng') = R.uniformR (0 :: Int, 1 :: Int) rng
+   in (if num == 0 then a1 else a2, rng')
+
 instance Machine Simulator where
   type V Simulator = Value
   getVar :: String -> Env Simulator
@@ -109,14 +109,15 @@ instance Machine Simulator where
   selectValue (StringVal s) e1 e2 = if not (null s) then e1 else e2
   selectValue (Tuple l) e1 e2 = if not (null l) then e1 else e2
   selectValue (ClosureVal {}) _ _ = return $ Sad "Type error in select"
-    
+
   selectRandom :: Simulator -> Env Simulator -> Env Simulator -> Env Simulator
-  selectRandom (Simulator _ _ _ rng) e1 e2 = 
-    let (e', rng') = decide rng e1 e2 in do
-      v <- e'
-      (Simulator m inp out _) <- S.get
-      S.put (Simulator m inp out rng')
-      return v
+  selectRandom (Simulator _ _ _ rng) e1 e2 =
+    let (e', rng') = decide rng e1 e2
+     in do
+          v <- e'
+          (Simulator m inp out _) <- S.get
+          S.put (Simulator m inp out rng')
+          return v
   ltVal :: Value -> Value -> Env Simulator
   ltVal (IntVal v1) (IntVal v2) = return $ Happy (BoolVal (v1 < v2))
   ltVal _ _ = return $ Sad "Type error in <"

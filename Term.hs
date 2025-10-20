@@ -13,7 +13,7 @@ data Term
   | StringLiteral String
   | Read String
   | Seq Term Term
-  | ConcurSeq Term Term 
+  | ConcurSeq Term Term
   | Skip
   | BinaryOps BinaryOp Term Term
   | UnaryOps UnaryOp Term

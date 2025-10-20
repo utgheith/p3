@@ -107,28 +107,29 @@ reduce_ (Seq t1 t2) = do
     (reduce t1)
     (`Seq` t2)
     (\_ -> return $ Continue t2)
-reduce_ (ConcurSeq t1 t2) = do 
+reduce_ (ConcurSeq t1 t2) = do
   m <- S.get
-  selectRandom m 
-    (premise 
-      (reduce t1)
-      (`ConcurSeq` t2)
-      (\v1 ->
-        premise
-          (reduce t2)
-          id
-        (\v2 -> selectRandom m (return $ Happy v1) (return $ Happy v2))
-      )
-    )
-    (premise
-      (reduce t2)
-      (ConcurSeq t1)
-      (\v2 ->
-        premise 
+  selectRandom
+    m
+    ( premise
         (reduce t1)
-        id
-        (\v1 -> selectRandom m (return $ Happy v1) (return $ Happy v2))
-      )
+        (`ConcurSeq` t2)
+        ( \v1 ->
+            premise
+              (reduce t2)
+              id
+              (\v2 -> selectRandom m (return $ Happy v1) (return $ Happy v2))
+        )
+    )
+    ( premise
+        (reduce t2)
+        (ConcurSeq t1)
+        ( \v2 ->
+            premise
+              (reduce t1)
+              id
+              (\v1 -> selectRandom m (return $ Happy v1) (return $ Happy v2))
+        )
     )
 reduce_ (If cond tThen tElse) = do
   premise

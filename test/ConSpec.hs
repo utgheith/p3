@@ -2,24 +2,24 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TypeFamilies #-}
 
-module ConSpec (spec) where 
+module ConSpec (spec) where
 
 import qualified Control.Monad.State as S
 import qualified Data.Map as M
 import Scope (Scope (..), emptyScope, getAllBindings, insertScope, lookupScope)
 import Small
+import qualified System.Random as R
 import Term
 import Test.Hspec
 import Value (Value (..))
-import qualified System.Random as R
 
 -- Same as mock machine, but with true randomness
 data MulticoreMachine = MulticoreMachine {getMem :: Scope, getInput :: [Value], getOutput :: [Value], getRng :: R.StdGen} deriving (Show, Eq)
 
-decide :: R.RandomGen g => g -> a -> a -> (a, g)
-decide rng a1 a2 = 
-  let (num, rng') = R.uniformR (0 :: Int, 1 :: Int) rng in
-    (if num == 0 then a1 else a2, rng')
+decide :: (R.RandomGen g) => g -> a -> a -> (a, g)
+decide rng a1 a2 =
+  let (num, rng') = R.uniformR (0 :: Int, 1 :: Int) rng
+   in (if num == 0 then a1 else a2, rng')
 
 instance Machine MulticoreMachine where
   type V MulticoreMachine = Value
@@ -161,28 +161,29 @@ instance Machine MulticoreMachine where
   selectValue (Tuple l) c t = if not (null l) then c else t
   selectValue (ClosureVal {}) _ _ = return $ Sad "Type error in select"
 
-  selectRandom m e1 e2 = 
-    let (e', rng') = decide (getRng m) e1 e2 in do
-      v <- e'
-      m' <- S.get
-      S.put m'{getRng=rng'}
-      return v
+  selectRandom m e1 e2 =
+    let (e', rng') = decide (getRng m) e1 e2
+     in do
+          v <- e'
+          m' <- S.get
+          S.put m' {getRng = rng'}
+          return v
 
 spec :: Spec
 spec = do
-    describe "concurrent reduce" $ do 
-        let initialMachine seed = MulticoreMachine{getMem= emptyScope, getInput = [], getOutput = [], getRng= R.mkStdGen seed}
-        it "Can pick first value" $ do 
-            let term = ConcurSeq (Literal 1) (Literal 2)
-            fst (reduceFully term (initialMachine 42)) `shouldBe` (Right (IntVal 1))
-        it "Can pick second value" $ do 
-            let term = ConcurSeq (Literal 1) (Literal 2)
-            fst (reduceFully term (initialMachine 43)) `shouldBe` (Right (IntVal 2))
-        it "We have data races" $ do
-            let addop = BinaryOps Add (Var "x") (Literal 1)
-            let assign = Let "x" (If (Literal 1) (addop) (addop))
-            let initx = Let "x" (Literal 0)
-            let term = Seq (initx) (ConcurSeq assign assign)
-            let results = [ fst (reduceFully term (initialMachine seed)) | seed <- [1..100]]
-            -- we should see both 2 and 3 as possible results
-            results `shouldSatisfy` (\res -> (Right (IntVal 1)) `elem` res && (Right (IntVal 2)) `elem` res)
+  describe "concurrent reduce" $ do
+    let initialMachine seed = MulticoreMachine {getMem = emptyScope, getInput = [], getOutput = [], getRng = R.mkStdGen seed}
+    it "Can pick first value" $ do
+      let term = ConcurSeq (Literal 1) (Literal 2)
+      fst (reduceFully term (initialMachine 42)) `shouldBe` (Right (IntVal 1))
+    it "Can pick second value" $ do
+      let term = ConcurSeq (Literal 1) (Literal 2)
+      fst (reduceFully term (initialMachine 43)) `shouldBe` (Right (IntVal 2))
+    it "We have data races" $ do
+      let addop = BinaryOps Add (Var "x") (Literal 1)
+      let assign = Let "x" (If (Literal 1) (addop) (addop))
+      let initx = Let "x" (Literal 0)
+      let term = Seq (initx) (ConcurSeq assign assign)
+      let results = [fst (reduceFully term (initialMachine seed)) | seed <- [1 .. 100]]
+      -- we should see both 2 and 3 as possible results
+      results `shouldSatisfy` (\res -> (Right (IntVal 1)) `elem` res && (Right (IntVal 2)) `elem` res)

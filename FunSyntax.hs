@@ -27,7 +27,7 @@ data Term
   | VarDef String (Maybe Term)
   | VarRef String
   | While Term Term
-  | ConcurBlock [Term] 
+  | ConcurBlock [Term]
   deriving
     ( -- | more term constructors
       Show,
@@ -128,11 +128,11 @@ block = do
   _ <- token $ Symbol "}"
   return $ Block ts
 
-concurblock :: Parser Token Term 
-concurblock = do 
+concurblock :: Parser Token Term
+concurblock = do
   _ <- token $ Keyword "Concur"
   _ <- token $ Symbol "{"
-  ts <- rpt term 
+  ts <- rpt term
   _ <- token $ Symbol "}"
   return $ ConcurBlock ts
 
