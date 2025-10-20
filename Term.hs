@@ -26,4 +26,6 @@ data Term
   | SetBracket String Term Term
   | Fun [String] Term
   | ApplyFun Term [Term]
+  | BreakSignal
+  | ContinueSignal
   deriving (Eq, Show)
