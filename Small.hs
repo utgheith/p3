@@ -237,6 +237,11 @@ reduce_ (SetBracket name terms val) =
     _ -> error "SetBracket should only have tuple term as second argument"
 reduce_ (NewDictionary) =
   return $ Happy $ Dictionary M.empty
+reduce_ (TernaryOp cond trueBranch falseBranch) = do
+  premise
+    (reduce cond)
+    (\cond' -> TernaryOp cond' trueBranch falseBranch)
+    (\v -> selectValue v (reduce trueBranch) (reduce falseBranch))
 
 reduceArgsAndApply :: (Machine m, Show m, V m ~ Value) => Term -> [Term] -> Value -> Env m
 reduceArgsAndApply tf args funVal =

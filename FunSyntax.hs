@@ -4,7 +4,7 @@
 
 {-# HLINT ignore "Use <$>" #-}
 
-module FunSyntax (parse, prog, term, Term (Let, BinaryOps, Seq, Skip, UnaryOps, Var, While, Write, BoolLit, Literal, StringLiteral, Fun, ApplyFun)) where
+module FunSyntax (parse, prog, term, Term (Let, BinaryOps, Seq, Skip, UnaryOps, Var, While, Write, BoolLit, Literal, StringLiteral, Fun, ApplyFun, TernaryOp)) where
 
 import qualified Control.Monad as M
 import Control.Monad.State.Lazy (runStateT)
@@ -64,7 +64,23 @@ checkSymbol predicate = satisfy $ \case
 ----------
 
 term :: Parser Token Term
-term = binaryExp precedence
+term = ternaryExp
+
+ternaryExp :: Parser Token Term
+ternaryExp = do
+  cond <- binaryExp precedence
+  ternaryRest cond
+
+ternaryRest :: Term -> Parser Token Term
+ternaryRest cond = oneof [ternaryOp cond, return cond]
+
+ternaryOp :: Term -> Parser Token Term
+ternaryOp cond = do
+  _ <- symbol "?"
+  trueBranch <- ternaryExp
+  _ <- symbol ":"
+  falseBranch <- ternaryExp
+  return $ TernaryOp cond trueBranch falseBranch
 
 ------------------- binary operators (left associative) -------------------
 

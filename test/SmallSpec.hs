@@ -670,3 +670,48 @@ spec = do
       let term = Seq (Let "x" (NewDictionary)) (Seq (SetBracket "x" (TupleTerm [Literal 3]) (StringLiteral "hello")) (AccessBracket (Var "x") (Literal 3)))
       let finalMachine = initialMachine {getMem = scopeFromList [("x", Dictionary (M.fromList [(3, StringVal "hello")]))]}
       reduceFully term initialMachine `shouldBe` (Right (StringVal "hello"), finalMachine)
+
+    -- Ternary Operator Tests
+    it "reduces ternary operator with true condition" $ do
+      let term = TernaryOp (BoolLit True) (Literal 10) (Literal 20)
+      reduceFully term initialMachine `shouldBe` (Right (IntVal 10), initialMachine)
+
+    it "reduces ternary operator with false condition" $ do
+      let term = TernaryOp (BoolLit False) (Literal 10) (Literal 20)
+      reduceFully term initialMachine `shouldBe` (Right (IntVal 20), initialMachine)
+
+    it "reduces ternary operator with integer condition (non-zero)" $ do
+      let term = TernaryOp (Literal 5) (StringLiteral "true") (StringLiteral "false")
+      reduceFully term initialMachine `shouldBe` (Right (StringVal "true"), initialMachine)
+
+    it "reduces ternary operator with integer condition (zero)" $ do
+      let term = TernaryOp (Literal 0) (StringLiteral "true") (StringLiteral "false")
+      reduceFully term initialMachine `shouldBe` (Right (StringVal "false"), initialMachine)
+
+    it "reduces ternary operator with string condition (non-empty)" $ do
+      let term = TernaryOp (StringLiteral "hello") (Literal 100) (Literal 200)
+      reduceFully term initialMachine `shouldBe` (Right (IntVal 100), initialMachine)
+
+    it "reduces ternary operator with string condition (empty)" $ do
+      let term = TernaryOp (StringLiteral "") (Literal 100) (Literal 200)
+      reduceFully term initialMachine `shouldBe` (Right (IntVal 200), initialMachine)
+
+    it "reduces ternary operator with comparison condition" $ do
+      let term = TernaryOp (BinaryOps Gt (Literal 10) (Literal 5)) (StringLiteral "greater") (StringLiteral "not greater")
+      reduceFully term initialMachine `shouldBe` (Right (StringVal "greater"), initialMachine)
+
+    it "reduces nested ternary operators" $ do
+      let term = TernaryOp (BoolLit True) (TernaryOp (BoolLit False) (Literal 1) (Literal 2)) (Literal 3)
+      reduceFully term initialMachine `shouldBe` (Right (IntVal 2), initialMachine)
+
+    it "reduces ternary operator with variable access" $ do
+      let term = Seq (Let "x" (Literal 10)) (TernaryOp (BinaryOps Gt (Var "x") (Literal 5)) (Var "x") (Literal 0))
+      let finalMachine = initialMachine {getMem = scopeFromList [("x", IntVal 10)]}
+      reduceFully term initialMachine `shouldBe` (Right (IntVal 10), finalMachine)
+
+    it "reduces ternary operator with complex expressions" $ do
+      let term = TernaryOp 
+                   (BinaryOps And (BinaryOps Gt (Literal 10) (Literal 5)) (BinaryOps Lt (Literal 3) (Literal 7)))
+                   (BinaryOps Add (Literal 1) (Literal 2))
+                   (BinaryOps Mul (Literal 3) (Literal 4))
+      reduceFully term initialMachine `shouldBe` (Right (IntVal 3), initialMachine)
