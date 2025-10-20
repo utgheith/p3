@@ -3,7 +3,6 @@ module FunLexer (lexer, Token (Num, Ident, Keyword, Symbol, StringLiteralLexed, 
 import Data.Char (isAlpha, isAlphaNum, isNumber, isSpace)
 import Data.List (unfoldr, stripPrefix, sortOn)
 import Data.Ord (Down(Down))
-import Data.Maybe (isJust)
 import qualified Data.Set as S
 
 data Token
@@ -21,10 +20,8 @@ symbols = sortOn (Data.Ord.Down . length) [
     ">=", "<=", "<", ">", "==", -- comparison operators
     "!", "||", "&&", -- boolean operators
     "(", ")", "{", "}", "[", "]", -- delimiters
-    "=", "," -- miscellanous
+    "=", "," -- miscellaneous
     ]
-
-    -- S.fromList "-*+/(){}=,><![]"
 
 keywords :: S.Set String
 keywords =
@@ -59,11 +56,6 @@ lexer = unfoldr step
     step s@(c : _) | isNumber c =
           let (num, rest) = span isNumber s
            in Just (Num $ read num, rest)
-    -- special tokens
-    step s | Data.Maybe.isJust (matches s symbols) = -- ideally we wouldn't compute this twice
-        case matches s symbols of
-            Just (p, rest) -> Just (Symbol p, rest)
-            _ -> error "unreachable"
     -- identifiers
     step s@(c : _) | isAlpha c = -- 
           let (var, rest) = span isAlphaNum s
@@ -74,21 +66,13 @@ lexer = unfoldr step
        in case rest2 of
             ('"' : rest3) -> Just (StringLiteralLexed str, rest3)
             _ -> Just (Error "Unclosed string literal", "")
-    -- multi-character symbols
-    -- step ('<' : '=' : rest) = Just (Symbol "<=", rest)
-    -- step ('>' : '=' : rest) = Just (Symbol ">=", rest)
-    -- step ('=' : '=' : rest) = Just (Symbol "==", rest)
-    -- step ('|' : '|' : rest) = Just (Symbol "||", rest)
-    -- step ('&' : '&' : rest) = Just (Symbol "&&", rest)
-    -- -- single-character symbols
-    -- step (c : rest)
-    --   | S.member c symbols =
-    --       Just (Symbol [c], rest)
     -- comments
     step ('$' : rest) =
       let (_, rest2) = span (/= '$') rest
        in case rest2 of
             ('$' : rest3) -> step rest3
             _ -> Just (Error "Unclosed comment", "")
-    -- syntax errors
-    step s = Just (Error ("Unexpected character: " ++ take 20 s), "")
+    -- special tokens
+    step s = case matches s symbols of
+        Just (p, rest) -> Just (Symbol p, rest)
+        Nothing -> Just (Error ("Unexpected character: " ++ take 20 s), "") -- syntax error
