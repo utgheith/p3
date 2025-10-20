@@ -32,3 +32,15 @@ spec = do
 
     it "handles an unexpected character" $ do
       lexer "@" `shouldBe` [Error "Unexpected character: @"]
+
+    it "handles a namespace declaration" $ do
+      lexer "namespace MyNamespace { var x = 10 }"
+        `shouldBe` [ Keyword "namespace",
+                     Ident "MyNamespace",
+                     Symbol "{",
+                     Keyword "var",
+                     Ident "x",
+                     Symbol "=",
+                     Num 10,
+                     Symbol "}"
+                   ]

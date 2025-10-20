@@ -155,6 +155,14 @@ funDef = do
   body <- term
   return $ Let name (Fun params body)
 
+-- namespace: parse a namespace and qualify all names inside it
+namespaceDef :: Parser Token Term
+namespaceDef = do
+  _ <- keyword "namespace"
+  name <- ident
+  body <- term
+  return $ qualify name body
+
 varRef :: Parser Token Term
 varRef = Var <$> ident
 
@@ -241,7 +249,138 @@ printStmt = do
   return $ Write expr
 
 unaryExp :: Parser Token Term
-unaryExp = oneof [assign, ifExpr, block, funDef, minus, num, string, bool, tuple, tupleSet, tupleAccess, tryCatch, parens, varDef, funCall, varRef, whileTerm, printStmt]
+unaryExp = oneof [assign, ifExpr, block, funDef, namespaceDef, minus, num, string, bool, tuple, tupleSet, tupleAccess, parens, varDef, funCall, varRef, whileTerm, printStmt]
+
+-- Qualify names inside a term with a namespace prefix.
+-- We thread a "whitelist" (set of names) representing names defined lexically
+-- before a given point.
+
+qualify :: String -> Term -> Term
+qualify ns t = fst $ qualifyTop S.empty t
+  where
+    p s = ns ++ "::" ++ s
+
+    qualifyName :: S.Set String -> String -> String
+    qualifyName wl s
+      | s `S.member` wl = p s
+      | otherwise = s
+
+    -- qualifyTop exposes definitions occurring at top-level sequencing
+    -- so that later terms in a Seq can see earlier definitions.
+    qualifyTop :: S.Set String -> Term -> (Term, S.Set String)
+    qualifyTop wl curr_term = case curr_term of
+      Seq a b ->
+        let (a', defsA) = qualifyTop wl a
+            wl' = S.union wl defsA
+            (b', defsB) = qualifyTop wl' b
+         in (Seq a' b', S.union defsA defsB)
+      Let name expr ->
+        case expr of
+          Fun params body ->
+            let (body', _) = qualifyGeneral (S.union wl (S.fromList params)) body
+             in (Let (p name) (Fun params body'), S.singleton name)
+          _ ->
+            let (expr', _) = qualifyGeneral wl expr
+             in (Let (p name) expr', S.singleton name)
+      If c t1 t2 ->
+        let (c', _) = qualifyGeneral wl c
+            (t1', _) = qualifyGeneral wl t1
+            (t2', _) = qualifyGeneral wl t2
+         in (If c' t1' t2', S.empty)
+      Literal n -> (Literal n, S.empty)
+      StringLiteral s -> (StringLiteral s, S.empty)
+      Read s -> (Read (qualifyName wl s), S.empty)
+      Skip -> (Skip, S.empty)
+      BinaryOps op l r ->
+        let (l', _) = qualifyGeneral wl l
+            (r', _) = qualifyGeneral wl r
+         in (BinaryOps op l' r', S.empty)
+      UnaryOps op x -> let (x', _) = qualifyGeneral wl x in (UnaryOps op x', S.empty)
+      Var s -> (Var (qualifyName wl s), S.empty)
+      While c b ->
+        let (c', _) = qualifyGeneral wl c
+            (b', _) = qualifyGeneral wl b
+         in (While c' b', S.empty)
+      Write x -> let (x', _) = qualifyGeneral wl x in (Write x', S.empty)
+      BoolLit b -> (BoolLit b, S.empty)
+      TupleTerm elems -> (TupleTerm (map (fst . qualifyGeneral wl) elems), S.empty)
+      NewDictionary -> (NewDictionary, S.empty)
+      AccessBracket t1 t2 ->
+        let (t1', _) = qualifyGeneral wl t1
+            (t2', _) = qualifyGeneral wl t2
+         in (AccessBracket t1' t2', S.empty)
+      SetBracket name idx val ->
+        let (idx', _) = qualifyGeneral wl idx
+            (val', _) = qualifyGeneral wl val
+            name' = qualifyName wl name
+         in (SetBracket name' idx' val', S.empty)
+      Fun params body ->
+        let (body', _) = qualifyGeneral (S.union wl (S.fromList params)) body
+         in (Fun params body', S.empty)
+      ApplyFun f args ->
+        let (f', _) = qualifyGeneral wl f
+            args' = map (fst . qualifyGeneral wl) args
+         in (ApplyFun f' args', S.empty)
+      BreakSignal -> (BreakSignal, S.empty)
+      ContinueSignal -> (ContinueSignal, S.empty)
+
+    -- qualifyGeneral does NOT expose names defined inside the term to the
+    -- outside; it's used for nested contexts.
+    qualifyGeneral :: S.Set String -> Term -> (Term, S.Set String)
+    qualifyGeneral wl curr_term = case curr_term of
+      Seq a b ->
+        let (a', defsA) = qualifyTop wl a
+            (b', _) = qualifyGeneral (S.union wl defsA) b
+         in (Seq a' b', S.empty)
+      Let name expr ->
+        case expr of
+          Fun params body ->
+            let (body', _) = qualifyGeneral (S.union wl (S.fromList params)) body
+             in (Let (p name) (Fun params body'), S.empty)
+          _ ->
+            let (expr', _) = qualifyGeneral wl expr
+             in (Let (p name) expr', S.empty)
+      If c t1 t2 ->
+        let (c', _) = qualifyGeneral wl c
+            (t1', _) = qualifyGeneral wl t1
+            (t2', _) = qualifyGeneral wl t2
+         in (If c' t1' t2', S.empty)
+      Literal n -> (Literal n, S.empty)
+      StringLiteral s -> (StringLiteral s, S.empty)
+      Read s -> (Read (qualifyName wl s), S.empty)
+      Skip -> (Skip, S.empty)
+      BinaryOps op l r ->
+        let (l', _) = qualifyGeneral wl l
+            (r', _) = qualifyGeneral wl r
+         in (BinaryOps op l' r', S.empty)
+      UnaryOps op x -> let (x', _) = qualifyGeneral wl x in (UnaryOps op x', S.empty)
+      Var s -> (Var (qualifyName wl s), S.empty)
+      While c b ->
+        let (c', _) = qualifyGeneral wl c
+            (b', _) = qualifyGeneral wl b
+         in (While c' b', S.empty)
+      Write x -> let (x', _) = qualifyGeneral wl x in (Write x', S.empty)
+      BoolLit b -> (BoolLit b, S.empty)
+      TupleTerm elems -> (TupleTerm (map (fst . qualifyGeneral wl) elems), S.empty)
+      NewDictionary -> (NewDictionary, S.empty)
+      AccessBracket t1 t2 ->
+        let (t1', _) = qualifyGeneral wl t1
+            (t2', _) = qualifyGeneral wl t2
+         in (AccessBracket t1' t2', S.empty)
+      SetBracket name idx val ->
+        let (idx', _) = qualifyGeneral wl idx
+            (val', _) = qualifyGeneral wl val
+            name' = qualifyName wl name
+         in (SetBracket name' idx' val', S.empty)
+      Fun params body ->
+        let (body', _) = qualifyGeneral (S.union wl (S.fromList params)) body
+         in (Fun params body', S.empty)
+      ApplyFun f args ->
+        let (f', _) = qualifyGeneral wl f
+            args' = map (fst . qualifyGeneral wl) args
+         in (ApplyFun f' args', S.empty)
+      BreakSignal -> (BreakSignal, S.empty)
+      ContinueSignal -> (ContinueSignal, S.empty)
 
 ----------- prog ----------
 

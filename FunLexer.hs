@@ -28,6 +28,7 @@ keywords =
       "try",
       "catch",
       "true",
+      "namespace",
       "false" -- force boolean literals to be tokens in the parser
     ]
 
