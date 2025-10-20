@@ -21,7 +21,7 @@ data Value
   | BoolVal Bool
   | StringVal String
   | Tuple [Value]
-  | ClosureVal [String] Term [(String, Value)]
+--   | ClosureVal [String] Term [(String, Value)]
   | Dictionary (M.Map Integer Value)
   deriving (Eq, Show)
 
