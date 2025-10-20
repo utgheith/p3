@@ -21,6 +21,16 @@ jobs:
         ghc-version: '9.6.7'
         stack-version: '2.15.1'
 
+    - name: Cache Stack dependencies
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.stack
+          .stack-work
+        key: ${{ runner.os }}-stack-${{ hashFiles('stack.yaml') }}
+        restore-keys: |
+          ${{ runner.os }}-stack-
+
     - name: Build
       run: stack build
 

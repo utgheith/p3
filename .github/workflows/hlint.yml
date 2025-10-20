@@ -9,5 +9,17 @@ jobs:
       security-events: write
     steps:
       - uses: actions/checkout@v4
+
+      - name: Cache Stack dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.stack
+            .stack-work
+          key: ${{ runner.os }}-stack-${{ hashFiles('stack.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-stack-
+
+        
       - uses: haskell-actions/hlint-scan@v1
 
