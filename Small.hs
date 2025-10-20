@@ -58,8 +58,9 @@ class Machine m where
   orVal :: V m -> V m -> Env m
   notVal :: V m -> Env m
 
-  getTupleValue :: V m -> V m -> Env m
-  setTupleValue :: String -> V m -> V m -> Env m
+  -- Access/Manage Bracket Values
+  getBracketValue :: V m -> V m -> Env m
+  setBracketValue :: String -> V m -> V m -> Env m
 
   -- Control flow - selectValue uses boolean semantics
   selectValue :: V m -> Env m -> Env m -> Env m
@@ -184,29 +185,29 @@ reduce_ (TupleTerm elements) =
               (\v2 -> return $ Happy $ Tuple $ v1 : (fromRight [] $ valueToTuple v2))
         )
     [] -> return $ Happy $ Tuple []
-reduce_ (AccessTuple t i) =
+reduce_ (AccessBracket t i) =
   premise
     (reduce t)
-    (\term' -> AccessTuple term' i)
+    (\term' -> AccessBracket term' i)
     ( \v1 ->
         premise
           (reduce i)
-          (AccessTuple t)
-          (getTupleValue v1)
+          (AccessBracket t)
+          (getBracketValue v1)
     )
-reduce_ (SetTuple name terms val) =
+reduce_ (SetBracket name terms val) =
   case terms of
     TupleTerm tupleTerm ->
       premise
         (reduce $ TupleTerm tupleTerm)
-        (\terms' -> SetTuple name terms' val)
+        (\terms' -> SetBracket name terms' val)
         ( \terms' ->
             premise
               (reduce val)
-              (\val' -> SetTuple name terms val')
-              (\val' -> setTupleValue name terms' val')
+              (\val' -> SetBracket name terms val')
+              (\val' -> setBracketValue name terms' val')
         )
-    _ -> error "SetTuple should only have tuple term as second argument"
+    _ -> error "SetBracket should only have tuple term as second argument"
 reduce_ (NewDictionary) =
   return $ Happy $ Dictionary M.empty
 

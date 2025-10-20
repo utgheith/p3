@@ -22,8 +22,8 @@ data Term
   | BoolLit Bool
   | TupleTerm [Term]
   | NewDictionary
-  | AccessTuple Term Term
-  | SetTuple String Term Term
+  | AccessBracket Term Term
+  | SetBracket String Term Term
   | Fun [String] Term
   | ApplyFun Term [Term]
   deriving (Eq, Show)
