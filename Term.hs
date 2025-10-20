@@ -20,4 +20,6 @@ data Term
   | While Term Term
   | Write Term
   | BoolLit Bool
+  | Break
+  | Continue
   deriving (Eq, Show)

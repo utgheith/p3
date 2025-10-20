@@ -59,7 +59,9 @@ class Machine m where
 
 data Result a
   = Happy a -- produced an answer
-  | Continue Term -- need to keep going
+  | StepContinue Term -- need to keep going
+  | BreakLoop -- break out of loop
+  | ContinueLoop -- continue to next iteration
   | Sad String -- error
   deriving (Eq, Show)
 
@@ -73,7 +75,9 @@ premise :: Env m -> (Term -> Term) -> (V m -> Env m) -> Env m
 premise e l r = do
   v <- e
   case v of
-    Continue t' -> return $ Continue (l t')
+    StepContinue t' -> return $ StepContinue (l t')
+    BreakLoop -> return BreakLoop
+    ContinueLoop -> return ContinueLoop
     Happy n -> r n
     Sad _ -> return v
 
@@ -92,17 +96,53 @@ reduce_ (Let x t) = do
     (Let x)
     (setVar x)
 reduce_ (Seq t1 t2) = do
-  premise
-    (reduce t1)
-    (`Seq` t2)
-    (\_ -> return $ Continue t2)
+  result <- reduce t1
+  case result of
+    BreakLoop -> return BreakLoop
+    ContinueLoop -> return ContinueLoop
+    Happy _ -> reduce t2
+    StepContinue t' -> return $ StepContinue (Seq t' t2)
+    Sad msg -> return $ Sad msg
 reduce_ (If cond tThen tElse) = do
-  premise
-    (reduce cond)
-    (\cond' -> If cond' tThen tElse)
-    (\v -> selectValue v (return $ Continue tThen) (return $ Continue tElse))
-reduce_ w@(While cond body) =
-  return $ Continue (If cond (Seq body w) Skip)
+  condResult <- reduce cond
+  case condResult of
+    Sad msg -> return $ Sad msg
+    BreakLoop -> return BreakLoop
+    ContinueLoop -> return ContinueLoop
+    Happy v -> selectValue v (reduce tThen) (reduce tElse)
+    StepContinue t' -> return $ StepContinue (If t' tThen tElse)
+reduce_ Break =
+  return BreakLoop
+reduce_ Continue =
+  return ContinueLoop
+reduce_ w@(While cond body) = do
+  condResult <- reduce_ cond
+  case condResult of
+    StepContinue t' ->
+      return $ StepContinue (While t' body)
+    Happy (BoolVal True) -> do
+      bodyResult <- reduce_ body
+      case bodyResult of
+        BreakLoop -> return $ Happy (IntVal 0) -- exit loop
+        ContinueLoop -> return $ StepContinue w -- skip to next iteration
+        Happy _ -> return $ StepContinue w -- normal next iteration
+        StepContinue t' -> return $ StepContinue (While cond t') -- propagate small-step
+        Sad msg -> return $ Sad msg
+    Happy (BoolVal False) ->
+      return $ Happy (IntVal 0) -- done looping
+    Happy (IntVal n) ->
+      if n /= 0
+        then do
+          bodyResult <- reduce_ body
+          case bodyResult of
+            BreakLoop -> return $ Happy (IntVal 0)
+            ContinueLoop -> return $ StepContinue w
+            Happy _ -> return $ StepContinue w
+            StepContinue t' -> return $ StepContinue (Seq t' w)
+            Sad msg -> return $ Sad msg
+        else return $ Happy (IntVal 0) -- done looping
+    Sad msg -> return $ Sad msg
+    _ -> return $ Sad "Condition in while must evaluate to a boolean"
 reduce_ (Read x) =
   premise
     inputVal
@@ -161,5 +201,7 @@ reduceFully :: (Machine m, Show m, V m ~ Value) => Term -> m -> (Either String (
 reduceFully term machine =
   case S.runState (reduce term) machine of
     (Sad msg, m) -> (Left msg, m)
-    (Continue t, m) -> reduceFully t m
+    (StepContinue t, m) -> reduceFully t m
+    (BreakLoop, m) -> (Right (IntVal 0), m)
+    (ContinueLoop, m) -> (Right (IntVal 0), m)
     (Happy n, m) -> (Right n, m)

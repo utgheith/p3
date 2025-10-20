@@ -27,6 +27,8 @@ data Term
   | VarDef String (Maybe Term)
   | VarRef String
   | While Term Term
+  | Break
+  | Continue
   deriving
     ( -- | more term constructors
       Show,
@@ -149,8 +151,18 @@ whileTerm = do
   body <- term
   return $ While cond body
 
+breakTerm :: Parser Token Term
+breakTerm = do
+  _ <- keyword "break"
+  return Break
+
+continueTerm :: Parser Token Term
+continueTerm = do
+  _ <- keyword "continue"
+  return Continue
+
 unaryExp :: Parser Token Term
-unaryExp = oneof [assign, ifExpr, block, funDef, minus, num, string, parens, varDef, varRef, whileTerm]
+unaryExp = oneof [assign, ifExpr, block, funDef, minus, num, string, parens, varDef, varRef, whileTerm, breakTerm, continueTerm]
 
 ----------- prog ----------
 

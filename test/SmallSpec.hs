@@ -263,6 +263,57 @@ spec = do
       let finalMachine = initialMachine {getMem = M.fromList [("x", IntVal 10)]}
       reduceFully term initialMachine `shouldBe` (Right (IntVal 10), finalMachine)
 
+    it "handles break inside a while loop" $ do
+      let term =
+            Seq
+              (Let "x" (Literal 0))
+              ( Seq -- Wrap the while and Var "x"
+                  ( While
+                      (BinaryOps Lt (Var "x") (Literal 5))
+                      ( Seq
+                          ( If
+                              (BinaryOps Eq (Var "x") (Literal 3))
+                              Break
+                              Skip
+                          )
+                          (Let "x" (BinaryOps Add (Var "x") (Literal 1)))
+                      )
+                  )
+                  (Var "x") -- Return x after the loop
+              )
+      -- Expect the loop to stop early when x == 3
+      let finalMachine = initialMachine {getMem = M.fromList [("x", IntVal 3)]}
+      reduceFully term initialMachine `shouldBe` (Right (IntVal 3), finalMachine)
+
+    it "handles continue inside a while loop" $ do
+      let term =
+            Seq
+              (Let "x" (Literal 0))
+              ( Seq
+                  (Let "sum" (Literal 0))
+                  ( Seq -- This outer Seq ensures we return "sum" after the loop
+                      ( While
+                          (BinaryOps Lt (Var "x") (Literal 5))
+                          -- The entire body is now a single If-Then-Else statement
+                          ( If
+                              (BinaryOps Eq (Var "x") (Literal 2))
+                              ( Seq -- The 'then' branch: just increment x and signal continue
+                                  (Let "x" (BinaryOps Add (Var "x") (Literal 1)))
+                                  Continue
+                              )
+                              ( Seq -- The 'else' branch: update sum AND increment x
+                                  (Let "sum" (BinaryOps Add (Var "sum") (Var "x")))
+                                  (Let "x" (BinaryOps Add (Var "x") (Literal 1)))
+                              )
+                          )
+                      )
+                      (Var "sum") -- After the loop, the program evaluates to the value of "sum"
+                  )
+              )
+      -- continue skips the addition when x == 2, so sum = 0 + 1 + 3 + 4 = 8
+      let finalMachine = initialMachine {getMem = M.fromList [("x", IntVal 5), ("sum", IntVal 8)]}
+      reduceFully term initialMachine `shouldBe` (Right (IntVal 8), finalMachine)
+
     it "reduces combination of arithmetic and logical operations" $ do
       let term =
             BinaryOps
