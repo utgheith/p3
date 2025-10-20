@@ -32,7 +32,14 @@ jobs:
           ${{ runner.os }}-stack-
 
     - name: Build
-      run: stack build
+      run: stack build --coverage
 
     - name: Run tests
-      run: stack test
+      run: stack test --coverage --hpc-json
+
+    - name: Generate Code Coverage Report
+      uses: 8c6794b6/hpc-codecov-action@v4
+      with:
+        target: stack:p3
+        format: codecov
+        out: coverage.json
