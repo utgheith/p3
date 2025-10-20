@@ -5,6 +5,7 @@
 module SmallSpec (spec) where
 
 import qualified Control.Monad.State as S
+import Data.Bits (complement)
 import qualified Data.Map as M
 import Scope (Scope (..), emptyScope, getAllBindings, insertScope, lookupScope, scopeFromList)
 import Small
@@ -115,8 +116,14 @@ instance Machine MockMachine where
   orVal (BoolVal v1) (BoolVal v2) = return $ Happy (BoolVal (v1 || v2))
   orVal _ _ = return $ Sad "Type error in ||"
 
+  xorVal (BoolVal v1) (BoolVal v2) = return $ Happy (BoolVal (v1 /= v2))
+  xorVal _ _ = return $ Sad "Type error in ^"
+
   notVal (BoolVal v) = return $ Happy (BoolVal (not v))
   notVal _ = return $ Sad "Type error in !"
+
+  bitNotVal (IntVal v) = return $ Happy (IntVal (complement v))
+  bitNotVal _ = return $ Sad "Type error in ~"
 
   getBracketValue (Tuple (x : xs)) (IntVal pos) = if pos == 0 then return (Happy x) else getBracketValue (Tuple xs) (IntVal (pos - 1))
   getBracketValue (Dictionary d) (IntVal val) = case M.lookup val d of

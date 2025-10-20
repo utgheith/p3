@@ -1,9 +1,9 @@
 module Term (Term (..), BinaryOp (..), UnaryOp (..)) where
 
-data BinaryOp = Add | Sub | Mul | Div | Mod | Lt | Gt | Lte | Gte | Eq | Neq | And | Or | Pow
+data BinaryOp = Add | Sub | Mul | Div | Mod | Lt | Gt | Lte | Gte | Eq | Neq | And | Or | Pow | Xor
   deriving (Eq, Show)
 
-data UnaryOp = Neg | Not
+data UnaryOp = Neg | Not | BitNot
   deriving (Eq, Show)
 
 data Term

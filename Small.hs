@@ -57,7 +57,9 @@ class Machine m where
   -- Logical operations (operate on booleans)
   andVal :: V m -> V m -> Env m
   orVal :: V m -> V m -> Env m
+  xorVal :: V m -> V m -> Env m
   notVal :: V m -> Env m
+  bitNotVal :: V m -> Env m
 
   -- Access/Manage Bracket Values
   getBracketValue :: V m -> V m -> Env m
@@ -174,6 +176,7 @@ reduce_ (BinaryOps op t1 t2) =
     applyBinaryOp Neq = neqVal
     applyBinaryOp And = andVal
     applyBinaryOp Or = orVal
+    applyBinaryOp Xor = xorVal
 reduce_ (BoolLit b) =
   return $ Happy $ BoolVal b
 reduce_ (UnaryOps op t) =
@@ -184,6 +187,7 @@ reduce_ (UnaryOps op t) =
   where
     applyUnaryOp Neg = negVal
     applyUnaryOp Not = notVal
+    applyUnaryOp BitNot = bitNotVal
 reduce_ (BreakSignal) =
   return $ Continue BreakSignal
 reduce_ (ContinueSignal) =

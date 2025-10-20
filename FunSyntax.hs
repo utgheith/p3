@@ -70,7 +70,7 @@ term = binaryExp precedence
 
 -- precedence levels, from lowest to highest
 precedence :: [S.Set String]
-precedence = [S.fromList ["||"], S.fromList ["&&"], S.fromList ["==", "!="], S.fromList ["<", ">", "<=", ">="], S.fromList ["+", "-"], S.fromList ["*", "/", "%"], S.fromList ["**"]]
+precedence = [S.fromList ["||"], S.fromList ["^"], S.fromList ["&&"], S.fromList ["==", "!="], S.fromList ["<", ">", "<=", ">="], S.fromList ["+", "-"], S.fromList ["*", "/", "%"], S.fromList ["**"]]
 
 binaryExp :: [S.Set String] -> Parser Token Term
 binaryExp [] = unaryExp
@@ -103,6 +103,7 @@ stringToBinaryOp "!=" = Neq
 stringToBinaryOp "&&" = And
 stringToBinaryOp "||" = Or
 stringToBinaryOp "**" = Pow
+stringToBinaryOp "^" = Xor
 stringToBinaryOp _ = error "Unknown binary operator"
 
 ------------------- unary operators  -------------------
@@ -113,6 +114,9 @@ assign = [Let name expr | name <- ident, _ <- symbol "=", expr <- term]
 -- We can use monad comprehensions (GHC extension) to make parsers more concise
 minus :: Parser Token Term
 minus = [UnaryOps Neg e | _ <- symbol "-", e <- unaryExp]
+
+bitnot :: Parser Token Term
+bitnot = [UnaryOps BitNot e | _ <- symbol "~", e <- unaryExp]
 
 num :: Parser Token Term
 num = do
@@ -226,7 +230,7 @@ printStmt = do
   return $ Write expr
 
 unaryExp :: Parser Token Term
-unaryExp = oneof [assign, ifExpr, block, funDef, minus, num, string, bool, tuple, tupleSet, tupleAccess, parens, varDef, funCall, varRef, whileTerm, printStmt]
+unaryExp = oneof [assign, ifExpr, block, funDef, minus, bitnot, num, string, bool, tuple, tupleSet, tupleAccess, parens, varDef, funCall, varRef, whileTerm, printStmt]
 
 ----------- prog ----------
 

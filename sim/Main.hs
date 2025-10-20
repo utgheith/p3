@@ -6,6 +6,7 @@
 module Main (main) where
 
 import qualified Control.Monad.State as S
+import Data.Bits (complement)
 import qualified Data.Map as M
 import qualified Progs
 import Scope (Scope (..), emptyScope, getAllBindings, insertScope, lookupScope)
@@ -147,9 +148,17 @@ instance Machine Simulator where
   orVal (BoolVal v1) (BoolVal v2) = return $ Happy (BoolVal (v1 || v2))
   orVal _ _ = return $ Sad "Type error in ||"
 
+  xorVal :: Value -> Value -> Env Simulator
+  xorVal (BoolVal v1) (BoolVal v2) = return $ Happy (BoolVal (v1 /= v2))
+  xorVal _ _ = return $ Sad "Type error in ^"
+
   notVal :: Value -> Env Simulator
   notVal (BoolVal v) = return $ Happy (BoolVal (not v))
   notVal _ = return $ Sad "Type error in !"
+
+  bitNotVal :: Value -> Env Simulator
+  bitNotVal (IntVal v) = return $ Happy (IntVal (complement v))
+  bitNotVal _ = return $ Sad "Type error in ~"
 
   getBracketValue :: Value -> Value -> Env Simulator
   getBracketValue (Tuple (x : xs)) (IntVal pos) = if pos == 0 then return (Happy x) else getBracketValue (Tuple xs) (IntVal (pos - 1))
