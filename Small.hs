@@ -1,15 +1,17 @@
 {-# LANGUAGE ConstrainedClassMethods #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 
-module Small (reduceFully, Machine (..), Result (..), Env) where
+module Small (reduceFully, Machine (..), Result (..), Error, Env) where
 
+import Control.Arrow ((>>>))
 import qualified Control.Monad.State as S
 import Data.Either
 import qualified Data.Map as M
 import Debug.Trace (trace)
-import Term (BinaryOp (..), Term (..), UnaryOp (..))
+import Term (BinaryOp (..), ErrorKind (..), ErrorKindOrAny (..), Term (..), UnaryOp (..))
 import Value (Value (..), valueToInt, valueToTuple)
 
 ----- The Machine type class -----
@@ -43,6 +45,7 @@ class Machine m where
   mulVal :: V m -> V m -> Env m
   divVal :: V m -> V m -> Env m
   modVal :: V m -> V m -> Env m
+  powVal :: V m -> V m -> Env m
   negVal :: V m -> Env m
 
   -- Comparison operations (operate on integers, return booleans)
@@ -56,7 +59,15 @@ class Machine m where
   -- Logical operations (operate on booleans)
   andVal :: V m -> V m -> Env m
   orVal :: V m -> V m -> Env m
+  xorVal :: V m -> V m -> Env m
   notVal :: V m -> Env m
+  bitNotVal :: V m -> Env m
+
+  -- Increment/Decrement operations (modify variables)
+  preIncrementVal :: String -> Env m -- ++x: increment then return new value
+  preDecrementVal :: String -> Env m -- --x: decrement then return new value
+  postIncrementVal :: String -> Env m -- x++: return old value then increment
+  postDecrementVal :: String -> Env m -- x--: return old value then decrement
 
   -- Access/Manage Bracket Values
   getBracketValue :: V m -> V m -> Env m
@@ -67,10 +78,12 @@ class Machine m where
 
 ----- The Result type -----
 
+type Error = (ErrorKind, String)
+
 data Result a
   = Happy a -- produced an answer
   | Continue Term -- need to keep going
-  | Sad String -- error
+  | Sad Error -- error
   deriving (Eq, Show)
 
 ----- The Env monad -----
@@ -88,6 +101,11 @@ premise e l r = do
     Continue t' -> return $ Continue (l t')
     Happy n -> r n
     Sad _ -> return v
+
+-- Helper for try-catch statement
+errorShouldBeCaught :: ErrorKind -> ErrorKindOrAny -> Bool
+errorShouldBeCaught _ Any = True
+errorShouldBeCaught resultErrorKind (Specific catchableErrorKind) = resultErrorKind == catchableErrorKind
 
 ------ Small-step reduction ------
 
@@ -116,10 +134,17 @@ reduce_ (If cond tThen tElse) = do
     (reduce cond)
     (\cond' -> If cond' tThen tElse)
     (\v -> selectValue v (return $ Continue tThen) (return $ Continue tElse))
+reduce_ (Try tTry catchableErrorKindOrAny tCatch) = do
+  vTry <- reduce tTry
+  case vTry of
+    Continue tTry' -> return $ Continue (Try tTry' catchableErrorKindOrAny tCatch)
+    Happy n -> return $ Happy n
+    Sad (resultErrorKind, _) | errorShouldBeCaught resultErrorKind catchableErrorKindOrAny -> return $ Continue tCatch
+    Sad _ -> return vTry
 reduce_ (While cond body) = do
   premise
     (reduce cond)
-    (\cond' -> While cond' body)
+    (`While` body)
     ( \v -> do
         selectValue
           v
@@ -164,6 +189,7 @@ reduce_ (BinaryOps op t1 t2) =
     applyBinaryOp Mul = mulVal
     applyBinaryOp Div = divVal
     applyBinaryOp Mod = modVal
+    applyBinaryOp Pow = powVal
     applyBinaryOp Lt = ltVal
     applyBinaryOp Gt = gtVal
     applyBinaryOp Lte = lteVal
@@ -172,6 +198,7 @@ reduce_ (BinaryOps op t1 t2) =
     applyBinaryOp Neq = neqVal
     applyBinaryOp And = andVal
     applyBinaryOp Or = orVal
+    applyBinaryOp Xor = xorVal
 reduce_ (BoolLit b) =
   return $ Happy $ BoolVal b
 reduce_ (UnaryOps op t) =
@@ -182,9 +209,10 @@ reduce_ (UnaryOps op t) =
   where
     applyUnaryOp Neg = negVal
     applyUnaryOp Not = notVal
-reduce_ (BreakSignal) =
+    applyUnaryOp BitNot = bitNotVal
+reduce_ BreakSignal =
   return $ Continue BreakSignal
-reduce_ (ContinueSignal) =
+reduce_ ContinueSignal =
   return $ Continue ContinueSignal
 reduce_ (Fun xs t) = do
   env <- S.get
@@ -195,6 +223,14 @@ reduce_ (ApplyFun tf tas) =
     (reduce tf)
     (`ApplyFun` tas)
     (reduceArgsAndApply tf tas)
+reduce_ (PreIncrement x) =
+  preIncrementVal x
+reduce_ (PreDecrement x) =
+  preDecrementVal x
+reduce_ (PostIncrement x) =
+  postIncrementVal x
+reduce_ (PostDecrement x) =
+  postDecrementVal x
 reduce_ (TupleTerm elements) =
   case elements of
     (x : xs) ->
@@ -204,38 +240,31 @@ reduce_ (TupleTerm elements) =
         ( \v1 ->
             premise
               (reduce $ TupleTerm xs)
-              ( \term' ->
-                  case term' of
-                    TupleTerm xs' -> TupleTerm (x : xs')
-                    _ -> error "TupleTerm recursion somehow returned a non TupleTerm continuation"
+              ( \case
+                  TupleTerm xs' -> TupleTerm (x : xs')
+                  _ -> error "TupleTerm recursion somehow returned a non TupleTerm continuation"
               )
-              (\v2 -> return $ Happy $ Tuple $ v1 : (fromRight [] $ valueToTuple v2))
+              (\v2 -> return $ Happy $ Tuple $ v1 : fromRight [] (valueToTuple v2))
         )
     [] -> return $ Happy $ Tuple []
 reduce_ (AccessBracket t i) =
   premise
     (reduce t)
-    (\term' -> AccessBracket term' i)
-    ( \v1 ->
-        premise
-          (reduce i)
-          (AccessBracket t)
-          (getBracketValue v1)
-    )
+    (`AccessBracket` i)
+    (getBracketValue >>> premise (reduce i) (AccessBracket t)) -- (f >>> g) == (g . f) == (\x -> g (f x))
 reduce_ (SetBracket name terms val) =
   case terms of
     TupleTerm tupleTerm ->
       premise
         (reduce $ TupleTerm tupleTerm)
         (\terms' -> SetBracket name terms' val)
-        ( \terms' ->
-            premise
+        ( setBracketValue name
+            >>> premise
               (reduce val)
-              (\val' -> SetBracket name terms val')
-              (\val' -> setBracketValue name terms' val')
+              (SetBracket name terms)
         )
     _ -> error "SetBracket should only have tuple term as second argument"
-reduce_ (NewDictionary) =
+reduce_ NewDictionary =
   return $ Happy $ Dictionary M.empty
 
 reduceArgsAndApply :: (Machine m, Show m, V m ~ Value) => Term -> [Term] -> Value -> Env m
@@ -260,18 +289,18 @@ applyFunArgList tf rest funVal argVal = do
 
 applyFunArg :: (Machine m, Show m, V m ~ Value) => Value -> Value -> Env m
 applyFunArg (ClosureVal [] _ _) _ = do
-  return $ Sad "too many arguments: function takes 0 arguments"
+  return $ Sad (Arguments, "too many arguments: function takes 0 arguments")
 applyFunArg (ClosureVal (x : xs) body caps) arg = do
   let newCaps = caps ++ [(x, arg)]
   if null xs
     then evalClosureBody body newCaps
     else return $ Happy (ClosureVal xs body newCaps)
-applyFunArg _ _ = return $ Sad "attempt to call a non-function"
+applyFunArg _ _ = return $ Sad (Type, "attempt to call a non-function")
 
 applyFuncNoArg :: (Machine m, Show m, V m ~ Value) => Value -> Env m
 applyFuncNoArg (ClosureVal [] body caps) = evalClosureBody body caps
-applyFuncNoArg (ClosureVal (_ : _) _ _) = return $ Sad "missing arguments: function requires parameters"
-applyFuncNoArg _ = return $ Sad "attempt to call a non-function"
+applyFuncNoArg (ClosureVal (_ : _) _ _) = return $ Sad (Arguments, "missing arguments: function requires parameters")
+applyFuncNoArg _ = return $ Sad (Type, "attempt to call a non-function")
 
 -- Bind captured args, evaluate body, restore machine state
 evalClosureBody :: (Machine m, Show m, V m ~ Value) => Term -> [(String, Value)] -> Env m
@@ -279,21 +308,21 @@ evalClosureBody body caps = do
   m0 <- S.get
   let (_resPush, m1) = S.runState (pushScope []) m0
   case bindMany caps m1 of
-    Left msg -> return (Sad msg)
+    Left msg -> return $ Sad msg
     Right m2 -> do
       let (res, m3) = reduceFully body m2
       let (_resPop, m4) = S.runState popScope m3 -- Restore previous scope.
       S.put m4
       case res of
-        Left msg -> return $ Sad msg
+        Left msg -> return $ Sad (Arguments, msg)
         Right v -> return $ Happy v
 
-bindMany :: (Machine m, V m ~ Value) => [(String, Value)] -> m -> Either String m
+bindMany :: (Machine m, V m ~ Value) => [(String, Value)] -> m -> Either Error m
 bindMany [] m = Right m
 bindMany ((k, v) : rest) m =
   case S.runState (setVar k v) m of
     (Sad msg, _m') -> Left msg
-    (Continue _, _m') -> Left "internal: setVar requested Continue"
+    (Continue _, _m') -> Left (Arguments, "internal: setVar requested Continue")
     (Happy _, m') -> bindMany rest m'
 
 reduce :: (Machine m, Show m, V m ~ Value) => Term -> Env m
@@ -306,7 +335,7 @@ reduce t = do
 reduceFully :: (Machine m, Show m, V m ~ Value) => Term -> m -> (Either String (V m), m)
 reduceFully term machine =
   case S.runState (reduce term) machine of
-    (Sad msg, m) -> (Left msg, m)
+    (Sad (_, message), m) -> (Left message, m)
     (Continue t, m) -> do
       case t of
         BreakSignal -> (Left "unhandled break signal", m)
