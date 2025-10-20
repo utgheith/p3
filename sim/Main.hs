@@ -103,6 +103,7 @@ instance Machine Simulator where
   selectValue (ListVal xs) e1 e2 = if not (null xs) then e1 else e2
   selectValue (Tuple l) e1 e2 = if not (null l) then e1 else e2
   selectValue (ClosureVal {}) _ _ = return $ Sad "Type error in select"
+  selectValue (Dictionary _) _ _ = return $ Sad "Type error in select"
 
   ltVal :: Value -> Value -> Env Simulator
   ltVal (IntVal v1) (IntVal v2) = return $ Happy (BoolVal (v1 < v2))
@@ -146,17 +147,29 @@ instance Machine Simulator where
   notVal (BoolVal v) = return $ Happy (BoolVal (not v))
   notVal _ = return $ Sad "Type error in !"
 
-  getTupleValue :: Value -> Value -> Env Simulator
-  getTupleValue (Tuple (x : xs)) (IntVal pos) = if pos == 0 then return (Happy x) else getTupleValue (Tuple xs) (IntVal (pos - 1))
-  getTupleValue _ _ = return $ Sad "Tuple Lookup Bad Input"
+  getBracketValue :: Value -> Value -> Env Simulator
+  getBracketValue (Tuple (x : xs)) (IntVal pos) = if pos == 0 then return (Happy x) else getBracketValue (Tuple xs) (IntVal (pos - 1))
+  getBracketValue (Dictionary d) (IntVal val) = case M.lookup val d of
+    Just v -> return $ Happy v
+    Nothing -> return $ Sad "Unable to find element in dictionary"
+  getBracketValue (Dictionary _) _ = return $ Sad "Unable to index into dictionary with type"
+  getBracketValue _ _ = return $ Sad "Tuple Lookup Bad Input"
 
-  setTupleValue :: String -> Value -> Value -> Env Simulator
-  setTupleValue n t v = do
+  setBracketValue :: String -> Value -> Value -> Env Simulator
+  setBracketValue n t v = do
     (Simulator m inp out) <- S.get
     case lookupScope n m of
       Just oldVal -> case oldVal of
         Tuple _ ->
-          let newVal = updateTuple oldVal t v
+          let newVal = updateBracket oldVal t v
+           in case newVal of
+                Just newVal' -> do
+                  let m' = insertScope n newVal' m
+                  S.put (Simulator m' inp out)
+                  return $ Happy v
+                Nothing -> return $ Sad "Something went wrong while trying to update Tuple value"
+        Dictionary _ ->
+          let newVal = updateBracket oldVal t v
            in case newVal of
                 Just newVal' -> do
                   let m' = insertScope n newVal' m
@@ -166,24 +179,33 @@ instance Machine Simulator where
         _ -> return $ Sad "Attempting to Index but didn't find Tuple"
       Nothing -> return $ Sad "Attempting to Set Tuple That Doesn't Exist"
     where
-      updateTuple :: Value -> Value -> Value -> Maybe Value
-      updateTuple (Tuple (x : xs)) (Tuple (y : ys)) val = case y of
+      updateBracket :: Value -> Value -> Value -> Maybe Value
+      updateBracket (Tuple (x : xs)) (Tuple (y : ys)) val = case y of
         IntVal index ->
           if index == 0
             then
-              let returnVal = updateTuple x (Tuple ys) val
+              let returnVal = updateBracket x (Tuple ys) val
                in case returnVal of
                     Just a -> Just $ Tuple (a : xs)
                     Nothing -> Nothing
             else
-              let returnVal = updateTuple (Tuple xs) (Tuple (IntVal (index - 1) : ys)) val
+              let returnVal = updateBracket (Tuple xs) (Tuple (IntVal (index - 1) : ys)) val
                in case returnVal of
                     Just (Tuple a) -> Just $ Tuple (x : a)
+                    Just _ -> error "Unable to rebuild tuple"
                     Nothing -> Nothing
-                    _ -> error "Unable to rebuild tuple"
         _ -> Nothing
-      updateTuple _ (Tuple []) val = Just val
-      updateTuple _ _ _ = Nothing
+      updateBracket (Dictionary d) (Tuple (y : ys)) val = case y of
+        IntVal index -> case M.lookup index d of
+          Just r ->
+            let returnVal = updateBracket r (Tuple ys) val
+             in case returnVal of
+                  Just w -> Just (Dictionary (M.insert index w d))
+                  Nothing -> Nothing
+          Nothing -> Nothing
+        _ -> Nothing
+      updateBracket _ (Tuple []) val = Just val
+      updateBracket _ _ _ = Nothing
 
 infixl 1 ~
 
