@@ -22,7 +22,7 @@ instance Machine MockMachine where
     m <- S.get
     case lookupScope x (getMem m) of
       Just v -> return $ Happy v
-      Nothing -> return $ Sad "variable not found"
+      Nothing -> return $ Sad (VariableNotFound, "variable not found")
 
   setVar x v = do
     m <- S.get
@@ -49,7 +49,7 @@ instance Machine MockMachine where
       (i : is) -> do
         S.put (m {getInput = is})
         return $ Happy i
-      [] -> return $ Sad "end of input"
+      [] -> return $ Sad (Input, "end of input")
 
   outputVal v = do
     m <- S.get
@@ -57,67 +57,67 @@ instance Machine MockMachine where
     return $ Happy v
 
   subVal (IntVal v1) (IntVal v2) = return $ Happy (IntVal (v1 - v2))
-  subVal _ _ = return $ Sad "Type error in subtraction"
+  subVal _ _ = return $ Sad (Type, "Type error in subtraction")
 
   addVal (IntVal v1) (IntVal v2) = return $ Happy (IntVal (v1 + v2))
-  addVal _ _ = return $ Sad "Type error in addition"
+  addVal _ _ = return $ Sad (Type, "Type error in addition")
 
   mulVal (IntVal v1) (IntVal v2) = return $ Happy (IntVal (v1 * v2))
-  mulVal _ _ = return $ Sad "Type error in multiplication"
+  mulVal _ _ = return $ Sad (Type, "Type error in multiplication")
 
   divVal (IntVal v1) (IntVal v2) =
     if v2 == 0
-      then return $ Sad "Cannot divide by 0"
+      then return $ Sad (Arithmetic, "Cannot divide by 0")
       else return $ Happy (IntVal (v1 `div` v2)) -- I don't want the actual interpreter to crash
-  divVal _ _ = return $ Sad "Type error in division"
+  divVal _ _ = return $ Sad (Type, "Type error in division")
 
   modVal (IntVal v1) (IntVal v2) =
     if v2 == 0
-      then return $ Sad "Cannot mod by 0"
+      then return $ Sad (Arithmetic, "Cannot mod by 0")
       else return $ Happy (IntVal (v1 `mod` v2)) -- I don't want the actual interpreter to crash
-  modVal _ _ = return $ Sad "Type error in modulus"
+  modVal _ _ = return $ Sad (Type, "Type error in modulus")
 
   negVal (IntVal v) =
     return $ Happy (IntVal (-v))
-  negVal _ = return $ Sad "Type error in neg"
+  negVal _ = return $ Sad (Type, "Type error in neg")
 
   ltVal (IntVal v1) (IntVal v2) = return $ Happy (BoolVal (v1 < v2))
-  ltVal _ _ = return $ Sad "Type error in <"
+  ltVal _ _ = return $ Sad (Type, "Type error in <")
 
   gtVal (IntVal v1) (IntVal v2) = return $ Happy (BoolVal (v1 > v2))
-  gtVal _ _ = return $ Sad "Type error in >"
+  gtVal _ _ = return $ Sad (Type, "Type error in >")
 
   lteVal (IntVal v1) (IntVal v2) = return $ Happy (BoolVal (v1 <= v2))
-  lteVal _ _ = return $ Sad "Type error in <="
+  lteVal _ _ = return $ Sad (Type, "Type error in <=")
 
   gteVal (IntVal v1) (IntVal v2) = return $ Happy (BoolVal (v1 >= v2))
-  gteVal _ _ = return $ Sad "Type error in >="
+  gteVal _ _ = return $ Sad (Type, "Type error in >=")
 
   eqVal (IntVal v1) (IntVal v2) = return $ Happy (BoolVal (v1 == v2))
   eqVal (BoolVal v1) (BoolVal v2) = return $ Happy (BoolVal (v1 == v2))
   eqVal (StringVal v1) (StringVal v2) = return $ Happy (BoolVal (v1 == v2))
-  eqVal _ _ = return $ Sad "Type error in =="
+  eqVal _ _ = return $ Sad (Type, "Type error in ==")
 
   neqVal (IntVal v1) (IntVal v2) = return $ Happy (BoolVal (v1 /= v2))
   neqVal (BoolVal v1) (BoolVal v2) = return $ Happy (BoolVal (v1 /= v2))
   neqVal (StringVal v1) (StringVal v2) = return $ Happy (BoolVal (v1 /= v2))
-  neqVal _ _ = return $ Sad "Type error in !="
+  neqVal _ _ = return $ Sad (Type, "Type error in !=")
 
   andVal (BoolVal v1) (BoolVal v2) = return $ Happy (BoolVal (v1 && v2))
-  andVal _ _ = return $ Sad "Type error in &&"
+  andVal _ _ = return $ Sad (Type, "Type error in &&")
 
   orVal (BoolVal v1) (BoolVal v2) = return $ Happy (BoolVal (v1 || v2))
-  orVal _ _ = return $ Sad "Type error in ||"
+  orVal _ _ = return $ Sad (Type, "Type error in ||")
 
   notVal (BoolVal v) = return $ Happy (BoolVal (not v))
-  notVal _ = return $ Sad "Type error in !"
+  notVal _ = return $ Sad (Type, "Type error in !")
 
   getBracketValue (Tuple (x : xs)) (IntVal pos) = if pos == 0 then return (Happy x) else getBracketValue (Tuple xs) (IntVal (pos - 1))
   getBracketValue (Dictionary d) (IntVal val) = case M.lookup val d of
     Just v -> return $ Happy v
-    Nothing -> return $ Sad "Unable to find element in dictionary"
-  getBracketValue (Dictionary _) _ = return $ Sad "Unable to index into dictionary with type"
-  getBracketValue _ _ = return $ Sad "Tuple Lookup Bad Input"
+    Nothing -> return $ Sad (VariableNotFound, "Unable to find element in dictionary")
+  getBracketValue (Dictionary _) _ = return $ Sad (Type, "Unable to index into dictionary with type")
+  getBracketValue _ _ = return $ Sad (Type, "Tuple Lookup Bad Input")
 
   setBracketValue n t v = do
     m <- S.get
@@ -126,59 +126,59 @@ instance Machine MockMachine where
         Tuple _ ->
           let newVal = updateBracket oldVal t v
            in case newVal of
-                Just newVal' -> do
+                Right newVal' -> do
                   S.put (m {getMem = insertScope n newVal' (getMem m)})
                   return $ Happy v
-                Nothing -> return $ Sad "Something went wrong while trying to update Tuple value"
+                Left e -> return $ Sad e
         Dictionary _ ->
           let newVal = updateBracket oldVal t v
            in case newVal of
-                Just newVal' -> do
+                Right newVal' -> do
                   S.put (m {getMem = insertScope n newVal' (getMem m)})
                   return $ Happy v
-                Nothing -> return $ Sad "Something went wrong while trying to update Dictionary value"
-        _ -> return $ Sad "Attempting to Index but didn't find Tuple"
-      Nothing -> return $ Sad "Attempting to Set Tuple That Doesn't Exist"
+                Left e -> return $ Sad e
+        _ -> return $ Sad (Type, "Attempting to Index but didn't find Tuple")
+      Nothing -> return $ Sad (VariableNotFound, "Attempting to Set Tuple That Doesn't Exist")
     where
-      updateBracket :: Value -> Value -> Value -> Maybe Value
+      updateBracket :: Value -> Value -> Value -> Either Error Value
       updateBracket (Tuple (x : xs)) (Tuple (y : ys)) val = case y of
         IntVal index ->
           if index == 0
             then
               let returnVal = updateBracket x (Tuple ys) val
                in case returnVal of
-                    Just a -> Just $ Tuple (a : xs)
-                    Nothing -> Nothing
+                    Right a -> Right $ Tuple (a : xs)
+                    _ -> returnVal
             else
               let returnVal = updateBracket (Tuple xs) (Tuple (IntVal (index - 1) : ys)) val
                in case returnVal of
-                    Just (Tuple a) -> Just $ Tuple (x : a)
-                    Nothing -> Nothing
+                    Right (Tuple a) -> Right $ Tuple (x : a)
+                    Left _ -> returnVal
                     _ -> error "Unable to rebuild tuple"
-        _ -> Nothing
+        _ -> Left (Type, "Provided non integer to index by")
       updateBracket (Dictionary d) (Tuple (y : ys)) val = case y of
         IntVal index -> case M.lookup index d of
           Just r ->
             let returnVal = updateBracket r (Tuple ys) val
              in case returnVal of
-                  Just w -> Just (Dictionary (M.insert index w d))
-                  Nothing -> Nothing
+                  Right w -> Right (Dictionary (M.insert index w d))
+                  _ -> returnVal
           Nothing ->
             let returnVal = updateBracket (IntVal 0) (Tuple ys) val
              in case returnVal of
-                  Just w -> Just (Dictionary (M.insert index w d))
-                  Nothing -> Nothing
-        _ -> Nothing
-      updateBracket _ (Tuple []) val = Just val
-      updateBracket _ _ _ = Nothing
+                  Right w -> Right (Dictionary (M.insert index w d))
+                  _ -> returnVal
+        _ -> Left (Type, "Provided non integer to index by")
+      updateBracket _ (Tuple []) val = Right val
+      updateBracket _ _ _ = Left (Type, "Out of Bounds")
 
   selectValue (BoolVal True) c _ = c
   selectValue (BoolVal False) _ t = t
   selectValue (IntVal n) c t = if n /= 0 then c else t
   selectValue (StringVal s) c t = if not (null s) then c else t
   selectValue (Tuple l) c t = if not (null l) then c else t
-  selectValue (ClosureVal {}) _ _ = return $ Sad "Type error in select"
-  selectValue (Dictionary _) _ _ = return $ Sad "Type error in select"
+  selectValue (ClosureVal {}) _ _ = return $ Sad (Type, "Type error in select")
+  selectValue (Dictionary _) _ _ = return $ Sad (Type, "Type error in select")
 
 spec :: Spec
 spec = do
@@ -264,23 +264,35 @@ spec = do
       let (result, _) = reduceFully term initialMachine
       result `shouldBe` Left "Type error in subtraction"
 
+    it "try catch runs try statement if no error" $ do
+      let term = Try (Literal 1) Any (Literal 2)
+      reduceFully term initialMachine `shouldBe` (Right (IntVal 1), initialMachine)
+
+    it "try catch runs catch statement if error" $ do
+      let term = Try (BinaryOps Div (Literal 1) (Literal 0)) (Specific Arithmetic) (Literal 2)
+      reduceFully term initialMachine `shouldBe` (Right (IntVal 2), initialMachine)
+
+    it "try catch errors if both try and catch statements produce errors" $ do
+      let term = Try (BinaryOps Add (Literal 1) (StringLiteral "a")) (Specific Type) (BinaryOps Div (Literal 1) (Literal 0))
+      reduceFully term initialMachine `shouldBe` (Left "Cannot divide by 0", initialMachine)
+
     it "reduces a Tuple" $ do
-      let term = TupleTerm [(Literal 10), (StringLiteral "hello"), (BoolLit True)]
+      let term = TupleTerm [Literal 10, StringLiteral "hello", BoolLit True]
       let (result, _) = reduceFully term initialMachine
       result `shouldBe` Right (Tuple [IntVal 10, StringVal "hello", BoolVal True])
 
     it "access a Tuple" $ do
-      let term = AccessBracket (TupleTerm [(Literal 10), (StringLiteral "hello"), (BoolLit True)]) (Literal 1)
+      let term = AccessBracket (TupleTerm [Literal 10, StringLiteral "hello", BoolLit True]) (Literal 1)
       let (result, _) = reduceFully term initialMachine
       result `shouldBe` Right (StringVal "hello")
 
     it "reduces a let tuple expression" $ do
-      let term = Seq (Let "x" (TupleTerm [(Literal 10), (StringLiteral "hello"), (BoolLit True)])) (SetBracket "x" (TupleTerm [Literal 2]) (BoolLit False))
+      let term = Seq (Let "x" (TupleTerm [Literal 10, StringLiteral "hello", BoolLit True])) (SetBracket "x" (TupleTerm [Literal 2]) (BoolLit False))
       let finalMachine = initialMachine {getMem = scopeFromList [("x", Tuple [IntVal 10, StringVal "hello", BoolVal False])]}
       reduceFully term initialMachine `shouldBe` (Right (BoolVal False), finalMachine)
 
     it "reduces a let nested tuple expression" $ do
-      let term = Seq (Let "x" (TupleTerm [(Literal 10), TupleTerm [StringLiteral "hello"], (BoolLit True)])) (SetBracket "x" (TupleTerm [Literal 1, Literal 0]) (StringLiteral "goodbye"))
+      let term = Seq (Let "x" (TupleTerm [Literal 10, TupleTerm [StringLiteral "hello"], BoolLit True])) (SetBracket "x" (TupleTerm [Literal 1, Literal 0]) (StringLiteral "goodbye"))
       let finalMachine = initialMachine {getMem = scopeFromList [("x", Tuple [IntVal 10, Tuple [StringVal "goodbye"], BoolVal True])]}
       reduceFully term initialMachine `shouldBe` (Right (StringVal "goodbye"), finalMachine)
 
@@ -659,14 +671,14 @@ spec = do
 
     it "reduces new dictionary" $ do
       let term = NewDictionary
-      reduceFully term initialMachine `shouldBe` (Right (Dictionary (M.fromList [])), initialMachine)
+      reduceFully term initialMachine `shouldBe` (Right (Dictionary M.empty), initialMachine)
 
     it "set dictionary" $ do
-      let term = Seq (Let "x" (NewDictionary)) (SetBracket "x" (TupleTerm [Literal 3]) (StringLiteral "hello"))
+      let term = Seq (Let "x" NewDictionary) (SetBracket "x" (TupleTerm [Literal 3]) (StringLiteral "hello"))
       let finalMachine = initialMachine {getMem = scopeFromList [("x", Dictionary (M.fromList [(3, StringVal "hello")]))]}
       reduceFully term initialMachine `shouldBe` (Right (StringVal "hello"), finalMachine)
 
     it "access dictionary" $ do
-      let term = Seq (Let "x" (NewDictionary)) (Seq (SetBracket "x" (TupleTerm [Literal 3]) (StringLiteral "hello")) (AccessBracket (Var "x") (Literal 3)))
+      let term = Seq (Let "x" NewDictionary) (Seq (SetBracket "x" (TupleTerm [Literal 3]) (StringLiteral "hello")) (AccessBracket (Var "x") (Literal 3)))
       let finalMachine = initialMachine {getMem = scopeFromList [("x", Dictionary (M.fromList [(3, StringVal "hello")]))]}
       reduceFully term initialMachine `shouldBe` (Right (StringVal "hello"), finalMachine)
