@@ -25,4 +25,6 @@ data Term
   | SetTuple String Term Term
   | Fun [String] Term
   | ApplyFun Term [Term]
+  | Final String           -- final x
+  | Global String          -- global x
   deriving (Eq, Show)
