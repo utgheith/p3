@@ -186,3 +186,23 @@ spec = do
         Left err -> fail $ "Parse error: " ++ err
         Right (ast, _) -> do
           ast `shouldSatisfy` (const True)
+
+  describe "Namespace tests" $ do
+    it "parses namespace declarations" $ do
+      let program =
+            unlines
+              [ "namespace MyNamespace {",
+                "var x = 10",
+                "fun getX() {",
+                "      x",
+                "  }",
+                "}"
+              ]
+
+      let result = parseString program
+      case result of
+        Left err -> fail $ "Parse error: " ++ err
+        Right (ast, _) -> do
+          ast `shouldSatisfy` \t -> case t of
+            Seq (Let "MyNamespace::x" (Literal 10)) (Let "MyNamespace::getX" (Fun [] (Var "MyNamespace::x"))) -> True
+            _ -> False

@@ -72,4 +72,3 @@ lexer = unfoldr step
             _ -> Just (Error "Unclosed comment", "")
     -- syntax errors
     step s = Just (Error ("Unexpected character: " ++ take 20 s), "")
-
