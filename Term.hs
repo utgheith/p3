@@ -28,4 +28,8 @@ data Term
   | ApplyFun Term [Term]
   | BreakSignal
   | ContinueSignal
+  | ClassDef String Term Term Term -- class name, constructor, instance vars, methods
+  | ClassInstantiate String [Term] -- class name, constructor args
+  | ClassVar String String -- class name, variable name
+  | ClassMethodCall String String [Term] -- class name, method name, args
   deriving (Eq, Show)
