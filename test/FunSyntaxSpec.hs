@@ -156,13 +156,15 @@ spec = do
 
     it "parses from test files" $ do
       let testFiles = ["test/t1.fun"]
-      mapM_ (\file -> do
-        result <- parseFile file
-        case result of
-          Left err -> fail $ "Failed to parse " ++ file ++ ": " ++ err
-          Right (ast, _) -> do
-            ast `shouldSatisfy` (const True)  -- Just check it parses successfully
-        ) testFiles
+      mapM_
+        ( \file -> do
+            result <- parseFile file
+            case result of
+              Left err -> fail $ "Failed to parse " ++ file ++ ": " ++ err
+              Right (ast, _) -> do
+                ast `shouldSatisfy` (const True) -- Just check it parses successfully
+        )
+        testFiles
 
   describe "File-based tests" $ do
     it "can parse complex programs from files" $ do
