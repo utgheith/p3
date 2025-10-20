@@ -110,7 +110,7 @@ strs ks = satisfy $ \case
 ---------- Unary operators -----------
 
 unaryExp :: Parser Token T.Term
-unaryExp = [t | t <- between (str "(") (str ")") term] <|> [T.UnaryOps T.Neg n | _ <- str "-", n <- term] <|> num <|> varRef
+unaryExp = [t | t <- between (str "(") (str ")") term] <|> [T.UnaryOps T.Neg n | _ <- str "-", n <- unaryExp] <|> num <|> varRef
 
 ------------------- binary operators (left associative) -------------------
 
