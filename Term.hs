@@ -1,4 +1,4 @@
-module Term (Term (..), BinaryOp (..), UnaryOp (..)) where
+module Term (Term (..), BinaryOp (..), UnaryOp (..), ErrorKind (..), ErrorKindOrAny (..)) where
 
 data BinaryOp = Add | Sub | Mul | Div | Mod | Lt | Gt | Lte | Gte | Eq | Neq | And | Or | Pow | Xor
   deriving (Eq, Show)
@@ -6,8 +6,13 @@ data BinaryOp = Add | Sub | Mul | Div | Mod | Lt | Gt | Lte | Gte | Eq | Neq | A
 data UnaryOp = Neg | Not | BitNot
   deriving (Eq, Show)
 
+data ErrorKind = Arithmetic | Type | Input | VariableNotFound | Arguments deriving (Eq, Show)
+
+data ErrorKindOrAny = Specific ErrorKind | Any deriving (Eq, Show)
+
 data Term
   = If Term Term Term
+  | Try Term ErrorKindOrAny Term
   | Let String Term
   | Literal Integer
   | StringLiteral String

@@ -14,7 +14,7 @@ import Data.Maybe (fromMaybe)
 import qualified Data.Set as S
 import FunLexer (Token (Ident, Keyword, Num, StringLiteralLexed, Symbol), lexer)
 import ParserCombinators (Parser, Result, oneof, opt, rpt, rptDropSep, satisfy, token)
-import Term (BinaryOp (..), Term (..), UnaryOp (..))
+import Term (BinaryOp (..), ErrorKind (..), ErrorKindOrAny (..), Term (..), UnaryOp (..))
 
 -- data Term
 --   = Assign String Term
@@ -171,6 +171,13 @@ tuple = do
   _ <- symbol "]"
   return $ TupleTerm elems
 
+dictionary :: Parser Token Term
+dictionary = do
+  _ <- symbol "#"
+  _ <- symbol "["
+  _ <- symbol "]"
+  return $ NewDictionary
+
 parens :: Parser Token Term
 parens = [t | _ <- symbol "(", t <- term, _ <- symbol ")"]
 
@@ -221,8 +228,8 @@ whileTerm = do
   body <- term
   return $ While cond body
 
-tupleSet :: Parser Token Term
-tupleSet = do
+bracketSet :: Parser Token Term
+bracketSet = do
   name <- ident
   _ <- symbol "["
   index <- term
@@ -231,13 +238,29 @@ tupleSet = do
   value <- term
   return $ SetBracket name index value
 
-tupleAccess :: Parser Token Term
-tupleAccess = do
+bracketAccess :: Parser Token Term
+bracketAccess = do
   tupleName <- varRef
   _ <- symbol "["
   index <- term
   _ <- symbol "]"
   return $ AccessBracket tupleName index
+
+tryCatch :: Parser Token Term
+tryCatch = do
+  _ <- keyword "try"
+  tryBranch <- term
+  _ <- keyword "catch"
+  errorType <- ident
+  catchBranch <- term
+  case errorType of
+    ("Any") -> return $ Try tryBranch (Any) catchBranch
+    ("Arithmetic") -> return $ Try tryBranch (Specific Arithmetic) catchBranch
+    ("Type") -> return $ Try tryBranch (Specific Type) catchBranch
+    ("Input") -> return $ Try tryBranch (Specific Input) catchBranch
+    ("VariableNotFound") -> return $ Try tryBranch (Specific VariableNotFound) catchBranch
+    ("Arguments") -> return $ Try tryBranch (Specific Arguments) catchBranch
+    _ -> error "Invalid Error Type Provided"
 
 funCall :: Parser Token Term
 funCall = do
@@ -254,7 +277,7 @@ printStmt = do
   return $ Write expr
 
 unaryExp :: Parser Token Term
-unaryExp = oneof [assign, ifExpr, block, funDef, minus, bitnot, preIncrement, preDecrement, num, string, bool, tuple, tupleSet, tupleAccess, parens, varDef, funCall, postIncrement, postDecrement, varRef, whileTerm, printStmt]
+unaryExp = oneof [assign, ifExpr, block, funDef, minus, bitnot, preIncrement, preDecrement, num, string, bool, tuple, dictionary, bracketSet, bracketAccess, tryCatch, parens, varDef, funCall, postIncrement, postDecrement, varRef, whileTerm, printStmt]
 
 ----------- prog ----------
 

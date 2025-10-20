@@ -1,9 +1,11 @@
+{-# LANGUAGE LambdaCase #-}
+
 module FunSyntaxSpec (spec) where
 
 import FunLexer (Token (..))
 import FunSyntax (parse, prog)
 import ParserCombinators (eof)
-import Term (BinaryOp (..), Term (..))
+import Term (BinaryOp (..), ErrorKind (..), ErrorKindOrAny (..), Term (..))
 import Test.Hspec
 
 -- Helper function to parse from a string
@@ -133,6 +135,22 @@ spec = do
               return t
         result `shouldBe` Right (AccessBracket (Var "t") (Literal 0), [])
 
+    describe "dictionary" $ do
+      it "parses dictionary creation" $ do
+        let result = parse "#[]" $ do
+              t <- prog
+              _ <- eof
+              return t
+        result `shouldBe` Right (NewDictionary, [])
+
+    describe "try-catch" $ do
+      it "parses try-catch creation" $ do
+        let result = parse "try x catch Arithmetic 1" $ do
+              t <- prog
+              _ <- eof
+              return t
+        result `shouldBe` Right (Try (Var "x") (Specific Arithmetic) (Literal 1), [])
+
     describe "error cases" $ do
       it "fails on invalid syntax" $ do
         let result = parse "x +" $ do
@@ -150,7 +168,7 @@ spec = do
       case result of
         Left err -> fail $ "Parse error: " ++ err
         Right (ast, _) -> do
-          ast `shouldSatisfy` \t -> case t of
+          ast `shouldSatisfy` \case
             Seq _ _ -> True
             _ -> False
 
@@ -162,7 +180,7 @@ spec = do
             case result of
               Left err -> fail $ "Failed to parse " ++ file ++ ": " ++ err
               Right (ast, _) -> do
-                ast `shouldSatisfy` (const True) -- Just check it parses successfully
+                ast `shouldSatisfy` const True -- Just check it parses successfully
         )
         testFiles
 
@@ -185,4 +203,4 @@ spec = do
       case result of
         Left err -> fail $ "Parse error: " ++ err
         Right (ast, _) -> do
-          ast `shouldSatisfy` (const True)
+          ast `shouldSatisfy` const True
