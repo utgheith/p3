@@ -20,6 +20,5 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-stack-
 
-        
       - uses: haskell-actions/hlint-scan@v1
 
