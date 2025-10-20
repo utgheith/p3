@@ -10,7 +10,7 @@ import qualified Data.Map as M
 import qualified Progs
 import Scope (Scope (..), emptyScope, getAllBindings, insertScope, lookupScope)
 import Small (Env, Error, Machine (..), Result (..), reduceFully)
-import Term (ErrorKind (..), Term (..))
+import Term (BinaryOp (..), ErrorKind (..), Term (..))
 import Value (Value (..))
 
 data Simulator = Simulator Scope [Value] [Value] deriving (Eq, Show)
@@ -224,6 +224,32 @@ prog =
     ~ "y" <=> Literal 29
     ~ "z" <=> Literal 3
 
+-- Traditional for loop example: sum numbers from 0 to 4
+progForLoop :: Term
+progForLoop =
+  "sum" <=> Literal 0
+    ~ ForLoop "i" (Literal 0) (BinaryOps Lt (Var "i") (Literal 5))
+              (Let "i" (BinaryOps Add (Var "i") (Literal 1)))
+              (Let "sum" (BinaryOps Add (Var "sum") (Var "i")))
+    ~ Write (Var "sum")
+
+-- For-each loop example: sum elements of a tuple
+progForEach :: Term  
+progForEach =
+  "sum" <=> Literal 0
+    ~ ForEach "num" (TupleTerm [Literal 10, Literal 20, Literal 30])
+              (Let "sum" (BinaryOps Add (Var "sum") (Var "num")))
+    ~ Write (Var "sum")
+
+-- Compound assignment example
+progCompoundAssign :: Term
+progCompoundAssign = 
+  "x" <=> Literal 5
+    ~ AddAssign "x" (Literal 10)  -- x += 10, so x becomes 15
+    ~ Write (Var "x")
+    ~ SubAssign "x" (Literal 3)   -- x -= 3, so x becomes 12  
+    ~ Write (Var "x")
+
 main :: IO ()
 main = do
   let out = reduceFully prog (Simulator emptyScope [] [])
@@ -235,3 +261,15 @@ main = do
   putStrLn "Testing booleans and comparisons:"
   let out3 = reduceFully Progs.prog3 (Simulator emptyScope [] [])
   print out3
+  putStrLn "-----------------------------"
+  putStrLn "Testing traditional for loop (sum 0 to 4):"
+  let out4 = reduceFully progForLoop (Simulator emptyScope [] [])
+  print out4
+  putStrLn "-----------------------------"
+  putStrLn "Testing for-each loop (sum tuple elements):"
+  let out5 = reduceFully progForEach (Simulator emptyScope [] [])
+  print out5
+  putStrLn "-----------------------------"
+  putStrLn "Testing compound assignment operators:"
+  let out6 = reduceFully progCompoundAssign (Simulator emptyScope [] [])
+  print out6

@@ -247,8 +247,52 @@ printStmt = do
   expr <- term
   return $ Write expr
 
+-- Traditional for loop: for (var = init; cond; incr) body
+forLoopTraditional :: Parser Token Term
+forLoopTraditional = do
+  _ <- keyword "for"
+  _ <- symbol "("
+  _ <- keyword "var"
+  varName <- ident
+  _ <- symbol "="
+  initExpr <- term
+  _ <- symbol ";"
+  condExpr <- term
+  _ <- symbol ";"
+  varName2 <- ident
+  _ <- symbol "="
+  incrExpr <- term
+  _ <- symbol ")"
+  body <- term
+  return $ ForLoop varName initExpr condExpr (Let varName2 incrExpr) body
+
+-- For-each loop: for variable in iterable body
+forEachLoop :: Parser Token Term
+forEachLoop = do
+  _ <- keyword "for"
+  varName <- ident
+  _ <- keyword "in"
+  iterable <- term
+  body <- term
+  return $ ForEach varName iterable body
+
+-- Compound assignment operators
+addAssign :: Parser Token Term
+addAssign = do
+  varName <- ident
+  _ <- symbol "+="
+  expr <- term
+  return $ AddAssign varName expr
+
+subAssign :: Parser Token Term
+subAssign = do
+  varName <- ident
+  _ <- symbol "-="
+  expr <- term
+  return $ SubAssign varName expr
+
 unaryExp :: Parser Token Term
-unaryExp = oneof [assign, ifExpr, block, funDef, minus, num, string, bool, tuple, dictionary, bracketSet, bracketAccess, tryCatch, parens, varDef, funCall, varRef, whileTerm, printStmt]
+unaryExp = oneof [assign, ifExpr, block, funDef, minus, num, string, bool, tuple, dictionary, bracketSet, bracketAccess, tryCatch, parens, varDef, funCall, varRef, whileTerm, forLoopTraditional, forEachLoop, addAssign, subAssign, printStmt]
 
 ----------- prog ----------
 

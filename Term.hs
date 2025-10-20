@@ -33,4 +33,8 @@ data Term
   | ApplyFun Term [Term]
   | BreakSignal
   | ContinueSignal
+  | ForLoop String Term Term Term Term  -- for (var init; condition; increment) body
+  | ForEach String Term Term
+  | AddAssign String Term
+  | SubAssign String Term
   deriving (Eq, Show)
