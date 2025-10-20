@@ -199,22 +199,22 @@ classInstantiate = do
   _ <- symbol ")"
   return $ ClassInstantiate className args
 
-classVarRef :: Parser Token Term
-classVarRef = do
-  className <- ident
-  _ <- symbol "."
-  varName <- ident
-  return $ ClassVar className varName
+-- classVarRef :: Parser Token Term
+-- classVarRef = do
+--   className <- ident
+--   _ <- symbol "."
+--   varName <- ident
+--   return $ ClassVar className varName
 
-classMethodCall :: Parser Token Term
-classMethodCall = do
-  className <- ident
-  _ <- symbol "."
-  methodName <- ident
-  _ <- symbol "("
-  args <- rptDropSep term (symbol ",")
-  _ <- symbol ")"
-  return $ ClassMethodCall className methodName args
+-- classMethodCall :: Parser Token Term
+-- classMethodCall = do
+--   className <- ident
+--   _ <- symbol "."
+--   methodName <- ident
+--   _ <- symbol "("
+--   args <- rptDropSep term (symbol ",")
+--   _ <- symbol ")"
+--   return $ ClassMethodCall className methodName args
 
 ifExpr :: Parser Token Term
 ifExpr = do
@@ -273,7 +273,7 @@ printStmt = do
   return $ Write expr
 
 unaryExp :: Parser Token Term
-unaryExp = oneof [assign, ifExpr, block, funDef, minus, num, string, bool, tuple, tupleSet, tupleAccess, parens, varDef, classDef, classInstantiate, classMethodCall, classVarRef, classMethodCall, funCall, varRef, whileTerm, printStmt]
+unaryExp = oneof [assign, ifExpr, block, funDef, minus, num, string, bool, tuple, tupleSet, tupleAccess, parens, varDef, classDef, classInstantiate, funCall, varRef, whileTerm, printStmt]
 
 ----------- prog ----------
 

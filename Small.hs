@@ -232,6 +232,10 @@ reduce_ (SetBracket name terms val) =
     _ -> error "SetBracket should only have tuple term as second argument"
 reduce_ NewDictionary =
   return $ Happy $ Dictionary M.empty
+reduce_ ClassDef {} =
+  return $ Happy $ IntVal 0 -- Placeholder implementation
+reduce_ ClassInstantiate {} =
+  return $ Happy $ IntVal 0 -- Placeholder implementation
 
 reduceArgsAndApply :: (Machine m, Show m, V m ~ Value) => Term -> [Term] -> Value -> Env m
 reduceArgsAndApply tf args funVal =
