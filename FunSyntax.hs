@@ -70,7 +70,7 @@ term = binaryExp precedence
 
 -- precedence levels, from lowest to highest
 precedence :: [S.Set String]
-precedence = [S.fromList ["||"], S.fromList ["&&"], S.fromList ["==", "!="], S.fromList ["<", ">", "<=", ">="], S.fromList ["+", "-"], S.fromList ["*", "/", "%"]]
+precedence = [S.fromList ["||"], S.fromList ["&&"], S.fromList ["==", "!="], S.fromList ["<", ">", "<=", ">="], S.fromList ["+", "-"], S.fromList ["*", "/", "%"], S.fromList ["**"]]
 
 binaryExp :: [S.Set String] -> Parser Token Term
 binaryExp [] = unaryExp
@@ -102,6 +102,7 @@ stringToBinaryOp "==" = Eq
 stringToBinaryOp "!=" = Neq
 stringToBinaryOp "&&" = And
 stringToBinaryOp "||" = Or
+stringToBinaryOp "**" = Pow
 stringToBinaryOp _ = error "Unknown binary operator"
 
 ------------------- unary operators  -------------------

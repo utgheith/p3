@@ -77,6 +77,12 @@ instance Machine MockMachine where
       else return $ Happy (IntVal (v1 `mod` v2)) -- I don't want the actual interpreter to crash
   modVal _ _ = return $ Sad "Type error in modulus"
 
+  powVal (IntVal v1) (IntVal v2) =
+    if v2 < 0
+      then return $ Sad "Negative exponent not supported"
+      else return $ Happy (IntVal (v1 ^ v2))
+  powVal _ _ = return $ Sad "Type error in exponentiation"
+
   negVal (IntVal v) =
     return $ Happy (IntVal (-v))
   negVal _ = return $ Sad "Type error in neg"

@@ -43,6 +43,7 @@ class Machine m where
   mulVal :: V m -> V m -> Env m
   divVal :: V m -> V m -> Env m
   modVal :: V m -> V m -> Env m
+  powVal :: V m -> V m -> Env m
   negVal :: V m -> Env m
 
   -- Comparison operations (operate on integers, return booleans)
@@ -164,6 +165,7 @@ reduce_ (BinaryOps op t1 t2) =
     applyBinaryOp Mul = mulVal
     applyBinaryOp Div = divVal
     applyBinaryOp Mod = modVal
+    applyBinaryOp Pow = powVal
     applyBinaryOp Lt = ltVal
     applyBinaryOp Gt = gtVal
     applyBinaryOp Lte = lteVal

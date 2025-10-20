@@ -1,6 +1,6 @@
 module Term (Term (..), BinaryOp (..), UnaryOp (..)) where
 
-data BinaryOp = Add | Sub | Mul | Div | Mod | Lt | Gt | Lte | Gte | Eq | Neq | And | Or
+data BinaryOp = Add | Sub | Mul | Div | Mod | Lt | Gt | Lte | Gte | Eq | Neq | And | Or | Pow
   deriving (Eq, Show)
 
 data UnaryOp = Neg | Not
