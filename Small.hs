@@ -61,6 +61,12 @@ class Machine m where
   notVal :: V m -> Env m
   bitNotVal :: V m -> Env m
 
+  -- Increment/Decrement operations (modify variables)
+  preIncrementVal :: String -> Env m   -- ++x: increment then return new value
+  preDecrementVal :: String -> Env m   -- --x: decrement then return new value
+  postIncrementVal :: String -> Env m  -- x++: return old value then increment
+  postDecrementVal :: String -> Env m  -- x--: return old value then decrement
+
   -- Access/Manage Bracket Values
   getBracketValue :: V m -> V m -> Env m
   setBracketValue :: String -> V m -> V m -> Env m
@@ -201,6 +207,14 @@ reduce_ (ApplyFun tf tas) =
     (reduce tf)
     (`ApplyFun` tas)
     (reduceArgsAndApply tf tas)
+reduce_ (PreIncrement x) =
+  preIncrementVal x
+reduce_ (PreDecrement x) =
+  preDecrementVal x
+reduce_ (PostIncrement x) =
+  postIncrementVal x
+reduce_ (PostDecrement x) =
+  postDecrementVal x
 reduce_ (TupleTerm elements) =
   case elements of
     (x : xs) ->

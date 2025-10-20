@@ -26,6 +26,10 @@ data Term
   | SetBracket String Term Term
   | Fun [String] Term
   | ApplyFun Term [Term]
+  | PreIncrement String
+  | PreDecrement String
+  | PostIncrement String
+  | PostDecrement String
   | BreakSignal
   | ContinueSignal
   deriving (Eq, Show)

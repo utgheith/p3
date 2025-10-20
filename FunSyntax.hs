@@ -118,6 +118,30 @@ minus = [UnaryOps Neg e | _ <- symbol "-", e <- unaryExp]
 bitnot :: Parser Token Term
 bitnot = [UnaryOps BitNot e | _ <- symbol "~", e <- unaryExp]
 
+preIncrement :: Parser Token Term
+preIncrement = do
+  _ <- symbol "++"
+  var <- ident
+  return $ PreIncrement var
+
+preDecrement :: Parser Token Term
+preDecrement = do
+  _ <- symbol "--"
+  var <- ident
+  return $ PreDecrement var
+
+postIncrement :: Parser Token Term
+postIncrement = do
+  var <- ident
+  _ <- symbol "++"
+  return $ PostIncrement var
+
+postDecrement :: Parser Token Term
+postDecrement = do
+  var <- ident
+  _ <- symbol "--"
+  return $ PostDecrement var
+
 num :: Parser Token Term
 num = do
   n <- satisfy $ \case
@@ -230,7 +254,7 @@ printStmt = do
   return $ Write expr
 
 unaryExp :: Parser Token Term
-unaryExp = oneof [assign, ifExpr, block, funDef, minus, bitnot, num, string, bool, tuple, tupleSet, tupleAccess, parens, varDef, funCall, varRef, whileTerm, printStmt]
+unaryExp = oneof [assign, ifExpr, block, funDef, minus, bitnot, preIncrement, preDecrement, num, string, bool, tuple, tupleSet, tupleAccess, parens, varDef, funCall, postIncrement, postDecrement, varRef, whileTerm, printStmt]
 
 ----------- prog ----------
 

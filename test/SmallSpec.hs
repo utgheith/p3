@@ -125,6 +125,46 @@ instance Machine MockMachine where
   bitNotVal (IntVal v) = return $ Happy (IntVal (complement v))
   bitNotVal _ = return $ Sad "Type error in ~"
 
+  preIncrementVal x = do
+    m <- S.get
+    case lookupScope x (getMem m) of
+      Just (IntVal v) -> do
+        let newVal = IntVal (v + 1)
+        S.put (m {getMem = insertScope x newVal (getMem m)})
+        return $ Happy newVal
+      Just _ -> return $ Sad "Type error: can only increment integers"
+      Nothing -> return $ Sad $ "Variable " ++ x ++ " not found"
+
+  preDecrementVal x = do
+    m <- S.get
+    case lookupScope x (getMem m) of
+      Just (IntVal v) -> do
+        let newVal = IntVal (v - 1)
+        S.put (m {getMem = insertScope x newVal (getMem m)})
+        return $ Happy newVal
+      Just _ -> return $ Sad "Type error: can only decrement integers"
+      Nothing -> return $ Sad $ "Variable " ++ x ++ " not found"
+
+  postIncrementVal x = do
+    m <- S.get
+    case lookupScope x (getMem m) of
+      Just (IntVal v) -> do
+        let newVal = IntVal (v + 1)
+        S.put (m {getMem = insertScope x newVal (getMem m)})
+        return $ Happy (IntVal v)  -- Return old value
+      Just _ -> return $ Sad "Type error: can only increment integers"
+      Nothing -> return $ Sad $ "Variable " ++ x ++ " not found"
+
+  postDecrementVal x = do
+    m <- S.get
+    case lookupScope x (getMem m) of
+      Just (IntVal v) -> do
+        let newVal = IntVal (v - 1)
+        S.put (m {getMem = insertScope x newVal (getMem m)})
+        return $ Happy (IntVal v)  -- Return old value
+      Just _ -> return $ Sad "Type error: can only decrement integers"
+      Nothing -> return $ Sad $ "Variable " ++ x ++ " not found"
+
   getBracketValue (Tuple (x : xs)) (IntVal pos) = if pos == 0 then return (Happy x) else getBracketValue (Tuple xs) (IntVal (pos - 1))
   getBracketValue (Dictionary d) (IntVal val) = case M.lookup val d of
     Just v -> return $ Happy v

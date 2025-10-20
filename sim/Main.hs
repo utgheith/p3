@@ -160,6 +160,54 @@ instance Machine Simulator where
   bitNotVal (IntVal v) = return $ Happy (IntVal (complement v))
   bitNotVal _ = return $ Sad "Type error in ~"
 
+  preIncrementVal :: String -> Env Simulator
+  preIncrementVal x = do
+    (Simulator m inp out) <- S.get
+    case lookupScope x m of
+      Just (IntVal v) -> do
+        let newVal = IntVal (v + 1)
+        let m' = insertScope x newVal m
+        S.put (Simulator m' inp out)
+        return $ Happy newVal
+      Just _ -> return $ Sad "Type error: can only increment integers"
+      Nothing -> return $ Sad $ "Variable " ++ x ++ " not found"
+
+  preDecrementVal :: String -> Env Simulator
+  preDecrementVal x = do
+    (Simulator m inp out) <- S.get
+    case lookupScope x m of
+      Just (IntVal v) -> do
+        let newVal = IntVal (v - 1)
+        let m' = insertScope x newVal m
+        S.put (Simulator m' inp out)
+        return $ Happy newVal
+      Just _ -> return $ Sad "Type error: can only decrement integers"
+      Nothing -> return $ Sad $ "Variable " ++ x ++ " not found"
+
+  postIncrementVal :: String -> Env Simulator
+  postIncrementVal x = do
+    (Simulator m inp out) <- S.get
+    case lookupScope x m of
+      Just (IntVal v) -> do
+        let newVal = IntVal (v + 1)
+        let m' = insertScope x newVal m
+        S.put (Simulator m' inp out)
+        return $ Happy (IntVal v)  -- Return old value
+      Just _ -> return $ Sad "Type error: can only increment integers"
+      Nothing -> return $ Sad $ "Variable " ++ x ++ " not found"
+
+  postDecrementVal :: String -> Env Simulator
+  postDecrementVal x = do
+    (Simulator m inp out) <- S.get
+    case lookupScope x m of
+      Just (IntVal v) -> do
+        let newVal = IntVal (v - 1)
+        let m' = insertScope x newVal m
+        S.put (Simulator m' inp out)
+        return $ Happy (IntVal v)  -- Return old value
+      Just _ -> return $ Sad "Type error: can only decrement integers"
+      Nothing -> return $ Sad $ "Variable " ++ x ++ " not found"
+
   getBracketValue :: Value -> Value -> Env Simulator
   getBracketValue (Tuple (x : xs)) (IntVal pos) = if pos == 0 then return (Happy x) else getBracketValue (Tuple xs) (IntVal (pos - 1))
   getBracketValue (Dictionary d) (IntVal val) = case M.lookup val d of
