@@ -1,10 +1,12 @@
 {-# LANGUAGE ConstrainedClassMethods #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 
 module Small (reduceFully, Machine (..), Result (..), Env) where
 
+import Control.Arrow ((>>>))
 import qualified Control.Monad.State as S
 import Data.Either
 import qualified Data.Map as M
@@ -119,7 +121,7 @@ reduce_ (If cond tThen tElse) = do
 reduce_ (While cond body) = do
   premise
     (reduce cond)
-    (\cond' -> While cond' body)
+    (`While` body)
     ( \v -> do
         selectValue
           v
@@ -182,9 +184,9 @@ reduce_ (UnaryOps op t) =
   where
     applyUnaryOp Neg = negVal
     applyUnaryOp Not = notVal
-reduce_ (BreakSignal) =
+reduce_ BreakSignal =
   return $ Continue BreakSignal
-reduce_ (ContinueSignal) =
+reduce_ ContinueSignal =
   return $ Continue ContinueSignal
 reduce_ (Fun xs t) = do
   env <- S.get
@@ -204,38 +206,31 @@ reduce_ (TupleTerm elements) =
         ( \v1 ->
             premise
               (reduce $ TupleTerm xs)
-              ( \term' ->
-                  case term' of
-                    TupleTerm xs' -> TupleTerm (x : xs')
-                    _ -> error "TupleTerm recursion somehow returned a non TupleTerm continuation"
+              ( \case
+                  TupleTerm xs' -> TupleTerm (x : xs')
+                  _ -> error "TupleTerm recursion somehow returned a non TupleTerm continuation"
               )
-              (\v2 -> return $ Happy $ Tuple $ v1 : (fromRight [] $ valueToTuple v2))
+              (\v2 -> return $ Happy $ Tuple $ v1 : fromRight [] (valueToTuple v2))
         )
     [] -> return $ Happy $ Tuple []
 reduce_ (AccessBracket t i) =
   premise
     (reduce t)
-    (\term' -> AccessBracket term' i)
-    ( \v1 ->
-        premise
-          (reduce i)
-          (AccessBracket t)
-          (getBracketValue v1)
-    )
+    (`AccessBracket` i)
+    (getBracketValue >>> premise (reduce i) (AccessBracket t)) -- (f >>> g) == (g . f) == (\x -> g (f x))
 reduce_ (SetBracket name terms val) =
   case terms of
     TupleTerm tupleTerm ->
       premise
         (reduce $ TupleTerm tupleTerm)
         (\terms' -> SetBracket name terms' val)
-        ( \terms' ->
-            premise
+        ( setBracketValue name
+            >>> premise
               (reduce val)
-              (\val' -> SetBracket name terms val')
-              (\val' -> setBracketValue name terms' val')
+              (SetBracket name terms)
         )
     _ -> error "SetBracket should only have tuple term as second argument"
-reduce_ (NewDictionary) =
+reduce_ NewDictionary =
   return $ Happy $ Dictionary M.empty
 
 reduceArgsAndApply :: (Machine m, Show m, V m ~ Value) => Term -> [Term] -> Value -> Env m
