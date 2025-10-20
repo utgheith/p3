@@ -135,6 +135,13 @@ bool = do
     _ -> Nothing
   return $ BoolLit b
 
+tuple :: Parser Token Term
+tuple = do
+  _ <- symbol "["
+  elems <- rptDropSep term (symbol ",")
+  _ <- symbol "]"
+  return $ TupleTerm elems
+
 parens :: Parser Token Term
 parens = [t | _ <- symbol "(", t <- term, _ <- symbol ")"]
 
@@ -185,6 +192,24 @@ whileTerm = do
   body <- term
   return $ While cond body
 
+tupleSet :: Parser Token Term
+tupleSet = do
+  name <- ident
+  _ <- symbol "["
+  index <- term
+  _ <- symbol "]"
+  _ <- symbol "="
+  value <- term
+  return $ SetTuple name index value
+
+tupleAccess :: Parser Token Term
+tupleAccess = do
+  tupleName <- varRef
+  _ <- symbol "["
+  index <- term
+  _ <- symbol "]"
+  return $ AccessTuple tupleName index
+
 funCall :: Parser Token Term
 funCall = do
   name <- ident
@@ -200,7 +225,7 @@ printStmt = do
   return $ Write expr
 
 unaryExp :: Parser Token Term
-unaryExp = oneof [assign, ifExpr, block, funDef, minus, num, string, bool, parens, varDef, funCall, varRef, whileTerm, printStmt]
+unaryExp = oneof [assign, ifExpr, block, funDef, minus, num, string, bool, tuple, tupleSet, tupleAccess, parens, varDef, funCall, varRef, whileTerm, printStmt]
 
 ----------- prog ----------
 

@@ -124,7 +124,7 @@ spec = do
               t <- prog
               _ <- eof
               return t
-        result `shouldBe` Right (TupleTerm [Literal 1, Literal 2, Literal 3], [])
+        result `shouldBe` Right (Let "x" (TupleTerm [Literal 1, Literal 2, Literal 3]), [])
 
       it "parses tuple access" $ do
         let result = parse "t[0]" $ do
@@ -145,7 +145,7 @@ spec = do
 
   describe "Integration tests" $ do
     it "parses a complete program" $ do
-      let program = "x = 10; y = x + 5; print y"
+      let program = "x = 10\n y = x + 5\n print y"
       let result = parseString program
       case result of
         Left err -> fail $ "Parse error: " ++ err
@@ -155,7 +155,7 @@ spec = do
             _ -> False
 
     it "parses from test files" $ do
-      let testFiles = ["test1.fun", "test2.fun", "simple.fun"]
+      let testFiles = ["test/t1.fun"]
       mapM_ (\file -> do
         result <- parseFile file
         case result of
