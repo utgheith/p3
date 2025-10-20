@@ -11,6 +11,7 @@ import Data.Maybe (fromMaybe)
 import qualified Data.Set as S
 import ParserCombinators (Parser, between, eof, opt, rpt, rptDropSep, satisfy, (<|>))
 import qualified Term as T
+import Sprintf (sprintf)
 
 -------------
 -- Helpers --
@@ -83,7 +84,7 @@ spaces :: Parser Char Token
 spaces = [TIgnore cs | cs <- rpt1 (memberOf spaceChars)]
 
 lineComment :: Parser Char Token
-lineComment = [TIgnore ("//" ++ cs) | _ <- cond (== '/'), _ <- cond (== '/'), cs <- rpt (cond (/= '\n'))]
+lineComment = [TIgnore (sprintf "//%s" [cs]) | _ <- cond (== '/'), _ <- cond (== '/'), cs <- rpt (cond (/= '\n'))]
 
 lexer :: Parser Char [Token]
 lexer = do [ts | ts <- rpt (lineComment <|> integer <|> ident <|> special <|> spaces), _ <- eof]
@@ -137,7 +138,7 @@ binaryExp (ops : rest) = do
   rhss <- rpt $ do
     op <- strs ops
     case M.lookup op binaryOpMap of
-      Nothing -> throwError $ "unknown binary operator: " ++ op
+      Nothing -> throwError $ sprintf "unknown binary operator: %s" [op]
       Just op' -> do
         rhs <- binaryExp rest
         return (op', rhs)
@@ -206,13 +207,13 @@ prog = statements <* eof
 parser :: [Char] -> T.Term
 parser input =
   case SM.runStateT lexer input of
-    Left err -> error $ "Lexing error: " ++ err
+    Left err -> error $ sprintf "Lexing error: %s" [err]
     Right (tokens, []) ->
       case SM.runStateT prog [t | t <- tokens, not (isIgnored t)] of
-        Left err -> error $ "Parsing error: " ++ err
+        Left err -> error $ sprintf "Parsing error: %s" [err]
         Right (ast, []) -> ast
-        Right (_, ts) -> error $ "Parsing error: unconsumed tokens: " ++ show ts
-    Right (_, ts) -> error $ "Lexing error: unconsumed input: " ++ show ts
+        Right (_, ts) -> error $ sprintf "Parsing error: unconsumed tokens: %s" [show ts]
+    Right (_, ts) -> error $ sprintf "Lexing error: unconsumed input: %s" [show ts]
 
 decompileBinaryOp :: T.BinaryOp -> String
 decompileBinaryOp T.Add = "+"
@@ -234,14 +235,14 @@ decompileUnaryOp T.Neg = "-"
 decompileUnaryOp T.Not = "!"
 
 decompile :: T.Term -> String
-decompile T.Skip = "skip"
-decompile (T.Literal n) = show n
-decompile (T.Var x) = x
-decompile (T.Seq t1 t2) = decompile t1 ++ " ; " ++ decompile t2
-decompile (T.If c tThen tElse) =
-  "if " ++ decompile c ++ " then " ++ decompile tThen ++ " else " ++ decompile tElse
-decompile (T.BinaryOps op t1 t2) =
-  "(" ++ decompile t1 ++ " " ++ decompileBinaryOp op ++ " " ++ decompile t2 ++ ")"
-decompile (T.UnaryOps op t) = "(" ++ decompileUnaryOp op ++ decompile t ++ ")"
-decompile (T.Let x t) = "let " ++ x ++ " = " ++ decompile t
-decompile x = "<unhandled term: " ++ show x ++ ">"
+decompile = decompile'
+  where
+    decompile' T.Skip = "skip"
+    decompile' (T.Literal n) = show n
+    decompile' (T.Var x) = x
+    decompile' (T.Seq t1 t2) = sprintf "%s ; %s" [decompile' t1, decompile' t2]
+    decompile' (T.If c tThen tElse) = sprintf "if %s then %s else %s" [decompile' c, decompile' tThen, decompile' tElse]
+    decompile' (T.BinaryOps op t1 t2) = sprintf "(%s %s %s)" [decompile' t1, decompileBinaryOp op, decompile' t2]
+    decompile' (T.UnaryOps op t) = sprintf "(%s%s)" [decompileUnaryOp op, decompile' t]
+    decompile' (T.Let x t) = sprintf "let %s = %s" [x, decompile' t]
+    decompile' x = sprintf "<unhandled term: %s>" [show x]
