@@ -319,62 +319,62 @@ spec = do
               )
       let finalMachine = initialMachine {getMem = scopeFromList [("x", IntVal 3)]}
       reduceFully term initialMachine `shouldBe` (Right (IntVal 3), finalMachine)
-    
+
     it "reduces a while loop with a complex break statement" $ do
       let term =
             Seq
               (Let "x" (Literal 5))
-              ( Seq 
-                (Let "y" (Literal 0))
-                ( Seq
-                  ( While
-                      (Var "x")
-                      ( Seq
-                          (Let "x" (BinaryOps Sub (Var "x") (Literal 1)))
+              ( Seq
+                  (Let "y" (Literal 0))
+                  ( Seq
+                      ( While
+                          (Var "x")
                           ( Seq
-                            (If (BinaryOps Eq (Var "x") (Literal 3)) BreakSignal Skip)
-                            (Let "y" (BinaryOps Add (Var "y") (Var "x")))
+                              (Let "x" (BinaryOps Sub (Var "x") (Literal 1)))
+                              ( Seq
+                                  (If (BinaryOps Eq (Var "x") (Literal 3)) BreakSignal Skip)
+                                  (Let "y" (BinaryOps Add (Var "y") (Var "x")))
+                              )
                           )
                       )
+                      (Var "y")
                   )
-                  (Var "y")
-                )
               )
-              
+
       let finalMachine = initialMachine {getMem = scopeFromList [("x", IntVal 3), ("y", IntVal 4)]}
       reduceFully term initialMachine `shouldBe` (Right (IntVal 4), finalMachine)
-    
+
     it "reduces a while loop with a continue statement" $ do
       let term =
             Seq
               (Let "x" (Literal 5))
-              ( Seq 
-                (Let "y" (Literal 0))
-                ( Seq
-                  ( While
-                      (Var "x")
-                      ( Seq
-                          (Let "x" (BinaryOps Sub (Var "x") (Literal 1)))
+              ( Seq
+                  (Let "y" (Literal 0))
+                  ( Seq
+                      ( While
+                          (Var "x")
                           ( Seq
-                            (If (BinaryOps Eq (Var "x") (Literal 3)) ContinueSignal Skip)
-                            (Let "y" (BinaryOps Add (Var "y") (Var "x")))
+                              (Let "x" (BinaryOps Sub (Var "x") (Literal 1)))
+                              ( Seq
+                                  (If (BinaryOps Eq (Var "x") (Literal 3)) ContinueSignal Skip)
+                                  (Let "y" (BinaryOps Add (Var "y") (Var "x")))
+                              )
                           )
                       )
+                      (Var "y")
                   )
-                  (Var "y")
-                )
               )
-              
+
       let finalMachine = initialMachine {getMem = scopeFromList [("x", IntVal 0), ("y", IntVal 7)]}
       reduceFully term initialMachine `shouldBe` (Right (IntVal 7), finalMachine)
-    
+
     it "makes break signals outside of while loops invalid" $ do
       let term =
             Seq
               (Let "x" (Literal 5))
               ( Seq
-                BreakSignal
-                (Let "y" (BinaryOps Add (Var "x") (Literal 2)))
+                  BreakSignal
+                  (Let "y" (BinaryOps Add (Var "x") (Literal 2)))
               )
 
       let (result, _) = reduceFully term initialMachine
@@ -385,87 +385,91 @@ spec = do
             Seq
               (Let "x" (Literal 5))
               ( Seq
-                ContinueSignal
-                (Let "y" (BinaryOps Add (Var "x") (Literal 2)))
+                  ContinueSignal
+                  (Let "y" (BinaryOps Add (Var "x") (Literal 2)))
               )
 
       let (result, _) = reduceFully term initialMachine
       result `shouldBe` Left "unhandled continue signal"
-    
+
     it "break inside an if statement exits the while loop" $ do
       let term =
             Seq
               (Let "x" (Literal 5))
               ( Seq
-                (Let "y" (Literal 0))
-                ( While
-                    (Var "x")
-                    ( If (BinaryOps Eq (Var "x") (Literal 3)) BreakSignal
-                        (Seq
-                          (Let "y" (BinaryOps Add (Var "y") (Var "x")))
-                          (Let "x" (BinaryOps Sub (Var "x") (Literal 1)))
-                        )
-                    )
-                )
+                  (Let "y" (Literal 0))
+                  ( While
+                      (Var "x")
+                      ( If
+                          (BinaryOps Eq (Var "x") (Literal 3))
+                          BreakSignal
+                          ( Seq
+                              (Let "y" (BinaryOps Add (Var "y") (Var "x")))
+                              (Let "x" (BinaryOps Sub (Var "x") (Literal 1)))
+                          )
+                      )
+                  )
               )
 
       let finalMachine = initialMachine {getMem = scopeFromList [("x", IntVal 3), ("y", IntVal 9)]}
       reduceFully term initialMachine `shouldBe` (Right (IntVal 0), finalMachine)
-    
+
     it "inner loop break exits only the inner loop" $ do
       let term =
             Seq
               (Let "x" (Literal 3))
               ( Seq
-                (Let "y" (Literal 0))
-                ( While
-                  (Var "x")
-                  ( Seq
-                    (Let "z" (Literal 2))
-                    ( Seq 
-                      ( While
-                        (Var "z")
-                        ( If (BinaryOps Eq (Var "z") (Literal 1)) BreakSignal
-                            (Seq
-                              (Let "y" (BinaryOps Add (Var "y") (Var "z")))
-                              (Let "z" (BinaryOps Sub (Var "z") (Literal 1)))
-                            )
-                        )
+                  (Let "y" (Literal 0))
+                  ( While
+                      (Var "x")
+                      ( Seq
+                          (Let "z" (Literal 2))
+                          ( Seq
+                              ( While
+                                  (Var "z")
+                                  ( If
+                                      (BinaryOps Eq (Var "z") (Literal 1))
+                                      BreakSignal
+                                      ( Seq
+                                          (Let "y" (BinaryOps Add (Var "y") (Var "z")))
+                                          (Let "z" (BinaryOps Sub (Var "z") (Literal 1)))
+                                      )
+                                  )
+                              )
+                              (Let "x" (BinaryOps Sub (Var "x") (Literal 1)))
+                          )
                       )
-                      (Let "x" (BinaryOps Sub (Var "x") (Literal 1)))
-                    )
                   )
-                )
               )
 
       let finalMachine = initialMachine {getMem = scopeFromList [("x", IntVal 0), ("y", IntVal 6), ("z", IntVal 1)]}
       reduceFully term initialMachine `shouldBe` (Right (IntVal 0), finalMachine)
-    
+
     it "inner loop continue skips to next iteration" $ do
       let term =
             Seq
               (Let "x" (Literal 3))
               ( Seq
-                (Let "y" (Literal 0))
-                ( While
-                  (Var "x")
-                  ( Seq
-                    (Let "z" (Literal 3))
-                    ( Seq
-                      ( While
-                        (Var "z")
-                        ( Seq
-                          (Let "z" (BinaryOps Sub (Var "z") (Literal 1)))
+                  (Let "y" (Literal 0))
+                  ( While
+                      (Var "x")
+                      ( Seq
+                          (Let "z" (Literal 3))
                           ( Seq
-                            (Let "y" (BinaryOps Add (Var "y") (Var "z")))
-                            ( If (BinaryOps Eq (Var "z") (Literal 2)) ContinueSignal Skip )
+                              ( While
+                                  (Var "z")
+                                  ( Seq
+                                      (Let "z" (BinaryOps Sub (Var "z") (Literal 1)))
+                                      ( Seq
+                                          (Let "y" (BinaryOps Add (Var "y") (Var "z")))
+                                          (If (BinaryOps Eq (Var "z") (Literal 2)) ContinueSignal Skip)
+                                      )
+                                  )
+                              )
+                              (Let "x" (BinaryOps Sub (Var "x") (Literal 1)))
                           )
-                        )
                       )
-                      (Let "x" (BinaryOps Sub (Var "x") (Literal 1)))
-                    )
                   )
-                )
               )
 
       let finalMachine = initialMachine {getMem = scopeFromList [("x", IntVal 0), ("y", IntVal 9), ("z", IntVal 0)]}

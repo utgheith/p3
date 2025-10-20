@@ -66,9 +66,9 @@ class Machine m where
 ----- The Result type -----
 
 data Result a
-  = Happy a         -- produced an answer
-  | Continue Term   -- need to keep going
-  | Sad String      -- error
+  = Happy a -- produced an answer
+  | Continue Term -- need to keep going
+  | Sad String -- error
   deriving (Eq, Show)
 
 ----- The Env monad -----
@@ -102,13 +102,13 @@ reduce_ (Let x t) = do
     (Let x)
     (setVar x)
 reduce_ (Seq t1 t2) = do
-  res1 <- reduce t1   -- run t1 normally
+  res1 <- reduce t1 -- run t1 normally
   case res1 of
-    Continue BreakSignal    -> return $ Continue BreakSignal
+    Continue BreakSignal -> return $ Continue BreakSignal
     Continue ContinueSignal -> return $ Continue ContinueSignal
-    Continue t'             -> return $ Continue (Seq t' t2)
-    Happy _                 -> reduce t2          -- normal: continue with t2
-    Sad msg                 -> return $ Sad msg
+    Continue t' -> return $ Continue (Seq t' t2)
+    Happy _ -> reduce t2 -- normal: continue with t2
+    Sad msg -> return $ Sad msg
 reduce_ (If cond tThen tElse) = do
   premise
     (reduce cond)
@@ -121,21 +121,19 @@ reduce_ (While cond body) = do
     ( \v -> do
         selectValue
           v
-          (do
-             res <- reduce body
-             case res of
-               Continue BreakSignal -> do return $ Happy (IntVal 0)
-               Continue ContinueSignal -> do return $ Continue (While cond body)
-               Continue t -> do return $ Continue (Seq t (While cond body))
-               Happy _ -> do return $ Continue (While cond body)
-               Sad msg -> do return $ Sad msg
+          ( do
+              res <- reduce body
+              case res of
+                Continue BreakSignal -> do return $ Happy (IntVal 0)
+                Continue ContinueSignal -> do return $ Continue (While cond body)
+                Continue t -> do return $ Continue (Seq t (While cond body))
+                Happy _ -> do return $ Continue (While cond body)
+                Sad msg -> do return $ Sad msg
           )
-          (do
-             return $ Continue Skip
+          ( do
+              return $ Continue Skip
           )
     )
-
-
 reduce_ (Read x) =
   premise
     inputVal
@@ -182,9 +180,9 @@ reduce_ (UnaryOps op t) =
   where
     applyUnaryOp Neg = negVal
     applyUnaryOp Not = notVal
-reduce_ (BreakSignal) = 
+reduce_ (BreakSignal) =
   return $ Continue BreakSignal
-reduce_ (ContinueSignal) = 
+reduce_ (ContinueSignal) =
   return $ Continue ContinueSignal
 reduce_ (Fun xs t) = do
   env <- S.get
