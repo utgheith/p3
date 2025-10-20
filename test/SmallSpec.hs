@@ -710,8 +710,9 @@ spec = do
       reduceFully term initialMachine `shouldBe` (Right (IntVal 10), finalMachine)
 
     it "reduces ternary operator with complex expressions" $ do
-      let term = TernaryOp 
-                   (BinaryOps And (BinaryOps Gt (Literal 10) (Literal 5)) (BinaryOps Lt (Literal 3) (Literal 7)))
-                   (BinaryOps Add (Literal 1) (Literal 2))
-                   (BinaryOps Mul (Literal 3) (Literal 4))
+      let term =
+            TernaryOp
+              (BinaryOps And (BinaryOps Gt (Literal 10) (Literal 5)) (BinaryOps Lt (Literal 3) (Literal 7)))
+              (BinaryOps Add (Literal 1) (Literal 2))
+              (BinaryOps Mul (Literal 3) (Literal 4))
       reduceFully term initialMachine `shouldBe` (Right (IntVal 3), initialMachine)
