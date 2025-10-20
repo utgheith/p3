@@ -139,7 +139,7 @@ binaryExp (ops : rest) = do
     case M.lookup op binaryOpMap of
       Nothing -> throwError $ "unknown binary operator: " ++ op
       Just op' -> do
-        rhs <- term
+        rhs <- binaryExp rest
         return (op', rhs)
 
   -- combine results left to right
