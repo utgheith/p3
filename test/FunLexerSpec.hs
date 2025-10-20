@@ -34,39 +34,39 @@ spec = do
       lexer "@" `shouldBe` [Error "Unexpected character: @"]
 
     it "lexes Cons(a, Nil)" $ do
-      lexer "Cons(a, Nil)" `shouldBe`
-        [ Ident "Cons"
-        , Symbol "("
-        , Ident "a"
-        , Symbol ","
-        , Ident "Nil"
-        , Symbol ")"
-        ]
+      lexer "Cons(a, Nil)"
+        `shouldBe` [ Ident "Cons",
+                     Symbol "(",
+                     Ident "a",
+                     Symbol ",",
+                     Ident "Nil",
+                     Symbol ")"
+                   ]
 
     it "lexes Cons with whitespace" $ do
-      lexer "Cons ( a , Nil )" `shouldBe`
-        [ Ident "Cons"
-        , Symbol "("
-        , Ident "a"
-        , Symbol ","
-        , Ident "Nil"
-        , Symbol ")"
-        ]
+      lexer "Cons ( a , Nil )"
+        `shouldBe` [ Ident "Cons",
+                     Symbol "(",
+                     Ident "a",
+                     Symbol ",",
+                     Ident "Nil",
+                     Symbol ")"
+                   ]
 
     it "lexes nested cons Cons(1, Cons(2, Nil))" $ do
-      lexer "Cons(1, Cons(2, Nil))" `shouldBe`
-        [ Ident "Cons"
-        , Symbol "("
-        , Num 1
-        , Symbol ","
-        , Ident "Cons"
-        , Symbol "("
-        , Num 2
-        , Symbol ","
-        , Ident "Nil"
-        , Symbol ")"
-        , Symbol ")"
-        ]
+      lexer "Cons(1, Cons(2, Nil))"
+        `shouldBe` [ Ident "Cons",
+                     Symbol "(",
+                     Num 1,
+                     Symbol ",",
+                     Ident "Cons",
+                     Symbol "(",
+                     Num 2,
+                     Symbol ",",
+                     Ident "Nil",
+                     Symbol ")",
+                     Symbol ")"
+                   ]
 
     it "lexes Nil as an identifier" $ do
       lexer "Nil" `shouldBe` [Ident "Nil"]
