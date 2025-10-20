@@ -8,7 +8,8 @@ module FunSyntax (parse, prog, term, Term (Let, BinaryOps, Seq, Skip, UnaryOps, 
 
 import qualified Control.Monad as M
 import Control.Monad.State.Lazy (runStateT)
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, mapMaybe)
+import Data.List (find)
 -- import Debug.Trace (trace)
 
 import qualified Data.Set as S
@@ -149,6 +150,72 @@ block = do
     [t] -> t
     _ -> foldl1 Seq ts
 
+classDef :: Parser Token Term
+classDef = do
+  _ <- keyword "class"
+  className <- ident
+  _ <- symbol "{"
+  -- class body: a sequence of members which can be var definitions or function (method) definitions
+  members <- rpt $ oneof [varRef, funDef]
+  _ <- symbol "}"
+  let (constructor, vars, methods) = splitMembers className members
+  return $ ClassDef className constructor vars methods
+
+
+-- helpers to split parsed class members into constructor, instance vars and methods
+splitMembers :: String -> [Term] -> (Term, Term, Term)
+splitMembers className members = (constructorTerm, mkSeq varTerms, mkSeq methodTerms)
+  where
+    -- extract (name, rhs) from Let nodes
+    functionTerms :: [(String, Term)]
+    functionTerms = mapMaybe (\t -> case t of Let n rhs -> Just (n, rhs); _ -> Nothing) members
+
+    varTerms :: [Term]
+    varTerms = [t | t <- members, case t of Var _ -> True; _ -> False]
+
+    isFunTerm :: Term -> Bool
+    isFunTerm (Fun _ _) = True
+    isFunTerm _ = False
+
+    -- constructor: a function whose name matches the class name
+    constructorPair = find (\(n, rhs) -> n == className && isFunTerm rhs) functionTerms
+
+    constructorTerm = case constructorPair of
+      Just (n, rhs) -> Let n rhs
+      Nothing -> Skip
+
+    methodTerms = [Let n rhs | (n, rhs) <- functionTerms, n /= className]
+
+    mkSeq :: [Term] -> Term
+    mkSeq [] = Skip
+    mkSeq [t] = t
+    mkSeq ts = foldl1 Seq ts
+
+classInstantiate :: Parser Token Term
+classInstantiate = do
+  className <- ident
+  _ <- symbol "("
+  args <- rptDropSep term (symbol ",")
+  _ <- symbol ")"
+  return $ ClassInstantiate className args
+
+classVarRef :: Parser Token Term
+classVarRef = do
+  className <- ident
+  _ <- symbol "."
+  varName <- ident
+  return $ ClassVar className varName
+
+classMethodCall :: Parser Token Term
+classMethodCall = do
+  className <- ident
+  _ <- symbol "."
+  methodName <- ident
+  _ <- symbol "("
+  args <- rptDropSep term (symbol ",")
+  _ <- symbol ")"
+  return $ ClassMethodCall className methodName args
+
 ifExpr :: Parser Token Term
 ifExpr = do
   _ <- keyword "if"
@@ -206,7 +273,7 @@ printStmt = do
   return $ Write expr
 
 unaryExp :: Parser Token Term
-unaryExp = oneof [assign, ifExpr, block, funDef, minus, num, string, bool, tuple, tupleSet, tupleAccess, parens, varDef, funCall, varRef, whileTerm, printStmt]
+unaryExp = oneof [assign, ifExpr, block, funDef, minus, num, string, bool, tuple, tupleSet, tupleAccess, parens, varDef, classDef, classInstantiate, classMethodCall, classVarRef, classMethodCall, funCall, varRef, whileTerm, printStmt]
 
 ----------- prog ----------
 
