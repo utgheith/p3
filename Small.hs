@@ -96,6 +96,8 @@ reduce_ (Literal n) =
   return $ Happy $ IntVal n
 reduce_ (StringLiteral s) =
   return $ Happy $ StringVal s
+reduce_ Nil =
+  return $ Happy $ ListVal []
 reduce_ (Var x) =
   getVar x
 reduce_ (Let x t) = do
@@ -172,6 +174,10 @@ reduce_ (BinaryOps op t1 t2) =
     applyBinaryOp Neq = neqVal
     applyBinaryOp And = andVal
     applyBinaryOp Or = orVal
+    applyBinaryOp Cons = \v1 v2 ->
+      case v2 of
+        ListVal xs -> return $ Happy $ ListVal (v1 : xs)
+        _ -> return $ Sad $ "Type error: Cons operator expects a list as its second argument"
 reduce_ (BoolLit b) =
   return $ Happy $ BoolVal b
 reduce_ (UnaryOps op t) =
@@ -182,6 +188,26 @@ reduce_ (UnaryOps op t) =
   where
     applyUnaryOp Neg = negVal
     applyUnaryOp Not = notVal
+    applyUnaryOp Head = \v -> case v of
+      ListVal (x : _) -> return $ Happy x
+      ListVal [] -> return $ Sad $ "Head called on empty list"
+      _ -> return $ Sad $ "Type error: Head called on non-list"
+    applyUnaryOp Tail = \v -> case v of
+      ListVal (_ : xs) -> return $ Happy $ ListVal xs
+      ListVal [] -> return $ Sad $ "Tail called on empty list"
+      _ -> return $ Sad $ "Type error: Tail called on non-list"
+    applyUnaryOp Length = \v -> case v of
+      ListVal xs -> return $ Happy $ IntVal (fromIntegral (length xs))
+      StringVal s -> return $ Happy $ IntVal (fromIntegral (length s))
+      BoolVal _ -> return $ Happy $ IntVal 1
+      IntVal n ->
+        let m = abs n
+         in return $ Happy $ IntVal (fromIntegral (length (show m)))
+      _ -> return $ Sad "Type error: Length called on unsupported type"
+    applyUnaryOp IsNil = \v -> case v of
+      ListVal [] -> return (Happy (BoolVal True))
+      ListVal _ -> return (Happy (BoolVal False))
+      _ -> return (Sad "Type error: IsNil called on non-list")
 reduce_ (BreakSignal) =
   return $ Continue BreakSignal
 reduce_ (ContinueSignal) =
