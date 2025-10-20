@@ -6,7 +6,7 @@ data BinaryOp = Add | Sub | Mul | Div | Mod | Lt | Gt | Lte | Gte | Eq | Neq | A
 data UnaryOp = Neg | Not
   deriving (Eq, Show)
 
-data ErrorKind = Arithmetic | Type | Input | VariableNotFound deriving (Eq, Show)
+data ErrorKind = Arithmetic | Type | Input | VariableNotFound | Arguments deriving (Eq, Show)
 
 data ErrorKindOrAny = Specific ErrorKind | Any deriving (Eq, Show)
 
@@ -31,4 +31,6 @@ data Term
   | SetBracket String Term Term
   | Fun [String] Term
   | ApplyFun Term [Term]
+  | BreakSignal
+  | ContinueSignal
   deriving (Eq, Show)

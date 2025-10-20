@@ -101,8 +101,8 @@ instance Machine Simulator where
   selectValue (IntVal n) e1 e2 = if n /= 0 then e1 else e2 -- backward compat
   selectValue (StringVal s) e1 e2 = if not (null s) then e1 else e2
   selectValue (Tuple l) e1 e2 = if not (null l) then e1 else e2
-  selectValue (ClosureVal {}) _ _ = return $ Sad "Type error in select"
-  selectValue (Dictionary _) _ _ = return $ Sad "Type error in select"
+  selectValue (ClosureVal {}) _ _ = return $ Sad (Type, "Type error in select")
+  selectValue (Dictionary _) _ _ = return $ Sad (Type, "Type error in select")
 
   ltVal :: Value -> Value -> Env Simulator
   ltVal (IntVal v1) (IntVal v2) = return $ Happy (BoolVal (v1 < v2))
@@ -148,9 +148,9 @@ instance Machine Simulator where
   getBracketValue (Tuple (x : xs)) (IntVal pos) = if pos == 0 then return (Happy x) else getBracketValue (Tuple xs) (IntVal (pos - 1))
   getBracketValue (Dictionary d) (IntVal val) = case M.lookup val d of
     Just v -> return $ Happy v
-    Nothing -> return $ Sad "Unable to find element in dictionary"
-  getBracketValue (Dictionary _) _ = return $ Sad "Unable to index into dictionary with type"
-  getBracketValue _ _ = return $ Sad "Tuple Lookup Bad Input"
+    Nothing -> return $ Sad (VariableNotFound, "Unable to find element in dictionary")
+  getBracketValue (Dictionary _) _ = return $ Sad (Type, "Unable to index into dictionary with type")
+  getBracketValue _ _ = return $ Sad (Type, "Tuple Lookup Bad Input")
 
   setBracketValue :: String -> Value -> Value -> Env Simulator
   setBracketValue n t v = do
@@ -164,7 +164,7 @@ instance Machine Simulator where
                   let m' = insertScope n newVal' m
                   S.put (Simulator m' inp out)
                   return $ Happy v
-                Nothing -> return $ Sad "Something went wrong while trying to update Tuple value"
+                Nothing -> return $ Sad (Type, "Something went wrong while trying to update Tuple value")
         Dictionary _ ->
           let newVal = updateBracket oldVal t v
            in case newVal of
@@ -172,9 +172,9 @@ instance Machine Simulator where
                   let m' = insertScope n newVal' m
                   S.put (Simulator m' inp out)
                   return $ Happy v
-                Nothing -> return $ Sad "Something went wrong while trying to update Tuple value"
-        _ -> return $ Sad "Attempting to Index but didn't find Tuple"
-      Nothing -> return $ Sad "Attempting to Set Tuple That Doesn't Exist"
+                Nothing -> return $ Sad (Type, "Something went wrong while trying to update Dictionary value")
+        _ -> return $ Sad (VariableNotFound, "Attempting to Index but didn't find Tuple")
+      Nothing -> return $ Sad (VariableNotFound, "Attempting to Set Tuple That Doesn't Exist")
     where
       updateBracket :: Value -> Value -> Value -> Maybe Value
       updateBracket (Tuple (x : xs)) (Tuple (y : ys)) val = case y of

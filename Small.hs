@@ -85,6 +85,8 @@ premise :: Env m -> (Term -> Term) -> (V m -> Env m) -> Env m
 premise e l r = do
   v <- e
   case v of
+    Continue BreakSignal -> return $ Continue BreakSignal
+    Continue ContinueSignal -> return $ Continue ContinueSignal
     Continue t' -> return $ Continue (l t')
     Happy n -> r n
     Sad _ -> return v
@@ -109,10 +111,13 @@ reduce_ (Let x t) = do
     (Let x)
     (setVar x)
 reduce_ (Seq t1 t2) = do
-  premise
-    (reduce t1)
-    (`Seq` t2)
-    (\_ -> return $ Continue t2)
+  res1 <- reduce t1 -- run t1 normally
+  case res1 of
+    Continue BreakSignal -> return $ Continue BreakSignal
+    Continue ContinueSignal -> return $ Continue ContinueSignal
+    Continue t' -> return $ Continue (Seq t' t2)
+    Happy _ -> reduce t2 -- normal: continue with t2
+    Sad msg -> return $ Sad msg
 reduce_ (If cond tThen tElse) = do
   premise
     (reduce cond)
@@ -125,8 +130,26 @@ reduce_ (Try tTry catchableErrorKindOrAny tCatch) = do
     Happy n -> return $ Happy n
     Sad (resultErrorKind, _) | errorShouldBeCaught resultErrorKind catchableErrorKindOrAny -> return $ Continue tCatch
     Sad _ -> return vTry
-reduce_ w@(While cond body) =
-  return $ Continue (If cond (Seq body w) Skip)
+reduce_ (While cond body) = do
+  premise
+    (reduce cond)
+    (\cond' -> While cond' body)
+    ( \v -> do
+        selectValue
+          v
+          ( do
+              res <- reduce body
+              case res of
+                Continue BreakSignal -> do return $ Happy (IntVal 0)
+                Continue ContinueSignal -> do return $ Continue (While cond body)
+                Continue t -> do return $ Continue (Seq t (While cond body))
+                Happy _ -> do return $ Continue (While cond body)
+                Sad msg -> do return $ Sad msg
+          )
+          ( do
+              return $ Continue Skip
+          )
+    )
 reduce_ (Read x) =
   premise
     inputVal
@@ -173,6 +196,10 @@ reduce_ (UnaryOps op t) =
   where
     applyUnaryOp Neg = negVal
     applyUnaryOp Not = notVal
+reduce_ (BreakSignal) =
+  return $ Continue BreakSignal
+reduce_ (ContinueSignal) =
+  return $ Continue ContinueSignal
 reduce_ (Fun xs t) = do
   env <- S.get
   let vars = getScope env
@@ -247,18 +274,18 @@ applyFunArgList tf rest funVal argVal = do
 
 applyFunArg :: (Machine m, Show m, V m ~ Value) => Value -> Value -> Env m
 applyFunArg (ClosureVal [] _ _) _ = do
-  return $ Sad "too many arguments: function takes 0 arguments"
+  return $ Sad (Arguments, "too many arguments: function takes 0 arguments")
 applyFunArg (ClosureVal (x : xs) body caps) arg = do
   let newCaps = caps ++ [(x, arg)]
   if null xs
     then evalClosureBody body newCaps
     else return $ Happy (ClosureVal xs body newCaps)
-applyFunArg _ _ = return $ Sad "attempt to call a non-function"
+applyFunArg _ _ = return $ Sad (Type, "attempt to call a non-function")
 
 applyFuncNoArg :: (Machine m, Show m, V m ~ Value) => Value -> Env m
 applyFuncNoArg (ClosureVal [] body caps) = evalClosureBody body caps
-applyFuncNoArg (ClosureVal (_ : _) _ _) = return $ Sad "missing arguments: function requires parameters"
-applyFuncNoArg _ = return $ Sad "attempt to call a non-function"
+applyFuncNoArg (ClosureVal (_ : _) _ _) = return $ Sad (Arguments, "missing arguments: function requires parameters")
+applyFuncNoArg _ = return $ Sad (Type, "attempt to call a non-function")
 
 -- Bind captured args, evaluate body, restore machine state
 evalClosureBody :: (Machine m, Show m, V m ~ Value) => Term -> [(String, Value)] -> Env m
@@ -266,21 +293,21 @@ evalClosureBody body caps = do
   m0 <- S.get
   let (_resPush, m1) = S.runState (pushScope []) m0
   case bindMany caps m1 of
-    Left msg -> return (Sad msg)
+    Left msg -> return $ Sad msg
     Right m2 -> do
       let (res, m3) = reduceFully body m2
       let (_resPop, m4) = S.runState popScope m3 -- Restore previous scope.
       S.put m4
       case res of
-        Left msg -> return $ Sad msg
+        Left msg -> return $ Sad (Arguments, msg)
         Right v -> return $ Happy v
 
-bindMany :: (Machine m, V m ~ Value) => [(String, Value)] -> m -> Either String m
+bindMany :: (Machine m, V m ~ Value) => [(String, Value)] -> m -> Either Error m
 bindMany [] m = Right m
 bindMany ((k, v) : rest) m =
   case S.runState (setVar k v) m of
     (Sad msg, _m') -> Left msg
-    (Continue _, _m') -> Left "internal: setVar requested Continue"
+    (Continue _, _m') -> Left (Arguments, "internal: setVar requested Continue")
     (Happy _, m') -> bindMany rest m'
 
 reduce :: (Machine m, Show m, V m ~ Value) => Term -> Env m
@@ -294,5 +321,9 @@ reduceFully :: (Machine m, Show m, V m ~ Value) => Term -> m -> (Either String (
 reduceFully term machine =
   case S.runState (reduce term) machine of
     (Sad (_, message), m) -> (Left message, m)
-    (Continue t, m) -> reduceFully t m
+    (Continue t, m) -> do
+      case t of
+        BreakSignal -> (Left "unhandled break signal", m)
+        ContinueSignal -> (Left "unhandled continue signal", m)
+        _ -> reduceFully t m
     (Happy n, m) -> (Right n, m)

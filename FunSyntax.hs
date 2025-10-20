@@ -200,7 +200,7 @@ tupleSet = do
   _ <- symbol "]"
   _ <- symbol "="
   value <- term
-  return $ SetTuple name index value
+  return $ SetBracket name index value
 
 tupleAccess :: Parser Token Term
 tupleAccess = do
@@ -208,7 +208,7 @@ tupleAccess = do
   _ <- symbol "["
   index <- term
   _ <- symbol "]"
-  return $ AccessTuple tupleName index
+  return $ AccessBracket tupleName index
 
 funCall :: Parser Token Term
 funCall = do
