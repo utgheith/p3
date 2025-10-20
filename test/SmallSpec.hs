@@ -1,4 +1,5 @@
 {-# LANGUAGE ConstrainedClassMethods #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TypeFamilies #-}
 
@@ -737,16 +738,14 @@ spec = do
       let term = Seq (Let "x" (StringLiteral "hello")) (AddAssign "x" (Literal 3))
       let (result, _) = reduceFully term initialMachine
       result
-        `shouldSatisfy` ( \case
-                            Left msg -> "Type error in addition" `isInfixOf` msg
-                            _ -> False
-                        )
+        `shouldSatisfy` \case
+          Left msg -> "Type error in addition" `isInfixOf` msg
+          _ -> False
 
     it "handles type error in for-each with non-tuple" $ do
       let term = ForEach "x" (Literal 42) (Write (Var "x"))
       let (result, _) = reduceFully term initialMachine
       result
-        `shouldSatisfy` ( \case
-                            Left msg -> "for-each requires a tuple/list" `isInfixOf` msg
-                            _ -> False
-                        )
+        `shouldSatisfy` \case
+          Left msg -> "for-each requires a tuple/list" `isInfixOf` msg
+          _ -> False

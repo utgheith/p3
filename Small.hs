@@ -261,15 +261,16 @@ reduce_ (ForEach varName iterable body) = do
   premise
     (reduce iterable)
     (\iter' -> ForEach varName iter' body)
-    \case
-      Tuple [] -> return $ Continue Skip
-      Tuple (x : xs) ->
-        return $
-          Continue $
-            Seq
-              (Let varName (valueToTerm x))
-              (Seq body (ForEach varName (TupleTerm (map valueToTerm xs)) body))
-      _ -> return $ Sad (Type, "for-each requires a tuple/list")
+    ( \case
+        Tuple [] -> return $ Continue Skip
+        Tuple (x : xs) ->
+          return $
+            Continue $
+              Seq
+                (Let varName (valueToTerm x))
+                (Seq body (ForEach varName (TupleTerm (map valueToTerm xs)) body))
+        _ -> return $ Sad (Type, "for-each requires a tuple/list")
+    )
 
 -- Compound assignment: variable += expression
 reduce_ (AddAssign varName expr) = do

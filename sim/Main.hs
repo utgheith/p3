@@ -22,7 +22,7 @@ instance Machine Simulator where
     (Simulator m _ _) <- S.get
     case lookupScope name m of
       Just v -> return $ Happy v
-      Nothing -> return $ Sad $ (VariableNotFound, "get: " ++ name ++ " not found")
+      Nothing -> return $ Sad (VariableNotFound, "get: " ++ name ++ " not found")
 
   setVar :: String -> Value -> Env Simulator
   setVar name val = do
