@@ -28,5 +28,4 @@ data Term
   | ApplyFun Term [Term]
   | BreakSignal
   | ContinueSignal
-  | TernaryOp Term Term Term
   deriving (Eq, Show)

@@ -4,7 +4,7 @@
 
 {-# HLINT ignore "Use <$>" #-}
 
-module FunSyntax (parse, prog, term, Term (Let, BinaryOps, Seq, Skip, UnaryOps, Var, While, Write, BoolLit, Literal, StringLiteral, Fun, ApplyFun, TernaryOp)) where
+module FunSyntax (parse, prog, term, Term (Let, BinaryOps, Seq, Skip, UnaryOps, Var, While, Write, BoolLit, Literal, StringLiteral, Fun, ApplyFun, If)) where
 
 import qualified Control.Monad as M
 import Control.Monad.State.Lazy (runStateT)
@@ -82,7 +82,7 @@ ternaryOp cond = do
   trueBranch <- binaryExp precedence -- Only allow binary expressions in true branch
   _ <- symbol ":"
   falseBranch <- ternaryExp -- Allow ternary in false branch for right-associativity
-  return $ TernaryOp cond trueBranch falseBranch
+  return $ If cond trueBranch falseBranch
 
 ------------------- binary operators (left associative) -------------------
 
