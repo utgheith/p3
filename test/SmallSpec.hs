@@ -6,7 +6,7 @@ module SmallSpec (spec) where
 
 import qualified Control.Monad.State as S
 import qualified Data.Map as M
-import Scope (Scope (..), emptyScope, getAllBindings, insertScope, lookupScope, scopeFromList)
+import Scope (Scope (..), emptyScope, getAllBindings, insertScope, lookupScope, scopeFromList, markFinal, isFinal, moveToGlobal)
 import Small
 import Term
 import Test.Hspec
@@ -26,14 +26,17 @@ instance Machine MockMachine where
 
   setVar x v = do
     m <- S.get
-    S.put (m {getMem = insertScope x v (getMem m)})
-    return $ Happy v
+    if isFinal x (getMem m)
+      then return $ Sad $ "Cannot reassign final variable: " ++ x
+      else do
+        S.put (m {getMem = insertScope x v (getMem m)})
+        return $ Happy v
 
   getScope m = getAllBindings (getMem m)
 
   pushScope vars = do
     m <- S.get
-    S.put (m {getMem = Scope (M.fromList vars) (Just (getMem m))})
+    S.put (m {getMem = Scope (M.fromList (map (\(k, v) -> (k, (v, False))) vars)) (Just (getMem m))})
     return $ Happy (IntVal 0)
 
   popScope = do
@@ -41,6 +44,16 @@ instance Machine MockMachine where
     case getMem m of
       Scope _ (Just parent) -> S.put (m {getMem = parent})
       Scope _ Nothing -> S.put (m {getMem = emptyScope}) -- Reset to empty scope.
+    return $ Happy (IntVal 0)
+
+  markFinalVar x = do
+    m <- S.get
+    S.put (m {getMem = Scope.markFinal x (getMem m)})
+    return $ Happy (IntVal 0)
+
+  moveToGlobal x = do
+    m <- S.get
+    S.put (m {getMem = Scope.moveToGlobal x (getMem m)})
     return $ Happy (IntVal 0)
 
   inputVal = do
@@ -459,3 +472,34 @@ spec = do
     it "reduces inequality comparison" $ do
       let term = BinaryOps Neq (Literal 5) (Literal 10)
       reduceFully term initialMachine `shouldBe` (Right (BoolVal True), initialMachine)
+
+    it "accesses a final variable" $ do
+      let term = Seq (Let "x" (Literal 42)) (Seq (Final "x") (Var "x"))
+      let finalMachine = initialMachine {getMem = scopeFromList [("x", IntVal 42)]}
+      let finalMachine' = finalMachine {getMem = markFinal "x" (getMem finalMachine)}
+      reduceFully term initialMachine `shouldBe` (Right (IntVal 42), finalMachine')
+
+    it "tries to set a final variable value" $ do
+      let term = Seq (Let "x" (Literal 42)) (Seq (Final "x") (Let "x" (Literal 99)))
+      let (result, _) = reduceFully term initialMachine
+      result `shouldBe` Left "Cannot reassign final variable: x"
+
+    it "sets a variable within a function and accesses it outside" $ do
+      let term = Seq
+            (Let "x" (Literal 1))
+            (Seq
+              (ApplyFun (Fun ["y"] (Seq (Let "g" (Var "y")) (Literal 0))) [Literal 99])
+              (Var "g")
+            )
+      let (result, _) = reduceFully term initialMachine
+      result `shouldBe` Left "variable not found"
+
+    it "sets a variable within a function to global and accesses it outside" $ do
+      let term = Seq
+            (Let "x" (Literal 1))
+            (Seq
+              (ApplyFun (Fun ["y"] (Seq (Let "g" (Var "y")) (Seq (Global "g") (Literal 0)))) [Literal 99])
+              (Var "g")
+            )
+      let finalMachine = initialMachine {getMem = scopeFromList [("x", IntVal 1), ("g", IntVal 99)]}
+      reduceFully term initialMachine `shouldBe` (Right (IntVal 99), finalMachine)
