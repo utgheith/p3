@@ -14,7 +14,7 @@ import Data.Maybe (fromMaybe)
 import qualified Data.Set as S
 import FunLexer (Token (Ident, Keyword, Num, StringLiteralLexed, Symbol), lexer)
 import ParserCombinators (Parser, Result, oneof, opt, rpt, rptDropSep, satisfy, token)
-import Term (Term (..), BinaryOp (..), UnaryOp (..))
+import Term (BinaryOp (..), Term (..), UnaryOp (..))
 
 -- data Term
 --   = Assign String Term
@@ -236,6 +236,7 @@ prog = do
     [] -> Skip
     [t] -> t
     _ -> foldl1 Seq ts
+
 -- since we don't have a block constructor, this was a temporary fix
 
 ----------- parse ----------

@@ -1,10 +1,10 @@
 module FunSyntaxSpec (spec) where
 
-import Test.Hspec
+import FunLexer (Token (..))
 import FunSyntax (parse, prog)
 import ParserCombinators (eof)
-import Term (Term(..), BinaryOp(..))
-import FunLexer (Token(..))
+import Term (BinaryOp (..), Term (..))
+import Test.Hspec
 
 -- Helper function to parse from a string
 parseString :: String -> Either String (Term, [Token])
@@ -166,17 +166,19 @@ spec = do
 
   describe "File-based tests" $ do
     it "can parse complex programs from files" $ do
-      let complexProgram = unlines [
-            "var x = 10",
-            "fun f(n) {",
-            "    return n * 2",
-            "}",
-            "y = f(x)",
-            "if (y > 15) {",
-            "    print y",
-            "} else {",
-            "    print 0",
-            "}"]
+      let complexProgram =
+            unlines
+              [ "var x = 10",
+                "fun f(n) {",
+                "    return n * 2",
+                "}",
+                "y = f(x)",
+                "if (y > 15) {",
+                "    print y",
+                "} else {",
+                "    print 0",
+                "}"
+              ]
       let result = parseString complexProgram
       case result of
         Left err -> fail $ "Parse error: " ++ err
