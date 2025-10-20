@@ -115,38 +115,22 @@ reduce_ (If cond tThen tElse) = do
     (\cond' -> If cond' tThen tElse)
     (\v -> selectValue v (return $ Continue tThen) (return $ Continue tElse))
 reduce_ (While cond body) = do
-  trace ("[While] evaluating condition: " ++ show cond) () `seq` return ()
   premise
     (reduce cond)
     (\cond' -> While cond' body)
     ( \v -> do
-        trace ("[While] condition evaluated to: " ++ show v) () `seq` return ()
         selectValue
           v
           (do
-             trace "[While] condition true; entering body" () `seq` return ()
              res <- reduce body
-             trace ("[While] body result: " ++ show res) () `seq` return ()
              case res of
-               Continue BreakSignal -> do
-                 trace "[While] break encountered" () `seq` return ()
-                --  return $ Continue Skip
-                 return $ Happy (IntVal 0)
-               Continue ContinueSignal -> do
-                 trace "[While] continue encountered" () `seq` return ()
-                 return $ Continue (While cond body)
-               Continue t -> do
-                 trace ("[While] partial reduction: " ++ show t) () `seq` return ()
-                 return $ Continue (Seq t (While cond body))
-               Happy _ -> do
-                 trace "[While] body completed normally; repeating" () `seq` return ()
-                 return $ Continue (While cond body)
-               Sad msg -> do
-                 trace ("[While] error: " ++ msg) () `seq` return ()
-                 return $ Sad msg
+               Continue BreakSignal -> do return $ Happy (IntVal 0)
+               Continue ContinueSignal -> do return $ Continue (While cond body)
+               Continue t -> do return $ Continue (Seq t (While cond body))
+               Happy _ -> do return $ Continue (While cond body)
+               Sad msg -> do return $ Sad msg
           )
           (do
-             trace "[While] condition false; exiting loop" () `seq` return ()
              return $ Continue Skip
           )
     )
