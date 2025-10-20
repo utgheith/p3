@@ -9,7 +9,6 @@ module FunSyntax (parse, prog, term, Term (Let, BinaryOps, Seq, Skip, UnaryOps, 
 import qualified Control.Monad as M
 import Control.Monad.State.Lazy (runStateT)
 import Data.Maybe (fromMaybe)
-
 import qualified Data.Set as S
 import FunLexer (Token (Ident, Keyword, Num, StringLiteralLexed, Symbol), lexer)
 import ParserCombinators (Parser, Result, oneof, opt, rpt, rptDropSep, satisfy, token)
