@@ -228,26 +228,31 @@ prog =
 progForLoop :: Term
 progForLoop =
   "sum" <=> Literal 0
-    ~ ForLoop "i" (Literal 0) (BinaryOps Lt (Var "i") (Literal 5))
-              (Let "i" (BinaryOps Add (Var "i") (Literal 1)))
-              (Let "sum" (BinaryOps Add (Var "sum") (Var "i")))
+    ~ ForLoop
+      "i"
+      (Literal 0)
+      (BinaryOps Lt (Var "i") (Literal 5))
+      (Let "i" (BinaryOps Add (Var "i") (Literal 1)))
+      (Let "sum" (BinaryOps Add (Var "sum") (Var "i")))
     ~ Write (Var "sum")
 
 -- For-each loop example: sum elements of a tuple
-progForEach :: Term  
+progForEach :: Term
 progForEach =
   "sum" <=> Literal 0
-    ~ ForEach "num" (TupleTerm [Literal 10, Literal 20, Literal 30])
-              (Let "sum" (BinaryOps Add (Var "sum") (Var "num")))
+    ~ ForEach
+      "num"
+      (TupleTerm [Literal 10, Literal 20, Literal 30])
+      (Let "sum" (BinaryOps Add (Var "sum") (Var "num")))
     ~ Write (Var "sum")
 
 -- Compound assignment example
 progCompoundAssign :: Term
-progCompoundAssign = 
+progCompoundAssign =
   "x" <=> Literal 5
-    ~ AddAssign "x" (Literal 10)  -- x += 10, so x becomes 15
+    ~ AddAssign "x" (Literal 10) -- x += 10, so x becomes 15
     ~ Write (Var "x")
-    ~ SubAssign "x" (Literal 3)   -- x -= 3, so x becomes 12  
+    ~ SubAssign "x" (Literal 3) -- x -= 3, so x becomes 12
     ~ Write (Var "x")
 
 main :: IO ()

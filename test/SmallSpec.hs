@@ -5,8 +5,8 @@
 module SmallSpec (spec) where
 
 import qualified Control.Monad.State as S
-import qualified Data.Map as M
 import Data.List (isInfixOf)
+import qualified Data.Map as M
 import Scope (Scope (..), emptyScope, getAllBindings, insertScope, lookupScope, scopeFromList)
 import Small
 import Term
@@ -686,24 +686,40 @@ spec = do
 
     -- Tests for new loop constructs and compound assignment
     it "reduces a traditional for loop" $ do
-      let term = Seq (Let "sum" (Literal 0)) 
-                    (ForLoop "i" (Literal 0) (BinaryOps Lt (Var "i") (Literal 3))
-                            (Let "i" (BinaryOps Add (Var "i") (Literal 1)))
-                            (Let "sum" (BinaryOps Add (Var "sum") (Var "i"))))
+      let term =
+            Seq
+              (Let "sum" (Literal 0))
+              ( ForLoop
+                  "i"
+                  (Literal 0)
+                  (BinaryOps Lt (Var "i") (Literal 3))
+                  (Let "i" (BinaryOps Add (Var "i") (Literal 1)))
+                  (Let "sum" (BinaryOps Add (Var "sum") (Var "i")))
+              )
       let finalMachine = initialMachine {getMem = scopeFromList [("sum", IntVal 3), ("i", IntVal 3)]}
       reduceFully term initialMachine `shouldBe` (Right (IntVal 0), finalMachine)
 
     it "reduces a for-each loop over list" $ do
-      let term = Seq (Let "sum" (Literal 0))
-                    (ForEach "x" (TupleTerm [Literal 10, Literal 20, Literal 30])
-                            (Let "sum" (BinaryOps Add (Var "sum") (Var "x"))))
+      let term =
+            Seq
+              (Let "sum" (Literal 0))
+              ( ForEach
+                  "x"
+                  (TupleTerm [Literal 10, Literal 20, Literal 30])
+                  (Let "sum" (BinaryOps Add (Var "sum") (Var "x")))
+              )
       let finalMachine = initialMachine {getMem = scopeFromList [("sum", IntVal 60), ("x", IntVal 30)]}
       reduceFully term initialMachine `shouldBe` (Right (IntVal 0), finalMachine)
 
     it "reduces a for-each loop over empty list" $ do
-      let term = Seq (Let "sum" (Literal 0))
-                    (ForEach "x" (TupleTerm [])
-                            (Let "sum" (BinaryOps Add (Var "sum") (Var "x"))))
+      let term =
+            Seq
+              (Let "sum" (Literal 0))
+              ( ForEach
+                  "x"
+                  (TupleTerm [])
+                  (Let "sum" (BinaryOps Add (Var "sum") (Var "x")))
+              )
       let finalMachine = initialMachine {getMem = scopeFromList [("sum", IntVal 0)]}
       reduceFully term initialMachine `shouldBe` (Right (IntVal 0), finalMachine)
 
@@ -720,14 +736,17 @@ spec = do
     it "handles type error in += with non-integer" $ do
       let term = Seq (Let "x" (StringLiteral "hello")) (AddAssign "x" (Literal 3))
       let (result, _) = reduceFully term initialMachine
-      result `shouldSatisfy` (\x -> case x of
-        Left msg -> "Type error in addition" `isInfixOf` msg
-        _        -> False)
+      result
+        `shouldSatisfy` ( \case
+                            Left msg -> "Type error in addition" `isInfixOf` msg
+                            _ -> False
+                        )
 
     it "handles type error in for-each with non-tuple" $ do
       let term = ForEach "x" (Literal 42) (Write (Var "x"))
       let (result, _) = reduceFully term initialMachine
-      result `shouldSatisfy` (\x -> case x of
-        Left msg -> "for-each requires a tuple/list" `isInfixOf` msg
-        _        -> False)
-
+      result
+        `shouldSatisfy` ( \case
+                            Left msg -> "for-each requires a tuple/list" `isInfixOf` msg
+                            _ -> False
+                        )
