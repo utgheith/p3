@@ -28,7 +28,8 @@ keywords =
       "try",
       "catch",
       "true",
-      "false" -- force boolean literals to be tokens in the parser
+      "false",
+      "class" -- force boolean literals to be tokens in the parser
     ]
 
 lexer :: [Char] -> [Token]
