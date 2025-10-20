@@ -155,6 +155,14 @@ funDef = do
   body <- term
   return $ Let name (Fun params body)
 
+-- namespace: parse a namespace and qualify all names inside it
+namespaceDef :: Parser Token Term
+namespaceDef = do
+  _ <- keyword "namespace"
+  name <- ident
+  body <- term
+  return $ qualify name body
+
 varRef :: Parser Token Term
 varRef = Var <$> ident
 
@@ -225,7 +233,28 @@ printStmt = do
   return $ Write expr
 
 unaryExp :: Parser Token Term
-unaryExp = oneof [assign, ifExpr, block, funDef, minus, num, string, bool, tuple, tupleSet, tupleAccess, parens, varDef, funCall, varRef, whileTerm, printStmt]
+unaryExp = oneof [assign, ifExpr, block, funDef, namespaceDef, minus, num, string, bool, tuple, tupleSet, tupleAccess, parens, varDef, funCall, varRef, whileTerm, printStmt]
+
+
+-- Qualify names inside a term with a namespace prefix.
+-- rewrite: every VarDef, VarRef, and FunDef name to be prefixed "ns::".
+qualify :: String -> Term -> Term
+qualify ns t =
+  let p s = ns ++ "::" ++ s
+   in case t of
+        Assign name expr -> Assign (p name) (qualify ns expr)
+        BinaryOp op l r -> BinaryOp op (qualify ns l) (qualify ns r)
+        Block ts -> Block (map (qualify ns) ts)
+        Call f args -> Call (qualify ns f) (map (qualify ns) args)
+        Const n -> Const n
+        ConstString s -> ConstString s
+        Namespace name body -> Namespace (p name) (qualify ns body)
+        FunDef name params body -> FunDef (p name) params (qualify ns body)
+        IfThenElse c t1 mt2 -> IfThenElse (qualify ns c) (qualify ns t1) (fmap (qualify ns) mt2)
+        Negate x -> Negate (qualify ns x)
+        VarDef name mexpr -> VarDef (p name) (fmap (qualify ns) mexpr)
+        VarRef name -> VarRef (p name)
+        While c b -> While (qualify ns c) (qualify ns b)
 
 ----------- prog ----------
 
@@ -245,3 +274,4 @@ parse :: [Char] -> Parser Token a -> Result (a, [Token])
 parse input p =
   let tokens = lexer input
    in runStateT p tokens
+
