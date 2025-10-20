@@ -40,6 +40,6 @@ jobs:
     - name: Generate Code Coverage Report
       uses: 8c6794b6/hpc-codecov-action@v4
       with:
-        target: stack:p3
+        target: stack:p3-test
         format: codecov
         out: coverage.json
