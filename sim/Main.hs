@@ -9,7 +9,7 @@ import qualified Control.Monad.State as S
 import qualified Data.Map as M
 import qualified Progs
 import Scope (Scope (..), emptyScope, getAllBindings, insertScope, lookupScope)
-import Small (Env, Machine (..), Result (..), reduceFully)
+import Small (Env, Machine (..), Result (..), Error, reduceFully)
 import Term (ErrorKind (..), Term (..))
 import Value (Value (..))
 
@@ -160,49 +160,53 @@ instance Machine Simulator where
         Tuple _ ->
           let newVal = updateBracket oldVal t v
            in case newVal of
-                Just newVal' -> do
+                Right newVal' -> do
                   let m' = insertScope n newVal' m
                   S.put (Simulator m' inp out)
                   return $ Happy v
-                Nothing -> return $ Sad (Type, "Something went wrong while trying to update Tuple value")
+                Left e -> return $ Sad e
         Dictionary _ ->
           let newVal = updateBracket oldVal t v
            in case newVal of
-                Just newVal' -> do
+                Right newVal' -> do
                   let m' = insertScope n newVal' m
                   S.put (Simulator m' inp out)
                   return $ Happy v
-                Nothing -> return $ Sad (Type, "Something went wrong while trying to update Dictionary value")
+                Left e -> return $ Sad e
         _ -> return $ Sad (VariableNotFound, "Attempting to Index but didn't find Tuple")
       Nothing -> return $ Sad (VariableNotFound, "Attempting to Set Tuple That Doesn't Exist")
     where
-      updateBracket :: Value -> Value -> Value -> Maybe Value
+      updateBracket :: Value -> Value -> Value -> Either Error Value
       updateBracket (Tuple (x : xs)) (Tuple (y : ys)) val = case y of
         IntVal index ->
           if index == 0
             then
               let returnVal = updateBracket x (Tuple ys) val
                in case returnVal of
-                    Just a -> Just $ Tuple (a : xs)
-                    Nothing -> Nothing
+                    Right a -> Right $ Tuple (a : xs)
+                    _ -> returnVal
             else
               let returnVal = updateBracket (Tuple xs) (Tuple (IntVal (index - 1) : ys)) val
                in case returnVal of
-                    Just (Tuple a) -> Just $ Tuple (x : a)
-                    Just _ -> error "Unable to rebuild tuple"
-                    Nothing -> Nothing
-        _ -> Nothing
-      updateBracket (Dictionary d) (Tuple (y : ys)) val = case y of
+                    Right (Tuple a) -> Right $ Tuple (x : a)
+                    Left _ -> returnVal
+                    _ -> error "Unable to rebuild tuple"
+        _ -> Left (Type, "Provided non integer to index by")
+      updateBracket (Dictionary d) (Tuple (y : ys)) val =  case y of
         IntVal index -> case M.lookup index d of
           Just r ->
             let returnVal = updateBracket r (Tuple ys) val
              in case returnVal of
-                  Just w -> Just (Dictionary (M.insert index w d))
-                  Nothing -> Nothing
-          Nothing -> Nothing
-        _ -> Nothing
-      updateBracket _ (Tuple []) val = Just val
-      updateBracket _ _ _ = Nothing
+                  Right w -> Right (Dictionary (M.insert index w d))
+                  _ -> returnVal
+          Nothing ->
+            let returnVal = updateBracket (IntVal 0) (Tuple ys) val
+             in case returnVal of
+                  Right w -> Right (Dictionary (M.insert index w d))
+                  _ -> returnVal
+        _ -> Left (Type, "Provided non integer to index by")
+      updateBracket _ (Tuple []) val = Right val
+      updateBracket _ _ _ = Left (Type, "Out of Bounds")
 
 infixl 1 ~
 
