@@ -318,25 +318,14 @@ applyFuncNoArg _ = return $ Sad (Type, "attempt to call a non-function")
 -- Bind captured args, evaluate body, restore machine state
 evalClosureBody :: (Machine m, Show m, V m ~ Value) => Term -> [(String, Value)] -> Env m
 evalClosureBody body caps = do
-  m0 <- S.get
-  let (_resPush, m1) = S.runState (pushScope []) m0
-  case bindMany caps m1 of
-    Left msg -> return $ Sad msg
-    Right m2 -> do
-      let (res, m3) = reduceFully body m2
-      let (_resPop, m4) = S.runState popScope m3 -- Restore previous scope.
-      S.put m4
-      case res of
-        Left msg -> return $ Sad (Arguments, msg)
-        Right v -> return $ Happy v
-
-bindMany :: (Machine m, V m ~ Value) => [(String, Value)] -> m -> Either Error m
-bindMany [] m = Right m
-bindMany ((k, v) : rest) m =
-  case S.runState (setVar k v) m of
-    (Sad msg, _m') -> Left msg
-    (Continue _, _m') -> Left (Arguments, "internal: setVar requested Continue")
-    (Happy _, m') -> bindMany rest m'
+  pushScope caps
+  m1 <- S.get
+  let (res, m2) = reduceFully body m1
+  S.put m2
+  popScope
+  case res of
+    Left msg -> return $ Sad (Arguments, msg)
+    Right v -> return $ Happy v
 
 reduce :: (Machine m, Show m, V m ~ Value) => Term -> Env m
 reduce t = do
