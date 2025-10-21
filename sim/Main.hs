@@ -130,7 +130,7 @@ instance Machine Simulator where
 
   gteVal :: Value -> Value -> Env Simulator
   gteVal (IntVal v1) (IntVal v2) = return $ Happy (BoolVal (v1 >= v2))
-  gtVal (StringVal v1) (StringVal v2) = return $ Happy (BoolVal (v1 >= v2))
+  gteVal (StringVal v1) (StringVal v2) = return $ Happy (BoolVal (v1 >= v2))
   gteVal _ _ = return $ Sad (Type, "Type error in >=")
 
   eqVal :: Value -> Value -> Env Simulator
