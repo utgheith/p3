@@ -270,7 +270,7 @@ spec = do
               _ <- eof
               return t
         result `shouldBe` Right (Try (Var (OnlyStr "x")) (Any) (Literal 1), [])
-    
+
       it "parses try-catch arithmetic" $ do
         let result = parse "try x catch Arithmetic 1" $ do
               t <- prog
@@ -284,14 +284,14 @@ spec = do
               _ <- eof
               return t
         result `shouldBe` Right (Try (Var (OnlyStr "x")) (Specific Type) (Literal 1), [])
-      
+
       it "parses try-catch input" $ do
         let result = parse "try x catch Input 1" $ do
               t <- prog
               _ <- eof
               return t
         result `shouldBe` Right (Try (Var (OnlyStr "x")) (Specific Input) (Literal 1), [])
-      
+
       it "parses try-catch variable not found" $ do
         let result = parse "try x catch VariableNotFound 1" $ do
               t <- prog
