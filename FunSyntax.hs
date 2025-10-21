@@ -150,7 +150,7 @@ funDef = [Let (OnlyStr name) (Fun params body) |
     ]
 
 varRef :: Parser Token Term
-varRef = (Var . OnlyStr) <$> ident
+varRef = Var . OnlyStr <$> ident
 
 block :: Parser Token Term
 block = [blockToSeq ts | _ <- token $ Symbol "{", ts <- rpt term, _ <- token $ Symbol "}"]
@@ -199,12 +199,12 @@ tryCatch = [Try tryBranch (errorType err) catchBranch |
       catchBranch <- term
       ]
       where errorType err = case err of
-          ("Any") -> (Any)
-          ("Arithmetic") -> (Specific Arithmetic)
-          ("Type") -> (Specific Type)
-          ("Input") -> (Specific Input)
-          ("VariableNotFound") -> (Specific VariableNotFound)
-          ("Arguments") -> (Specific Arguments)
+          "Any" -> (Any)
+          "Arithmetic" -> (Specific Arithmetic)
+          "Type" -> (Specific Type)
+          "Input" -> (Specific Input)
+          "VariableNotFound" -> (Specific VariableNotFound)
+          "Arguments" -> (Specific Arguments)
           _ -> error "Invalid Error Type Provided"
 
 funCall :: Parser Token Term

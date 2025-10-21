@@ -14,11 +14,11 @@ infixl 9 <=>
 
 prog :: Term
 prog =
-  (OnlyStr "x") <=> Literal 10
+  OnlyStr "x" <=> Literal 10
     ~ While
       (Var (OnlyStr "x"))
       ( Write (Var (OnlyStr "x"))
-          ~ (OnlyStr "x") <=> BinaryOps Sub (Var (OnlyStr "x")) (Literal 1)
+          ~ OnlyStr "x" <=> BinaryOps Sub (Var (OnlyStr "x")) (Literal 1)
       )
 
 prog2 :: Term
@@ -26,8 +26,8 @@ prog2 = Write (Var (OnlyStr "x")) ~ Write (Literal 42)
 
 prog3 :: Term
 prog3 =
-  (OnlyStr "x") <=> Literal 10
-    ~ (OnlyStr "y") <=> Literal 5
+  OnlyStr "x" <=> Literal 10
+    ~ OnlyStr "y" <=> Literal 5
     ~ Write (BinaryOps Gt (Var (OnlyStr "x")) (Var (OnlyStr "y")))
     ~ Write (BinaryOps Lt (Var (OnlyStr "x")) (Var (OnlyStr "y")))
     ~ Write (BinaryOps Eq (Var (OnlyStr "x")) (Var (OnlyStr "y")))
@@ -39,5 +39,5 @@ prog3 =
     ~ While
       (BinaryOps Gt (Var (OnlyStr "y")) (Literal 0))
       ( Write (Var (OnlyStr "y"))
-          ~ (OnlyStr "y") <=> BinaryOps Sub (Var (OnlyStr "y")) (Literal 1)
+          ~ OnlyStr "y" <=> BinaryOps Sub (Var (OnlyStr "y")) (Literal 1)
       )

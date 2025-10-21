@@ -78,6 +78,8 @@ instance Machine Simulator where
 
   mulVal :: Value -> Value -> Env Simulator
   mulVal (IntVal v1) (IntVal v2) = return $ Happy (IntVal (v1 * v2))
+  mulVal (StringVal v1) (IntVal v2) = return $ Happy $ StringVal $ concat $ replicate (fromIntegral v2) v1
+  mulVal (IntVal v1) (StringVal v2) = return $ Happy $ StringVal $ concat $ replicate (fromIntegral v1) v2
   mulVal _ _ = return $ Sad (Type, "Type error in multiplication")
 
   divVal :: Value -> Value -> Env Simulator
@@ -222,7 +224,7 @@ instance Machine Simulator where
   setBracketValue (Dictionary current) (IntVal index) val =
     return $ Happy $ Dictionary (M.insert index val current)
   setBracketValue (Tuple t) (IntVal index) val =
-    let returnVal = loop (Tuple t) (IntVal (index)) val
+    let returnVal = loop (Tuple t) (IntVal index) val
      in case returnVal of
           Left e -> return $ Sad e
           Right v -> return $ Happy v
@@ -251,9 +253,9 @@ infixl 9 <=>
 
 prog :: Term
 prog =
-  (OnlyStr "x") <=> Literal 10
-    ~ (OnlyStr "y") <=> Literal 29
-    ~ (OnlyStr "z") <=> Literal 3
+  OnlyStr "x" <=> Literal 10
+    ~ OnlyStr "y" <=> Literal 29
+    ~ OnlyStr "z" <=> Literal 3
 
 main :: IO ()
 main = do
