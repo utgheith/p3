@@ -86,6 +86,12 @@ lexer = unfoldr step
        in case rest2 of
             ('"' : rest3) -> Just (StringLiteralLexed str, rest3)
             _ -> Just (Error "Unclosed string literal", "")
+    -- more string literals
+    step ('\'' : rest) =
+      let (str, rest2) = span (/= '\'') rest
+       in case rest2 of
+            ('\'' : rest3) -> Just (StringLiteralLexed str, rest3)
+            _ -> Just (Error "Unclosed string literal", "")
     -- comments
     step ('$' : rest) =
       let (_, rest2) = span (/= '$') rest
