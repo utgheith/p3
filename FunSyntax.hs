@@ -255,8 +255,17 @@ printStmt = do
   expr <- term
   return $ Write expr
 
+-- Return without expression just returns 0
+returnExpr :: Parser Token Term
+returnExpr = do
+  _ <- keyword "return"
+  me <- opt term
+  return $ case me of
+    Nothing -> ReturnExp (Literal 0)
+    Just e -> ReturnExp e
+
 unaryExp :: Parser Token Term
-unaryExp = oneof [assign, ifExpr, block, funDef, minus, bitnot, preIncrement, preDecrement, num, string, bool, tuple, dictionary, bracketSet, bracketAccess, tryCatch, parens, varDef, funCall, postIncrement, postDecrement, varRef, whileTerm, printStmt]
+unaryExp = oneof [assign, ifExpr, block, funDef, returnExpr, minus, bitnot, preIncrement, preDecrement, num, string, bool, tuple, dictionary, bracketSet, bracketAccess, tryCatch, parens, varDef, funCall, postIncrement, postDecrement, varRef, whileTerm, printStmt]
 
 ----------- prog ----------
 

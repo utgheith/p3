@@ -735,3 +735,34 @@ spec = do
       let term = Seq (Let "x" NewDictionary) (Seq (SetBracket "x" (TupleTerm [Literal 3]) (StringLiteral "hello")) (AccessBracket (Var "x") (Literal 3)))
       let finalMachine = initialMachine {getMem = scopeFromList [("x", Dictionary (M.fromList [(3, StringVal "hello")]))]}
       reduceFully term initialMachine `shouldBe` (Right (StringVal "hello"), finalMachine)
+
+    it "return exits a function early" $ do
+      let f = Fun ["x"] (Seq (ReturnExp (Var "x")) (Literal 42))
+      let term = ApplyFun f [Literal 7]
+      reduceFully term initialMachine `shouldBe` (Right (IntVal 7), initialMachine)
+
+    it "return in nested function exits only the inner function" $ do
+      let inner = Fun ["y"] (Seq (ReturnExp (Var "y")) (Literal 100))
+      let outer = Fun ["x"] (ApplyFun inner [Var "x"])
+      let term = ApplyFun outer [Literal 55]
+      reduceFully term initialMachine `shouldBe` (Right (IntVal 55), initialMachine)
+
+    it "return inside while loop in function exits function" $ do
+      let f = Fun ["x"] (While (Var "x") (ReturnExp (Var "x")))
+      let term = ApplyFun f [Literal 10]
+      reduceFully term initialMachine `shouldBe` (Right (IntVal 10), initialMachine)  
+
+    it "return expression is evaluated exactly once" $ do
+      let f = Fun [] (ReturnExp (Write (Literal 1)))
+      reduceFully (ApplyFun f []) initialMachine `shouldBe` (Right (IntVal 1), initialMachine{getOutput = [IntVal 1]})
+    
+    it "return in argument short-circuits" $ do
+      let callee = Fun ["x"] (Literal 0)
+      let g = Fun [] (ApplyFun callee [Seq (ReturnExp (Literal 1)) (Write (Literal 2))])
+      reduceFully (ApplyFun g []) initialMachine `shouldBe` (Right (IntVal 1), initialMachine)
+
+    it "return doesn't leak local bindings" $ do
+      let f = Fun [] (Seq (Let "x" (Literal 1)) (ReturnExp (Literal 2)))
+      let (_, m1) = reduceFully (ApplyFun f []) initialMachine
+      let (res2, _) = reduceFully (Var "x") m1
+      res2 `shouldBe` Left "variable not found"

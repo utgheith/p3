@@ -98,7 +98,9 @@ premise e l r = do
   case v of
     Continue BreakSignal -> return $ Continue BreakSignal
     Continue ContinueSignal -> return $ Continue ContinueSignal
-    Continue t' -> return $ Continue (l t')
+    Continue t' -> case t' of
+      ReturnExp _ -> return $ Continue t' -- Bubble up return statements
+      _ -> return $ Continue (l t')
     Happy n -> r n
     Sad _ -> return v
 
@@ -126,6 +128,7 @@ reduce_ (Seq t1 t2) = do
   case res1 of
     Continue BreakSignal -> return $ Continue BreakSignal
     Continue ContinueSignal -> return $ Continue ContinueSignal
+    Continue (ReturnExp ret) -> return $ Continue (ReturnExp ret)
     Continue t' -> return $ Continue (Seq t' t2)
     Happy _ -> reduce t2 -- normal: continue with t2
     Sad msg -> return $ Sad msg
@@ -137,6 +140,7 @@ reduce_ (If cond tThen tElse) = do
 reduce_ (Try tTry catchableErrorKindOrAny tCatch) = do
   vTry <- reduce tTry
   case vTry of
+    Continue (ReturnExp ret) -> return $ Continue (ReturnExp ret)
     Continue tTry' -> return $ Continue (Try tTry' catchableErrorKindOrAny tCatch)
     Happy n -> return $ Happy n
     Sad (resultErrorKind, _) | errorShouldBeCaught resultErrorKind catchableErrorKindOrAny -> return $ Continue tCatch
@@ -153,6 +157,7 @@ reduce_ (While cond body) = do
               case res of
                 Continue BreakSignal -> do return $ Happy (IntVal 0)
                 Continue ContinueSignal -> do return $ Continue (While cond body)
+                Continue (ReturnExp ret) -> do return $ Continue (ReturnExp ret)
                 Continue t -> do return $ Continue (Seq t (While cond body))
                 Happy _ -> do return $ Continue (While cond body)
                 Sad msg -> do return $ Sad msg
@@ -214,6 +219,8 @@ reduce_ BreakSignal =
   return $ Continue BreakSignal
 reduce_ ContinueSignal =
   return $ Continue ContinueSignal
+reduce_ (ReturnExp t) =
+  return $ Continue (ReturnExp t) -- just signaling, no reduction
 reduce_ (Fun xs t) = do
   env <- S.get
   let vars = getScope env
@@ -310,13 +317,19 @@ evalClosureBody body caps = do
   case bindMany caps m1 of
     Left msg -> return $ Sad msg
     Right m2 -> do
-      let (res, m3) = reduceFully body m2
-      let (_resPop, m4) = S.runState popScope m3 -- Restore previous scope.
+      let loop t = do
+            res <- reduce t
+            case res of
+              Happy v -> return (Happy v)
+              Sad msg -> return (Sad msg)
+              Continue (ReturnExp ret) -> reduce ret
+              Continue BreakSignal -> return $ Continue BreakSignal
+              Continue ContinueSignal -> return $ Continue ContinueSignal
+              Continue t' -> loop t'
+      let (resBody, m3) = S.runState (loop body) m2
+      let (_popped, m4) = S.runState popScope m3
       S.put m4
-      case res of
-        Left msg -> return $ Sad (Arguments, msg)
-        Right v -> return $ Happy v
-
+      return resBody
 bindMany :: (Machine m, V m ~ Value) => [(String, Value)] -> m -> Either Error m
 bindMany [] m = Right m
 bindMany ((k, v) : rest) m =
@@ -340,5 +353,6 @@ reduceFully term machine =
       case t of
         BreakSignal -> (Left "unhandled break signal", m)
         ContinueSignal -> (Left "unhandled continue signal", m)
+        ReturnExp _ -> (Left "unhandled return signal", m)
         _ -> reduceFully t m
     (Happy n, m) -> (Right n, m)
