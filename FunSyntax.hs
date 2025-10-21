@@ -141,11 +141,11 @@ parens = [t | _ <- symbol "(", t <- term, _ <- symbol ")"]
 
 funDef :: Parser Token Term
 funDef = [Let (OnlyStr name) (Fun params body) |
-    _ <- keyword "fun"
-    name <- ident
-    _ <- symbol "("
-    params <- rptDropSep ident (symbol ",")
-    _ <- symbol ")"
+    _ <- keyword "fun",
+    name <- ident,
+    _ <- symbol "(",
+    params <- rptDropSep ident (symbol ","),
+    _ <- symbol ")",
     body <- term
     ]
 
@@ -157,16 +157,16 @@ block = [blockToSeq ts | _ <- token $ Symbol "{", ts <- rpt term, _ <- token $ S
 
 ifExpr :: Parser Token Term
 ifExpr = [If cond thenTerm (fromMaybe Skip elseTerm) |
-    _ <- keyword "if"
-    cond <- term
-    thenTerm <- term
+    _ <- keyword "if",
+    cond <- term,
+    thenTerm <- term,
     elseTerm <- opt $ keyword "else" >> term
     ]
 
 varDef :: Parser Token Term
 varDef = [Let (OnlyStr name) (fromMaybe (Literal 0) expr) |
-    _ <- keyword "var"
-    name <- ident
+    _ <- keyword "var",
+    name <- ident,
     expr <- opt $ symbol "=" >> term
     ]
 
@@ -186,16 +186,16 @@ bracketSet = [Let (Bracket (OnlyStr name) index) value |
 
 bracketAccess :: Parser Token Term
 bracketAccess = [Var (Bracket (OnlyStr name) index) |
-    name <- ident
+    name <- ident,
     index <- inBrackets term
     ]
 
 tryCatch :: Parser Token Term
 tryCatch = [Try tryBranch (errorType err) catchBranch |
-      _ <- keyword "try"
-      tryBranch <- term
-      _ <- keyword "catch"
-      err <- ident
+      _ <- keyword "try",
+      tryBranch <- term,
+      _ <- keyword "catch",
+      err <- ident,
       catchBranch <- term
       ]
       where errorType err = case err of
@@ -209,15 +209,15 @@ tryCatch = [Try tryBranch (errorType err) catchBranch |
 
 funCall :: Parser Token Term
 funCall = [ApplyFun (Var (OnlyStr name)) args |
-    name <- ident
-    _ <- symbol "("
-    args <- rptDropSep term (symbol ",")
+    name <- ident,
+    _ <- symbol "(",
+    args <- rptDropSep term (symbol ","),
     _ <- symbol ")"
     ]
 
 printStmt :: Parser Token Term
 printStmt = [Write expr |
-    _ <- keyword "print"
+    _ <- keyword "print",
     expr <- term
     ]
 
