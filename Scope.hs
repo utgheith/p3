@@ -8,7 +8,6 @@ module Scope
   )
 where
 
-import Control.Applicative ((<|>))
 import qualified Data.Map as M
 import Value (Value)
 
@@ -17,7 +16,7 @@ data Scope = Scope (M.Map String Value) (Maybe Scope)
 
 lookupScope :: String -> Scope -> Maybe Value
 lookupScope name (Scope m _) =
-  M.lookup name m <|> Nothing -- Do not look in parent scopes.
+  M.lookup name m -- Do not look in parent scopes.
 
 insertScope :: String -> Value -> Scope -> Scope
 insertScope name val (Scope m parent) = Scope (M.insert name val m) parent -- Insert into inner scope.
