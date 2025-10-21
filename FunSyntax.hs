@@ -217,7 +217,7 @@ inBrackets p = do
 bracketSet :: Parser Token Term
 bracketSet = do
   name <- ident
-  index <- rpt (inBrackets term)
+  index <- inBrackets term
   _ <- symbol "="
   value <- term
   return $ Let (Bracket (OnlyStr name) index) value
