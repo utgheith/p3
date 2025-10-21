@@ -40,11 +40,11 @@ spec = do
         result `shouldBe` Right (StringLiteral "hello", [])
 
       it "parses boolean literals" $ do
-        let result = parse "true" $ do
+        let result = parse "true false" $ do
               t <- prog
               _ <- eof
               return t
-        result `shouldBe` Right (BoolLit True, [])
+        result `shouldBe` Right (Seq (BoolLit True) (BoolLit False), [])
 
     describe "variables" $ do
       it "parses variable references" $ do
@@ -69,6 +69,13 @@ spec = do
               return t
         result `shouldBe` Right (BinaryOps Add (Var (OnlyStr "x")) (Var (OnlyStr "y")), [])
 
+      it "parses subtraction" $ do
+        let result = parse "x - y" $ do
+              t <- prog
+              _ <- eof
+              return t
+        result `shouldBe` Right (BinaryOps Sub (Var (OnlyStr "x")) (Var (OnlyStr "y")), [])
+
       it "parses multiplication" $ do
         let result = parse "x * y" $ do
               t <- prog
@@ -76,12 +83,125 @@ spec = do
               return t
         result `shouldBe` Right (BinaryOps Mul (Var (OnlyStr "x")) (Var (OnlyStr "y")), [])
 
+      it "parses division" $ do
+        let result = parse "x / y" $ do
+              t <- prog
+              _ <- eof
+              return t
+        result `shouldBe` Right (BinaryOps Div (Var (OnlyStr "x")) (Var (OnlyStr "y")), [])
+
+      it "parses modulus" $ do
+        let result = parse "x % y" $ do
+              t <- prog
+              _ <- eof
+              return t
+        result `shouldBe` Right (BinaryOps Mod (Var (OnlyStr "x")) (Var (OnlyStr "y")), [])
+
+      it "parses less than" $ do
+        let result = parse "x < y" $ do
+              t <- prog
+              _ <- eof
+              return t
+        result `shouldBe` Right (BinaryOps Lt (Var (OnlyStr "x")) (Var (OnlyStr "y")), [])
+
+      it "parses greater than" $ do
+        let result = parse "x > y" $ do
+              t <- prog
+              _ <- eof
+              return t
+        result `shouldBe` Right (BinaryOps Gt (Var (OnlyStr "x")) (Var (OnlyStr "y")), [])
+
+      it "parses less than equal" $ do
+        let result = parse "x <= y" $ do
+              t <- prog
+              _ <- eof
+              return t
+        result `shouldBe` Right (BinaryOps Lte (Var (OnlyStr "x")) (Var (OnlyStr "y")), [])
+
+      it "parses greater than equal" $ do
+        let result = parse "x >= y" $ do
+              t <- prog
+              _ <- eof
+              return t
+        result `shouldBe` Right (BinaryOps Gte (Var (OnlyStr "x")) (Var (OnlyStr "y")), [])
+
+      it "parses equal to" $ do
+        let result = parse "x == y" $ do
+              t <- prog
+              _ <- eof
+              return t
+        result `shouldBe` Right (BinaryOps Eq (Var (OnlyStr "x")) (Var (OnlyStr "y")), [])
+
+      it "parses not equal" $ do
+        let result = parse "x != y" $ do
+              t <- prog
+              _ <- eof
+              return t
+        result `shouldBe` Right (BinaryOps Neq (Var (OnlyStr "x")) (Var (OnlyStr "y")), [])
+
+      it "parses and" $ do
+        let result = parse "x && y" $ do
+              t <- prog
+              _ <- eof
+              return t
+        result `shouldBe` Right (BinaryOps And (Var (OnlyStr "x")) (Var (OnlyStr "y")), [])
+
+      it "parses or" $ do
+        let result = parse "x || y" $ do
+              t <- prog
+              _ <- eof
+              return t
+        result `shouldBe` Right (BinaryOps Or (Var (OnlyStr "x")) (Var (OnlyStr "y")), [])
+
+      it "parses pow" $ do
+        let result = parse "x ** y" $ do
+              t <- prog
+              _ <- eof
+              return t
+        result `shouldBe` Right (BinaryOps Pow (Var (OnlyStr "x")) (Var (OnlyStr "y")), [])
+
+      it "parses xor" $ do
+        let result = parse "x ^ y" $ do
+              t <- prog
+              _ <- eof
+              return t
+        result `shouldBe` Right (BinaryOps Xor (Var (OnlyStr "x")) (Var (OnlyStr "y")), [])
+
       it "parses complex expressions with precedence" $ do
         let result = parse "x + y * z" $ do
               t <- prog
               _ <- eof
               return t
         result `shouldBe` Right (BinaryOps Add (Var (OnlyStr "x")) (BinaryOps Mul (Var (OnlyStr "y")) (Var (OnlyStr "z"))), [])
+
+    describe "pre/post inc/dec" $ do
+      it "parses pre increment" $ do
+        let result = parse "++x" $ do
+              t <- prog
+              _ <- eof
+              return t
+        result `shouldBe` Right (PreIncrement "x", [])
+
+      it "parses post increment" $ do
+        let result = parse "x++" $ do
+              t <- prog
+              _ <- eof
+              return t
+        result `shouldBe` Right (PostIncrement "x", [])
+
+      it "parses pre decrement" $ do
+        let result = parse "--x" $ do
+              t <- prog
+              _ <- eof
+              return t
+        result `shouldBe` Right (PreDecrement "x", [])
+
+      it "parses post decrement" $ do
+        let result = parse "x--" $ do
+              t <- prog
+              _ <- eof
+              return t
+        result `shouldBe` Right (PostDecrement "x", [])
 
     describe "control flow" $ do
       it "parses if statements" $ do
@@ -143,13 +263,48 @@ spec = do
               return t
         result `shouldBe` Right (NewDictionary, [])
 
-    describe "try-catch" $ do
-      it "parses try-catch creation" $ do
+    describe "try-catch creation" $ do
+      it "parses try-catch any" $ do
+        let result = parse "try x catch Any 1" $ do
+              t <- prog
+              _ <- eof
+              return t
+        result `shouldBe` Right (Try (Var (OnlyStr "x")) (Any) (Literal 1), [])
+
+      it "parses try-catch arithmetic" $ do
         let result = parse "try x catch Arithmetic 1" $ do
               t <- prog
               _ <- eof
               return t
         result `shouldBe` Right (Try (Var (OnlyStr "x")) (Specific Arithmetic) (Literal 1), [])
+
+      it "parses try-catch type" $ do
+        let result = parse "try x catch Type 1" $ do
+              t <- prog
+              _ <- eof
+              return t
+        result `shouldBe` Right (Try (Var (OnlyStr "x")) (Specific Type) (Literal 1), [])
+
+      it "parses try-catch input" $ do
+        let result = parse "try x catch Input 1" $ do
+              t <- prog
+              _ <- eof
+              return t
+        result `shouldBe` Right (Try (Var (OnlyStr "x")) (Specific Input) (Literal 1), [])
+
+      it "parses try-catch variable not found" $ do
+        let result = parse "try x catch VariableNotFound 1" $ do
+              t <- prog
+              _ <- eof
+              return t
+        result `shouldBe` Right (Try (Var (OnlyStr "x")) (Specific VariableNotFound) (Literal 1), [])
+
+      it "parses try-catch arguments" $ do
+        let result = parse "try x catch Arguments 1" $ do
+              t <- prog
+              _ <- eof
+              return t
+        result `shouldBe` Right (Try (Var (OnlyStr "x")) (Specific Arguments) (Literal 1), [])
 
     describe "error cases" $ do
       it "fails on invalid syntax" $ do
