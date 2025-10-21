@@ -5,7 +5,7 @@ module FunSyntaxSpec (spec) where
 import FunLexer (Token (..))
 import FunSyntax (parse, prog)
 import ParserCombinators (eof)
-import Term (Ref(..), BinaryOp (..), ErrorKind (..), ErrorKindOrAny (..), Term (..))
+import Term (BinaryOp (..), ErrorKind (..), ErrorKindOrAny (..), Ref (..), Term (..))
 import Test.Hspec
 
 -- Helper function to parse from a string

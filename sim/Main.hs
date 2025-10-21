@@ -11,7 +11,7 @@ import qualified Data.Map as M
 import qualified Progs
 import Scope (Scope (..), emptyScope, getAllBindings, insertScope, lookupScope)
 import Small (Env, Error, Machine (..), Result (..), reduceFully)
-import Term (Ref(..), ErrorKind (..), Term (..))
+import Term (ErrorKind (..), Ref (..), Term (..))
 import Value (Value (..))
 
 data Simulator = Simulator Scope [Value] [Value] deriving (Eq, Show)
@@ -222,21 +222,20 @@ instance Machine Simulator where
   setBracketValue (Dictionary current) (IntVal index) val =
     return $ Happy $ Dictionary (M.insert index val current)
   setBracketValue (Tuple t) (IntVal index) val =
-    let returnVal = loop (Tuple t) (IntVal (index)) val in 
-    case returnVal of
-      Left e -> return $ Sad e
-      Right v -> return $ Happy v 
-    where 
+    let returnVal = loop (Tuple t) (IntVal (index)) val
+     in case returnVal of
+          Left e -> return $ Sad e
+          Right v -> return $ Happy v
+    where
       loop :: Value -> Value -> Value -> Either Error Value
-      loop (Tuple (x:xs)) (IntVal pos) setVal =
+      loop (Tuple (x : xs)) (IntVal pos) setVal =
         if pos == 0
-          then
-            Right $ Tuple (setVal : xs)
+          then Right $ Tuple (setVal : xs)
           else
-            let returnVal = loop (Tuple xs) (IntVal (pos-1)) setVal in 
-              case returnVal of
-                Right (Tuple rest) -> Right $ Tuple (x : rest)
-                _ -> returnVal
+            let returnVal = loop (Tuple xs) (IntVal (pos - 1)) setVal
+             in case returnVal of
+                  Right (Tuple rest) -> Right $ Tuple (x : rest)
+                  _ -> returnVal
       loop _ _ _ = error "unreachable hopefully"
   setBracketValue _ _ _ = return $ Sad (Type, "Had a Type Error")
 
