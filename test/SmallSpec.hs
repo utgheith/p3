@@ -652,6 +652,12 @@ spec = do
       let machine = initialMachine {getMem = scopeFromList [("x", IntVal 1)]}
       reduceFully term initialMachine `shouldBe` (Right (IntVal 5), machine)
 
+    it "errors on undefined variable in function scope" $ do
+      let f1 = Fun [] (Seq (Let "y" (Literal 3)) (ApplyFun (Var "f") []))
+      let term = Seq (Let "f" (Fun [] (Write (Var "y")))) (ApplyFun f1 []) -- f defined outside of f1.
+      let machine = initialMachine {getMem = scopeFromList [("f", ClosureVal [] (Write (Var "y")) [])]}
+      reduceFully term initialMachine `shouldBe` (Left "variable not found", machine) -- Does not capture y = 3.
+
     -- Comparison Operations Tests
     it "reduces less than comparison" $ do
       let term = BinaryOps Lt (Literal 5) (Literal 10)
