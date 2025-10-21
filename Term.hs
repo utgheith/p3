@@ -1,4 +1,10 @@
-module Term (Ref (..), Term (..), BinaryOp (..), UnaryOp (..), ErrorKind (..), ErrorKindOrAny (..)) where
+{-# LANGUAGE DeriveTraversable #-}
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TypeFamilies #-}
+
+module Term (Ref (..), Term (..), TermF (..), BinaryOp (..), UnaryOp (..), ErrorKind (..), ErrorKindOrAny (..)) where
+
+import Data.Functor.Foldable.TH (makeBaseFunctor)
 
 data BinaryOp = Add | Sub | Mul | Div | Mod | Lt | Gt | Lte | Gte | Eq | Neq | And | Or | Pow | Xor
   deriving (Eq, Show)
@@ -40,3 +46,5 @@ data Term
   | BreakSignal
   | ContinueSignal
   deriving (Eq, Show)
+
+makeBaseFunctor ''Term
