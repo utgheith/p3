@@ -135,6 +135,14 @@ bool = do
     _ -> Nothing
   return $ BoolLit b
 
+-- Parse the identifier "Nil" as the Nil term
+nilTerm :: Parser Token Term
+nilTerm = do
+  _ <- satisfy $ \case
+    Ident name | name == "Nil" -> Just ()
+    _ -> Nothing
+  return Nil
+
 tuple :: Parser Token Term
 tuple = do
   _ <- symbol "["
@@ -225,7 +233,7 @@ printStmt = do
   return $ Write expr
 
 unaryExp :: Parser Token Term
-unaryExp = oneof [assign, ifExpr, block, funDef, minus, num, string, bool, tuple, tupleSet, tupleAccess, parens, varDef, funCall, varRef, whileTerm, printStmt]
+unaryExp = oneof [assign, ifExpr, block, funDef, minus, num, string, bool, tuple, tupleSet, tupleAccess, parens, varDef, funCall, nilTerm, varRef, whileTerm, printStmt]
 
 ----------- prog ----------
 

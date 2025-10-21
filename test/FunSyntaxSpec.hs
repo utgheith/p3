@@ -118,6 +118,21 @@ spec = do
               return t
         result `shouldBe` Right (ApplyFun (Var "f") [Var "x", Var "y"], [])
 
+    describe "lists (cons-style via function calls)" $ do
+      it "parses Cons(a, Nil) as a single-element list construction" $ do
+        let result = parse "Cons(a, Nil)" $ do
+              t <- prog
+              _ <- eof
+              return t
+        result `shouldBe` Right (ApplyFun (Var "Cons") [Var "a", Nil], [])
+
+      it "parses nested cons Cons(1, Cons(2, Nil))" $ do
+        let result = parse "Cons(1, Cons(2, Nil))" $ do
+              t <- prog
+              _ <- eof
+              return t
+        result `shouldBe` Right (ApplyFun (Var "Cons") [Literal 1, ApplyFun (Var "Cons") [Literal 2, Nil]], [])
+
     describe "tuples" $ do
       it "parses tuple creation" $ do
         let result = parse "x = [1, 2, 3]" $ do
