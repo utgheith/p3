@@ -198,8 +198,7 @@ tryCatch = [Try tryBranch (errorType err) catchBranch |
       err <- ident,
       catchBranch <- term
       ]
-      where errorType err =
-          case err of
+      where errorType err = case err of
               "Any" -> (Any)
               "Arithmetic" -> (Specific Arithmetic)
               "Type" -> (Specific Type)
