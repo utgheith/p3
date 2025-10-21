@@ -218,7 +218,8 @@ instance Machine Simulator where
     Just v -> return $ Happy v
     Nothing -> return $ Sad (VariableNotFound, "Unable to find element in dictionary")
   getBracketValue (Dictionary _) _ = return $ Sad (Type, "Unable to index into dictionary with type")
-  getBracketValue _ _ = return $ Sad (Type, "Tuple Lookup Bad Input")
+  getBracketValue (Tuple _) _ = return $ Sad (VariableNotFound, "Out of Bounds")
+  getBracketValue _ _ = return $ Sad (Type, "Invalid Lookup Bad Input")
 
   setBracketValue :: Value -> Value -> Value -> Env Simulator
   setBracketValue (Dictionary current) (IntVal index) val =

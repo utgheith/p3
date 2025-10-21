@@ -694,22 +694,22 @@ spec = do
       reduceFully term initialMachine `shouldBe` (Right (Tuple [IntVal 10, Tuple [StringVal "goodbye"], BoolVal True]), finalMachine)
 
     it "access a tuple" $ do
-      let term =  Seq (Let (OnlyStr "x") (TupleTerm [Literal 10, StringLiteral "hello", BoolLit True])) (Var (Bracket (OnlyStr "x") (Literal 2)))
+      let term = Seq (Let (OnlyStr "x") (TupleTerm [Literal 10, StringLiteral "hello", BoolLit True])) (Var (Bracket (OnlyStr "x") (Literal 2)))
       let finalMachine = initialMachine {getMem = scopeFromList [("x", Tuple [IntVal 10, StringVal "hello", BoolVal True])]}
       reduceFully term initialMachine `shouldBe` (Right (BoolVal True), finalMachine)
 
     it "access a nested tuple" $ do
-      let term =  Seq (Let (OnlyStr "x") (TupleTerm [Literal 10, TupleTerm [Literal 1, StringLiteral "hello"], BoolLit True])) (Var (Bracket (Bracket (OnlyStr "x") (Literal 1)) (Literal 0)))
+      let term = Seq (Let (OnlyStr "x") (TupleTerm [Literal 10, TupleTerm [Literal 1, StringLiteral "hello"], BoolLit True])) (Var (Bracket (Bracket (OnlyStr "x") (Literal 1)) (Literal 0)))
       let finalMachine = initialMachine {getMem = scopeFromList [("x", Tuple [IntVal 10, Tuple [IntVal 1, StringVal "hello"], BoolVal True])]}
       reduceFully term initialMachine `shouldBe` (Right (IntVal 1), finalMachine)
 
     it "access tuple above bounds" $ do
-      let term =  Seq (Let (OnlyStr "x") (TupleTerm [Literal 1, Literal 2, Literal 3])) (Var (Bracket (OnlyStr "x") (Literal 3)))
+      let term = Seq (Let (OnlyStr "x") (TupleTerm [Literal 1, Literal 2, Literal 3])) (Var (Bracket (OnlyStr "x") (Literal 3)))
       let finalMachine = initialMachine {getMem = scopeFromList [("x", Tuple [IntVal 1, IntVal 2, IntVal 3])]}
       reduceFully term initialMachine `shouldBe` (Left "Out of Bounds", finalMachine)
 
     it "access tuple below bounds" $ do
-      let term =  Seq (Let (OnlyStr "x") (TupleTerm [Literal 1, Literal 2, Literal 3])) (Var (Bracket (OnlyStr "x") (Literal (-1))))
+      let term = Seq (Let (OnlyStr "x") (TupleTerm [Literal 1, Literal 2, Literal 3])) (Var (Bracket (OnlyStr "x") (Literal (-1))))
       let finalMachine = initialMachine {getMem = scopeFromList [("x", Tuple [IntVal 1, IntVal 2, IntVal 3])]}
       reduceFully term initialMachine `shouldBe` (Left "Out of Bounds", finalMachine)
 
@@ -748,6 +748,6 @@ spec = do
       reduceFully term initialMachine `shouldBe` (Right (StringVal "hello"), finalMachine)
 
     it "invalid term in bracket lookup" $ do
-      let term =  Seq (Let (OnlyStr "x") (TupleTerm [Literal 10, StringLiteral "hello", BoolLit True])) (Var (Bracket (OnlyStr "x") (BinaryOps (Div) (Literal 2) (Literal 0))))
+      let term = Seq (Let (OnlyStr "x") (TupleTerm [Literal 10, StringLiteral "hello", BoolLit True])) (Var (Bracket (OnlyStr "x") (BinaryOps (Div) (Literal 2) (Literal 0))))
       let finalMachine = initialMachine {getMem = scopeFromList [("x", Tuple [IntVal 10, StringVal "hello", BoolVal True])]}
       reduceFully term initialMachine `shouldBe` (Left "Cannot divide by 0", finalMachine)
