@@ -198,14 +198,15 @@ tryCatch = [Try tryBranch (errorType err) catchBranch |
       err <- ident,
       catchBranch <- term
       ]
-      where errorType err = case err of
-          "Any" -> (Any)
-          "Arithmetic" -> (Specific Arithmetic)
-          "Type" -> (Specific Type)
-          "Input" -> (Specific Input)
-          "VariableNotFound" -> (Specific VariableNotFound)
-          "Arguments" -> (Specific Arguments)
-          _ -> error "Invalid Error Type Provided"
+      where errorType err =
+          case err of
+              "Any" -> (Any)
+              "Arithmetic" -> (Specific Arithmetic)
+              "Type" -> (Specific Type)
+              "Input" -> (Specific Input)
+              "VariableNotFound" -> (Specific VariableNotFound)
+              "Arguments" -> (Specific Arguments)
+              _ -> error "Invalid Error Type Provided"
 
 funCall :: Parser Token Term
 funCall = [ApplyFun (Var (OnlyStr name)) args |
