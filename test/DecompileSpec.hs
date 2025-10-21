@@ -1,4 +1,3 @@
-
 module DecompileSpec (spec) where
 
 import Control.Monad.State.Lazy (evalStateT)
