@@ -190,6 +190,7 @@ instance Machine MockMachine where
              in case returnVal of
                   Right (Tuple rest) -> Right $ Tuple (x : rest)
                   _ -> returnVal
+      loop (Tuple []) (IntVal _) _ = Left (VariableNotFound, "Attempting to set value Out of Bounds")
       loop _ _ _ = error "unreachable hopefully"
   setBracketValue _ _ _ = return $ Sad (Type, "Had a Type Error")
 
@@ -692,6 +693,11 @@ spec = do
       let term = Seq (Let (OnlyStr "x") (TupleTerm [Literal 10, TupleTerm [StringLiteral "hello"], BoolLit True])) (Let (Bracket (Bracket (OnlyStr "x") (Literal 1)) (Literal 0)) (StringLiteral "goodbye"))
       let finalMachine = initialMachine {getMem = scopeFromList [("x", Tuple [IntVal 10, Tuple [StringVal "goodbye"], BoolVal True])]}
       reduceFully term initialMachine `shouldBe` (Right (Tuple [IntVal 10, Tuple [StringVal "goodbye"], BoolVal True]), finalMachine)
+
+    it "let tuple above bounds" $ do
+      let term = Seq (Let (OnlyStr "x") (TupleTerm [Literal 10, StringLiteral "hello", BoolLit True])) (Let (Bracket (OnlyStr "x") (Literal 3)) (BoolLit False))
+      let finalMachine = initialMachine {getMem = scopeFromList [("x", Tuple [IntVal 10, StringVal "hello", BoolVal True])]}
+      reduceFully term initialMachine `shouldBe` (Left "Attempting to set value Out of Bounds", finalMachine)
 
     it "access a tuple" $ do
       let term = Seq (Let (OnlyStr "x") (TupleTerm [Literal 10, StringLiteral "hello", BoolLit True])) (Var (Bracket (OnlyStr "x") (Literal 2)))
