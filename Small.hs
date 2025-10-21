@@ -166,7 +166,7 @@ reduce_ (If cond tThen tElse) = do
 reduce_ (Try tTry catchableErrors tCatch) = do
   vTry <- reduce tTry
   case vTry of
-    Continue tTry' -> return $ Continue (Try tTry' catchableErrorKindOrAny tCatch)
+    Continue tTry' -> return $ Continue (Try tTry' catchableErrors tCatch)
     Happy n -> return vTry
     Sad (resultErrorKind, _) | errorShouldBeCaught resultErrorKind catchableErrors -> return $ Continue tCatch
     Sad _ -> return vTry
