@@ -10,7 +10,7 @@ import qualified Control.Monad.State as S
 import Data.Either
 import qualified Data.Map as M
 import Debug.Trace (trace)
-import Term (Ref(..), BinaryOp (..), ErrorKind (..), ErrorKindOrAny (..), Term (..), UnaryOp (..))
+import Term (BinaryOp (..), ErrorKind (..), ErrorKindOrAny (..), Ref (..), Term (..), UnaryOp (..))
 import Value (Value (..), valueToInt, valueToTuple)
 
 ----- The Machine type class -----
@@ -122,14 +122,14 @@ reduce_ (Retrieve t1 t2) = do
     (reduce t1)
     (\t1' -> Retrieve t1' t2)
     ( \v1 ->
-      premise
-        (reduce t2)
-        (\t2' -> Retrieve t1 t2')
-        (\v2 -> getBracketValue v1 v2)
+        premise
+          (reduce t2)
+          (\t2' -> Retrieve t1 t2')
+          (\v2 -> getBracketValue v1 v2)
     )
 reduce_ (Let x t) = do
   case x of
-    OnlyStr s -> 
+    OnlyStr s ->
       premise
         (reduce t)
         (\t' -> Let x t')
@@ -140,17 +140,17 @@ reduce_ (Merge t1 t2 t3) = do
     (reduce t1)
     (\t1' -> Merge t1' t2 t3)
     ( \v1 ->
-      premise
-        (reduce t2)
-        (\t2' -> Merge t1 t2' t3)
-        ( \v2 ->
-          premise
-            (reduce t3)
-            (\t3' -> Merge t1 t2 t3')
-            ( \v3 ->
-              setBracketValue v1 v2 v3
-            )
-        )
+        premise
+          (reduce t2)
+          (\t2' -> Merge t1 t2' t3)
+          ( \v2 ->
+              premise
+                (reduce t3)
+                (\t3' -> Merge t1 t2 t3')
+                ( \v3 ->
+                    setBracketValue v1 v2 v3
+                )
+          )
     )
 reduce_ (Seq t1 t2) = do
   res1 <- reduce t1 -- run t1 normally
