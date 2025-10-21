@@ -191,3 +191,14 @@ parse :: (Show t) => Parser t a -> [t] -> Result a
 parse p ts = do
   (result, _) <- runStateT (p <* eof) ts
   return result
+
+-- Common combinators for clarity and reuse
+sepBy1 :: Parser a -> Parser sep -> Parser [a]
+sepBy1 p sep = (:) <$> p <*> many (sep *> p)
+
+sepBy :: Parser a -> Parser sep -> Parser [a]
+sepBy p sep = sepBy1 p sep <|> pure []
+
+chainl1 :: Parser a -> Parser (a -> a -> a) -> Parser a
+chainl1 p pop = foldl1 (\x (f,y) -> f x y) <$> ((,) <$> p <*> many ((,) <$> pop <*> p))
+
