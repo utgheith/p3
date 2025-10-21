@@ -767,3 +767,7 @@ spec = do
       let (res2, _) = reduceFully (Var "x") m1
       res1 `shouldBe` Right (IntVal 2)
       res2 `shouldBe` Left "variable not found"
+
+    it "return in top-level code produces an error" $ do
+      let term = Seq (ReturnExp (Literal 2)) (Write (Literal 1))
+      reduceFully term initialMachine `shouldBe` (Left "unhandled return expression", initialMachine)

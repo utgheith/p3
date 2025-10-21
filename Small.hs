@@ -354,6 +354,6 @@ reduceFully term machine =
       case t of
         BreakSignal -> (Left "unhandled break signal", m)
         ContinueSignal -> (Left "unhandled continue signal", m)
-        ReturnExp _ -> (Left "unhandled return signal", m)
+        ReturnExp _ -> (Left "unhandled return expression", m)
         _ -> reduceFully t m
     (Happy n, m) -> (Right n, m)
