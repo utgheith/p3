@@ -41,7 +41,7 @@ eof = do
   ts <- get
   case ts of
     [] -> return ()
-    _ -> throwError $ "expected eof but found: " ++ show ts
+    _ -> throwError $ "expected eof but found: %s" % ts << []
 
 assert :: (Show t) => [Char] -> (t -> Maybe a) -> Parser t a
 assert msg p = do
