@@ -12,7 +12,7 @@ import Data.Maybe (fromMaybe)
 import qualified Data.Set as S
 import FunLexer (Token (Ident, Keyword, Num, StringLiteralLexed, Symbol), lexer)
 import ParserCombinators (Parser, Result, oneof, opt, rpt, rptDropSep, satisfy, token)
-import Term (BinaryOp (..), ErrorKind (..), ErrorKindOrAny (..), Term (..), UnaryOp (..))
+import Term (BinaryOp (..), ErrorKind (..), ErrorKindOrAny (..), Ref (..), Term (..), UnaryOp (..))
 
 -- succeed if the next token is the given symbol
 symbol :: String -> Parser Token ()
@@ -88,7 +88,7 @@ stringToBinaryOp _ = error "Unknown binary operator"
 ------------------- unary operators  -------------------
 
 assign :: Parser Token Term
-assign = [Let name expr | name <- ident, _ <- symbol "=", expr <- term]
+assign = [Let (OnlyStr name) expr | name <- ident, _ <- symbol "=", expr <- term]
 
 -- We can use monad comprehensions (GHC extension) to make parsers more concise
 minus :: Parser Token Term
@@ -168,10 +168,10 @@ funDef = do
   params <- rptDropSep ident (symbol ",")
   _ <- symbol ")"
   body <- term
-  return $ Let name (Fun params body)
+  return $ Let (OnlyStr name) (Fun params body)
 
 varRef :: Parser Token Term
-varRef = Var <$> ident
+varRef = (\name -> Var (OnlyStr name)) <$> ident
 
 block :: Parser Token Term
 block = do
@@ -197,8 +197,8 @@ varDef = do
   name <- ident
   expr <- opt $ symbol "=" >> term
   return $ case expr of
-    Nothing -> Let name (Literal 0)
-    Just e -> Let name e
+    Nothing -> Let (OnlyStr name) (Literal 0)
+    Just e -> Let (OnlyStr name) e
 
 whileTerm :: Parser Token Term
 whileTerm = do
@@ -217,16 +217,16 @@ inBrackets p = do
 bracketSet :: Parser Token Term
 bracketSet = do
   name <- ident
-  index <- rpt (inBrackets term)
+  index <- inBrackets term
   _ <- symbol "="
   value <- term
-  return $ SetBracket name (TupleTerm index) value
+  return $ Let (Bracket (OnlyStr name) index) value
 
 bracketAccess :: Parser Token Term
 bracketAccess = do
-  tupleName <- varRef
+  name <- ident
   index <- inBrackets term
-  return $ AccessBracket tupleName index
+  return $ Var (Bracket (OnlyStr name) index)
 
 tryCatch :: Parser Token Term
 tryCatch = do
@@ -250,7 +250,7 @@ funCall = do
   _ <- symbol "("
   args <- rptDropSep term (symbol ",")
   _ <- symbol ")"
-  return $ ApplyFun (Var name) args
+  return $ ApplyFun (Var (OnlyStr name)) args
 
 printStmt :: Parser Token Term
 printStmt = do

@@ -11,7 +11,7 @@ import qualified Data.Map as M
 import qualified Progs
 import Scope (Scope (..), emptyScope, getAllBindings, insertScope, lookupScope)
 import Small (Env, Error, Machine (..), Result (..), reduceFully)
-import Term (ErrorKind (..), Term (..))
+import Term (ErrorKind (..), Ref (..), Term (..))
 import Value (Value (..))
 
 data Simulator = Simulator Scope [Value] [Value] deriving (Eq, Show)
@@ -218,61 +218,26 @@ instance Machine Simulator where
   getBracketValue (Dictionary _) _ = return $ Sad (Type, "Unable to index into dictionary with type")
   getBracketValue _ _ = return $ Sad (Type, "Tuple Lookup Bad Input")
 
-  setBracketValue :: String -> Value -> Value -> Env Simulator
-  setBracketValue n t v = do
-    (Simulator m inp out) <- S.get
-    case lookupScope n m of
-      Just oldVal -> case oldVal of
-        Tuple _ ->
-          let newVal = updateBracket oldVal t v
-           in case newVal of
-                Right newVal' -> do
-                  let m' = insertScope n newVal' m
-                  S.put (Simulator m' inp out)
-                  return $ Happy v
-                Left e -> return $ Sad e
-        Dictionary _ ->
-          let newVal = updateBracket oldVal t v
-           in case newVal of
-                Right newVal' -> do
-                  let m' = insertScope n newVal' m
-                  S.put (Simulator m' inp out)
-                  return $ Happy v
-                Left e -> return $ Sad e
-        _ -> return $ Sad (VariableNotFound, "Attempting to Index but didn't find Tuple")
-      Nothing -> return $ Sad (VariableNotFound, "Attempting to Set Tuple That Doesn't Exist")
+  setBracketValue :: Value -> Value -> Value -> Env Simulator
+  setBracketValue (Dictionary current) (IntVal index) val =
+    return $ Happy $ Dictionary (M.insert index val current)
+  setBracketValue (Tuple t) (IntVal index) val =
+    let returnVal = loop (Tuple t) (IntVal (index)) val
+     in case returnVal of
+          Left e -> return $ Sad e
+          Right v -> return $ Happy v
     where
-      updateBracket :: Value -> Value -> Value -> Either Error Value
-      updateBracket (Tuple (x : xs)) (Tuple (y : ys)) val = case y of
-        IntVal index ->
-          if index == 0
-            then
-              let returnVal = updateBracket x (Tuple ys) val
-               in case returnVal of
-                    Right a -> Right $ Tuple (a : xs)
-                    _ -> returnVal
-            else
-              let returnVal = updateBracket (Tuple xs) (Tuple (IntVal (index - 1) : ys)) val
-               in case returnVal of
-                    Right (Tuple a) -> Right $ Tuple (x : a)
-                    Left _ -> returnVal
-                    _ -> error "Unable to rebuild tuple"
-        _ -> Left (Type, "Provided non integer to index by")
-      updateBracket (Dictionary d) (Tuple (y : ys)) val = case y of
-        IntVal index -> case M.lookup index d of
-          Just r ->
-            let returnVal = updateBracket r (Tuple ys) val
+      loop :: Value -> Value -> Value -> Either Error Value
+      loop (Tuple (x : xs)) (IntVal pos) setVal =
+        if pos == 0
+          then Right $ Tuple (setVal : xs)
+          else
+            let returnVal = loop (Tuple xs) (IntVal (pos - 1)) setVal
              in case returnVal of
-                  Right w -> Right (Dictionary (M.insert index w d))
+                  Right (Tuple rest) -> Right $ Tuple (x : rest)
                   _ -> returnVal
-          Nothing ->
-            let returnVal = updateBracket (IntVal 0) (Tuple ys) val
-             in case returnVal of
-                  Right w -> Right (Dictionary (M.insert index w d))
-                  _ -> returnVal
-        _ -> Left (Type, "Provided non integer to index by")
-      updateBracket _ (Tuple []) val = Right val
-      updateBracket _ _ _ = Left (Type, "Out of Bounds")
+      loop _ _ _ = error "unreachable hopefully"
+  setBracketValue _ _ _ = return $ Sad (Type, "Had a Type Error")
 
 infixl 1 ~
 
@@ -281,14 +246,14 @@ infixl 1 ~
 
 infixl 9 <=>
 
-(<=>) :: String -> Term -> Term
+(<=>) :: Ref -> Term -> Term
 (<=>) = Let
 
 prog :: Term
 prog =
-  "x" <=> Literal 10
-    ~ "y" <=> Literal 29
-    ~ "z" <=> Literal 3
+  (OnlyStr "x") <=> Literal 10
+    ~ (OnlyStr "y") <=> Literal 29
+    ~ (OnlyStr "z") <=> Literal 3
 
 main :: IO ()
 main = do
