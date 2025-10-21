@@ -9,31 +9,10 @@ module FunSyntax (parse, prog, term, Term (Let, BinaryOps, Seq, Skip, UnaryOps, 
 import qualified Control.Monad as M
 import Control.Monad.State.Lazy (runStateT)
 import Data.Maybe (fromMaybe)
--- import Debug.Trace (trace)
-
 import qualified Data.Set as S
 import FunLexer (Token (Ident, Keyword, Num, StringLiteralLexed, Symbol), lexer)
 import ParserCombinators (Parser, Result, oneof, opt, rpt, rptDropSep, satisfy, token)
 import Term (Ref(..), BinaryOp (..), ErrorKind (..), ErrorKindOrAny (..), Term (..), UnaryOp (..))
-
--- data Term
---   = Assign String Term
---   | BinaryOp String Term Term
---   | Block [Term]
---   | Call Term [Term]
---   | Const Integer
---   | ConstString String
---   | FunDef String [String] Term
---   | IfThenElse Term Term (Maybe Term)
---   | Negate Term
---   | VarDef String (Maybe Term)
---   | VarRef String
---   | While Term Term
---   deriving
---     ( -- | more term constructors
---       Show,
---       Eq
---     )
 
 -- succeed if the next token is the given symbol
 symbol :: String -> Parser Token ()
@@ -70,7 +49,7 @@ term = binaryExp precedence
 
 -- precedence levels, from lowest to highest
 precedence :: [S.Set String]
-precedence = [S.fromList ["||"], S.fromList ["&&"], S.fromList ["==", "!="], S.fromList ["<", ">", "<=", ">="], S.fromList ["+", "-"], S.fromList ["*", "/", "%"]]
+precedence = [S.fromList ["||"], S.fromList ["^"], S.fromList ["&&"], S.fromList ["==", "!="], S.fromList ["<", ">", "<=", ">="], S.fromList ["+", "-"], S.fromList ["*", "/", "%"], S.fromList ["**"]]
 
 binaryExp :: [S.Set String] -> Parser Token Term
 binaryExp [] = unaryExp
@@ -102,6 +81,8 @@ stringToBinaryOp "==" = Eq
 stringToBinaryOp "!=" = Neq
 stringToBinaryOp "&&" = And
 stringToBinaryOp "||" = Or
+stringToBinaryOp "**" = Pow
+stringToBinaryOp "^" = Xor
 stringToBinaryOp _ = error "Unknown binary operator"
 
 ------------------- unary operators  -------------------
@@ -112,6 +93,33 @@ assign = [Let (OnlyStr name) expr | name <- ident, _ <- symbol "=", expr <- term
 -- We can use monad comprehensions (GHC extension) to make parsers more concise
 minus :: Parser Token Term
 minus = [UnaryOps Neg e | _ <- symbol "-", e <- unaryExp]
+
+bitnot :: Parser Token Term
+bitnot = [UnaryOps BitNot e | _ <- symbol "~", e <- unaryExp]
+
+preIncrement :: Parser Token Term
+preIncrement = do
+  _ <- symbol "++"
+  var <- ident
+  return $ PreIncrement var
+
+preDecrement :: Parser Token Term
+preDecrement = do
+  _ <- symbol "--"
+  var <- ident
+  return $ PreDecrement var
+
+postIncrement :: Parser Token Term
+postIncrement = do
+  var <- ident
+  _ <- symbol "++"
+  return $ PostIncrement var
+
+postDecrement :: Parser Token Term
+postDecrement = do
+  var <- ident
+  _ <- symbol "--"
+  return $ PostDecrement var
 
 num :: Parser Token Term
 num = do
@@ -199,12 +207,17 @@ whileTerm = do
   body <- term
   return $ While cond body
 
+inBrackets :: Parser Token v -> Parser Token v
+inBrackets p = do
+  _ <- symbol "["
+  tok <- p
+  _ <- symbol "]"
+  return tok
+
 bracketSet :: Parser Token Term
 bracketSet = do
   name <- ident
-  _ <- symbol "["
-  index <- term
-  _ <- symbol "]"
+  index <- rpt (inBrackets term)
   _ <- symbol "="
   value <- term
   return $ Let (Bracket (OnlyStr name) index) value
@@ -212,9 +225,7 @@ bracketSet = do
 bracketAccess :: Parser Token Term
 bracketAccess = do
   name <- ident
-  _ <- symbol "["
-  index <- term
-  _ <- symbol "]"
+  index <- inBrackets term
   return $ Var (Bracket (OnlyStr name) index)
 
 tryCatch :: Parser Token Term
@@ -248,7 +259,7 @@ printStmt = do
   return $ Write expr
 
 unaryExp :: Parser Token Term
-unaryExp = oneof [assign, ifExpr, block, funDef, minus, num, string, bool, tuple, dictionary, bracketSet, bracketAccess, tryCatch, parens, varDef, funCall, varRef, whileTerm, printStmt]
+unaryExp = oneof [assign, ifExpr, block, funDef, minus, bitnot, preIncrement, preDecrement, num, string, bool, tuple, dictionary, bracketSet, bracketAccess, tryCatch, parens, varDef, funCall, postIncrement, postDecrement, varRef, whileTerm, printStmt]
 
 ----------- prog ----------
 

@@ -30,5 +30,11 @@ spec = do
     it "lexes a simple expression" $ do
       lexer "var x = 1" `shouldBe` [Keyword "var", Ident "x", Symbol "=", Num 1]
 
+    it "lexes a string" $ do
+      lexer "\"hello\"" `shouldBe` [StringLiteralLexed "hello"]
+
+    it "lexes a string with single quotes" $ do
+      lexer "'\"'" `shouldBe` [StringLiteralLexed "\""]
+
     it "handles an unexpected character" $ do
       lexer "@" `shouldBe` [Error "Unexpected character: @"]

@@ -1,9 +1,9 @@
 module Term (Ref(..), Term (..), BinaryOp (..), UnaryOp (..), ErrorKind (..), ErrorKindOrAny (..)) where
 
-data BinaryOp = Add | Sub | Mul | Div | Mod | Lt | Gt | Lte | Gte | Eq | Neq | And | Or
+data BinaryOp = Add | Sub | Mul | Div | Mod | Lt | Gt | Lte | Gte | Eq | Neq | And | Or | Pow | Xor
   deriving (Eq, Show)
 
-data UnaryOp = Neg | Not
+data UnaryOp = Neg | Not | BitNot
   deriving (Eq, Show)
 
 data ErrorKind = Arithmetic | Type | Input | VariableNotFound | Arguments deriving (Eq, Show)
@@ -33,6 +33,10 @@ data Term
   | Merge Term Term Term -- current value, index, value
   | Fun [String] Term
   | ApplyFun Term [Term]
+  | PreIncrement String
+  | PreDecrement String
+  | PostIncrement String
+  | PostDecrement String
   | BreakSignal
   | ContinueSignal
   deriving (Eq, Show)

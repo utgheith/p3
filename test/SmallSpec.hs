@@ -5,6 +5,7 @@
 module SmallSpec (spec) where
 
 import qualified Control.Monad.State as S
+import Data.Bits (complement)
 import qualified Data.Map as M
 import Scope (Scope (..), emptyScope, getAllBindings, insertScope, lookupScope, scopeFromList)
 import Small
@@ -77,6 +78,12 @@ instance Machine MockMachine where
       else return $ Happy (IntVal (v1 `mod` v2)) -- I don't want the actual interpreter to crash
   modVal _ _ = return $ Sad (Type, "Type error in modulus")
 
+  powVal (IntVal v1) (IntVal v2) =
+    if v2 < 0
+      then return $ Sad (Arithmetic, "Negative exponent not supported")
+      else return $ Happy (IntVal (v1 ^ v2))
+  powVal _ _ = return $ Sad (Type, "Type error in exponentiation")
+
   negVal (IntVal v) =
     return $ Happy (IntVal (-v))
   negVal _ = return $ Sad (Type, "Type error in neg")
@@ -109,8 +116,54 @@ instance Machine MockMachine where
   orVal (BoolVal v1) (BoolVal v2) = return $ Happy (BoolVal (v1 || v2))
   orVal _ _ = return $ Sad (Type, "Type error in ||")
 
+  xorVal (BoolVal v1) (BoolVal v2) = return $ Happy (BoolVal (v1 /= v2))
+  xorVal _ _ = return $ Sad (Type, "Type error in ^")
+
   notVal (BoolVal v) = return $ Happy (BoolVal (not v))
   notVal _ = return $ Sad (Type, "Type error in !")
+
+  bitNotVal (IntVal v) = return $ Happy (IntVal (complement v))
+  bitNotVal _ = return $ Sad (Type, "Type error in ~")
+
+  preIncrementVal x = do
+    m <- S.get
+    case lookupScope x (getMem m) of
+      Just (IntVal v) -> do
+        let newVal = IntVal (v + 1)
+        S.put (m {getMem = insertScope x newVal (getMem m)})
+        return $ Happy newVal
+      Just _ -> return $ Sad (Type, "Type error: can only increment integers")
+      Nothing -> return $ Sad (VariableNotFound, "Variable " ++ x ++ " not found")
+
+  preDecrementVal x = do
+    m <- S.get
+    case lookupScope x (getMem m) of
+      Just (IntVal v) -> do
+        let newVal = IntVal (v - 1)
+        S.put (m {getMem = insertScope x newVal (getMem m)})
+        return $ Happy newVal
+      Just _ -> return $ Sad (Type, "Type error: can only decrement integers")
+      Nothing -> return $ Sad (VariableNotFound, "Variable " ++ x ++ " not found")
+
+  postIncrementVal x = do
+    m <- S.get
+    case lookupScope x (getMem m) of
+      Just (IntVal v) -> do
+        let newVal = IntVal (v + 1)
+        S.put (m {getMem = insertScope x newVal (getMem m)})
+        return $ Happy (IntVal v) -- Return old value
+      Just _ -> return $ Sad (Type, "Type error: can only increment integers")
+      Nothing -> return $ Sad (VariableNotFound, "Variable " ++ x ++ " not found")
+
+  postDecrementVal x = do
+    m <- S.get
+    case lookupScope x (getMem m) of
+      Just (IntVal v) -> do
+        let newVal = IntVal (v - 1)
+        S.put (m {getMem = insertScope x newVal (getMem m)})
+        return $ Happy (IntVal v) -- Return old value
+      Just _ -> return $ Sad (Type, "Type error: can only decrement integers")
+      Nothing -> return $ Sad (VariableNotFound, "Variable " ++ x ++ " not found")
 
   getBracketValue (Tuple (x : xs)) (IntVal pos) = if pos == 0 then return (Happy x) else getBracketValue (Tuple xs) (IntVal (pos - 1))
   getBracketValue (Dictionary d) (IntVal val) = case M.lookup val d of

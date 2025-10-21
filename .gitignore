@@ -5,3 +5,9 @@ test.stderr
 *.hi
 *.o
 
+# Nix
+result
+result-*
+
+# direnv
+.direnv/
