@@ -317,11 +317,11 @@ applyFuncNoArg _ = return $ Sad (Type, "attempt to call a non-function")
 -- Bind captured args, evaluate body, restore machine state
 evalClosureBody :: (Machine m, Show m, V m ~ Value) => Term -> [(String, Value)] -> Env m
 evalClosureBody body caps = do
-  pushScope caps
+  _ <- pushScope caps
   m1 <- S.get
   let (res, m2) = reduceFully body m1
   S.put m2
-  popScope
+  _ <- popScope
   case res of
     Left msg -> return $ Sad (Arguments, msg)
     Right v -> return $ Happy v
