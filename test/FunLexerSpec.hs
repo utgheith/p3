@@ -29,9 +29,9 @@ spec = do
 
     it "lexes a simple expression" $ do
       lexer "var x = 1" `shouldBe` [Keyword "var", Ident "x", Symbol "=", Num 1]
-    
+
     it "lexes a string" $ do
-        lexer "\"hello\"" `shouldBe` [StringLiteralLexed "hello"]
+      lexer "\"hello\"" `shouldBe` [StringLiteralLexed "hello"]
 
     it "handles an unexpected character" $ do
       lexer "@" `shouldBe` [Error "Unexpected character: @"]
