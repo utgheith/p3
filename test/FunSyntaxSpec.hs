@@ -40,11 +40,11 @@ spec = do
         result `shouldBe` Right (StringLiteral "hello", [])
 
       it "parses boolean literals" $ do
-        let result = parse "true" $ do
+        let result = parse "true false" $ do
               t <- prog
               _ <- eof
               return t
-        result `shouldBe` Right (BoolLit True, [])
+        result `shouldBe` Right (Seq (BoolLit True) (BoolLit False), [])
 
     describe "variables" $ do
       it "parses variable references" $ do
@@ -263,13 +263,48 @@ spec = do
               return t
         result `shouldBe` Right (NewDictionary, [])
 
-    describe "try-catch" $ do
-      it "parses try-catch creation" $ do
+    describe "try-catch creation" $ do
+      it "parses try-catch any" $ do
+        let result = parse "try x catch Any 1" $ do
+              t <- prog
+              _ <- eof
+              return t
+        result `shouldBe` Right (Try (Var (OnlyStr "x")) (Any) (Literal 1), [])
+    
+      it "parses try-catch arithmetic" $ do
         let result = parse "try x catch Arithmetic 1" $ do
               t <- prog
               _ <- eof
               return t
         result `shouldBe` Right (Try (Var (OnlyStr "x")) (Specific Arithmetic) (Literal 1), [])
+
+      it "parses try-catch type" $ do
+        let result = parse "try x catch Type 1" $ do
+              t <- prog
+              _ <- eof
+              return t
+        result `shouldBe` Right (Try (Var (OnlyStr "x")) (Specific Type) (Literal 1), [])
+      
+      it "parses try-catch input" $ do
+        let result = parse "try x catch Input 1" $ do
+              t <- prog
+              _ <- eof
+              return t
+        result `shouldBe` Right (Try (Var (OnlyStr "x")) (Specific Input) (Literal 1), [])
+      
+      it "parses try-catch variable not found" $ do
+        let result = parse "try x catch VariableNotFound 1" $ do
+              t <- prog
+              _ <- eof
+              return t
+        result `shouldBe` Right (Try (Var (OnlyStr "x")) (Specific VariableNotFound) (Literal 1), [])
+
+      it "parses try-catch arguments" $ do
+        let result = parse "try x catch Arguments 1" $ do
+              t <- prog
+              _ <- eof
+              return t
+        result `shouldBe` Right (Try (Var (OnlyStr "x")) (Specific Arguments) (Literal 1), [])
 
     describe "error cases" $ do
       it "fails on invalid syntax" $ do
