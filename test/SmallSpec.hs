@@ -750,12 +750,12 @@ spec = do
     it "return inside while loop in function exits function" $ do
       let f = Fun ["x"] (While (Var "x") (ReturnExp (Var "x")))
       let term = ApplyFun f [Literal 10]
-      reduceFully term initialMachine `shouldBe` (Right (IntVal 10), initialMachine)  
+      reduceFully term initialMachine `shouldBe` (Right (IntVal 10), initialMachine)
 
     it "return expression is evaluated exactly once" $ do
       let f = Fun [] (ReturnExp (Write (Literal 1)))
-      reduceFully (ApplyFun f []) initialMachine `shouldBe` (Right (IntVal 1), initialMachine{getOutput = [IntVal 1]})
-    
+      reduceFully (ApplyFun f []) initialMachine `shouldBe` (Right (IntVal 1), initialMachine {getOutput = [IntVal 1]})
+
     it "return in argument short-circuits" $ do
       let callee = Fun ["x"] (Literal 0)
       let g = Fun [] (ApplyFun callee [Seq (ReturnExp (Literal 1)) (Write (Literal 2))])

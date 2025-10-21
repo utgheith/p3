@@ -330,6 +330,7 @@ evalClosureBody body caps = do
       let (_popped, m4) = S.runState popScope m3
       S.put m4
       return resBody
+
 bindMany :: (Machine m, V m ~ Value) => [(String, Value)] -> m -> Either Error m
 bindMany [] m = Right m
 bindMany ((k, v) : rest) m =
