@@ -174,6 +174,35 @@ spec = do
               return t
         result `shouldBe` Right (BinaryOps Add (Var (OnlyStr "x")) (BinaryOps Mul (Var (OnlyStr "y")) (Var (OnlyStr "z"))), [])
 
+    describe "pre/post inc/dec" $ do
+      it "parses pre increment" $ do
+        let result = parse "++x" $ do
+              t <- prog
+              _ <- eof
+              return t
+        result `shouldBe` Right (PreIncrement "x", [])
+
+      it "parses post increment" $ do
+        let result = parse "x++" $ do
+              t <- prog
+              _ <- eof
+              return t
+        result `shouldBe` Right (PostIncrement "x", [])
+
+      it "parses pre decrement" $ do
+        let result = parse "--x" $ do
+              t <- prog
+              _ <- eof
+              return t
+        result `shouldBe` Right (PreDecrement "x", [])
+
+      it "parses post decrement" $ do
+        let result = parse "x--" $ do
+              t <- prog
+              _ <- eof
+              return t
+        result `shouldBe` Right (PostDecrement "x", [])
+
     describe "control flow" $ do
       it "parses if statements" $ do
         let result = parse "if (x > 0) { y = 1 } else { y = 0 }" $ do
