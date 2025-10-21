@@ -652,9 +652,9 @@ spec = do
       reduceFully term initialMachine `shouldBe` (Right (IntVal 5), machine)
 
     it "errors on undefined variable in function scope" $ do
-      let f1 = Fun [] (Seq (Let "y" (Literal 3)) (ApplyFun (Var "f") []))
-      let term = Seq (Let "f" (Fun [] (Write (Var "y")))) (ApplyFun f1 []) -- f defined outside of f1.
-      let machine = initialMachine {getMem = scopeFromList [("f", ClosureVal [] (Write (Var "y")) [])]}
+      let f1 = Fun [] (Seq (Let (OnlyStr "y") (Literal 3)) (ApplyFun (Var (OnlyStr "f")) []))
+      let term = Seq (Let (OnlyStr "f") (Fun [] (Write (Var (OnlyStr "y"))))) (ApplyFun f1 []) -- f defined outside of f1.
+      let machine = initialMachine {getMem = scopeFromList [("f", ClosureVal [] (Write (Var (OnlyStr "y"))) [])]}
       reduceFully term initialMachine `shouldBe` (Left "variable not found", machine) -- Does not capture y = 3.
 
     -- Comparison Operations Tests
