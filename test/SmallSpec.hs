@@ -119,58 +119,26 @@ instance Machine MockMachine where
   getBracketValue (Dictionary _) _ = return $ Sad (Type, "Unable to index into dictionary with type")
   getBracketValue _ _ = return $ Sad (Type, "Tuple Lookup Bad Input")
 
-  setBracketValue n t v = do
-    m <- S.get
-    case lookupScope n (getMem m) of
-      Just oldVal -> case oldVal of
-        Tuple _ ->
-          let newVal = updateBracket oldVal t v
-           in case newVal of
-                Right newVal' -> do
-                  S.put (m {getMem = insertScope n newVal' (getMem m)})
-                  return $ Happy v
-                Left e -> return $ Sad e
-        Dictionary _ ->
-          let newVal = updateBracket oldVal t v
-           in case newVal of
-                Right newVal' -> do
-                  S.put (m {getMem = insertScope n newVal' (getMem m)})
-                  return $ Happy v
-                Left e -> return $ Sad e
-        _ -> return $ Sad (Type, "Attempting to Index but didn't find Tuple")
-      Nothing -> return $ Sad (VariableNotFound, "Attempting to Set Tuple That Doesn't Exist")
-    where
-      updateBracket :: Value -> Value -> Value -> Either Error Value
-      updateBracket (Tuple (x : xs)) (Tuple (y : ys)) val = case y of
-        IntVal index ->
-          if index == 0
-            then
-              let returnVal = updateBracket x (Tuple ys) val
-               in case returnVal of
-                    Right a -> Right $ Tuple (a : xs)
-                    _ -> returnVal
-            else
-              let returnVal = updateBracket (Tuple xs) (Tuple (IntVal (index - 1) : ys)) val
-               in case returnVal of
-                    Right (Tuple a) -> Right $ Tuple (x : a)
-                    Left _ -> returnVal
-                    _ -> error "Unable to rebuild tuple"
-        _ -> Left (Type, "Provided non integer to index by")
-      updateBracket (Dictionary d) (Tuple (y : ys)) val = case y of
-        IntVal index -> case M.lookup index d of
-          Just r ->
-            let returnVal = updateBracket r (Tuple ys) val
-             in case returnVal of
-                  Right w -> Right (Dictionary (M.insert index w d))
-                  _ -> returnVal
-          Nothing ->
-            let returnVal = updateBracket (IntVal 0) (Tuple ys) val
-             in case returnVal of
-                  Right w -> Right (Dictionary (M.insert index w d))
-                  _ -> returnVal
-        _ -> Left (Type, "Provided non integer to index by")
-      updateBracket _ (Tuple []) val = Right val
-      updateBracket _ _ _ = Left (Type, "Out of Bounds")
+  setBracketValue (Dictionary current) (IntVal index) val =
+    return $ Happy $ Dictionary (M.insert index val current)
+  setBracketValue (Tuple t) (IntVal index) val =
+    let returnVal = loop (Tuple t) (IntVal (index)) val in 
+    case returnVal of
+      Left e -> return $ Sad e
+      Right v -> return $ Happy v 
+    where 
+      loop :: Value -> Value -> Value -> Either Error Value
+      loop (Tuple (x:xs)) (IntVal pos) setVal =
+        if pos == 0
+          then
+            Right $ Tuple (setVal : xs)
+          else
+            let returnVal = loop (Tuple xs) (IntVal (pos-1)) setVal in 
+              case returnVal of
+                Right (Tuple rest) -> Right $ Tuple (x : rest)
+                _ -> returnVal
+      loop _ _ _ = error "unreachable hopefully"
+  setBracketValue _ _ _ = return $ Sad (Type, "Had a Type Error")
 
   selectValue (BoolVal True) c _ = c
   selectValue (BoolVal False) _ t = t
@@ -194,17 +162,17 @@ spec = do
       reduceFully term initialMachine `shouldBe` (Right (StringVal "hello"), initialMachine)
 
     it "reduces a variable" $ do
-      let term = Var "x"
+      let term = Var (OnlyStr "x")
       let machine = initialMachine {getMem = scopeFromList [("x", IntVal 5)]}
       reduceFully term machine `shouldBe` (Right (IntVal 5), machine)
 
     it "reduces a let expression" $ do
-      let term = Seq (Let "x" (Literal 5)) (Var "x")
+      let term = Seq (Let (OnlyStr "x") (Literal 5)) (Var (OnlyStr "x"))
       let finalMachine = initialMachine {getMem = scopeFromList [("x", IntVal 5)]}
       reduceFully term initialMachine `shouldBe` (Right (IntVal 5), finalMachine)
 
     it "reduces a sequence" $ do
-      let term = Seq (Let "x" (Literal 5)) (Var "x")
+      let term = Seq (Let (OnlyStr "x") (Literal 5)) (Var (OnlyStr "x"))
       let finalMachine = initialMachine {getMem = scopeFromList [("x", IntVal 5)]}
       reduceFully term initialMachine `shouldBe` (Right (IntVal 5), finalMachine)
 
@@ -217,12 +185,12 @@ spec = do
       reduceFully term initialMachine `shouldBe` (Right (IntVal 20), initialMachine)
 
     it "reduces a while loop" $ do
-      let term = Seq (Let "x" (Literal 3)) (While (Var "x") (Let "x" (BinaryOps Sub (Var "x") (Literal 1))))
+      let term = Seq (Let (OnlyStr "x") (Literal 3)) (While (Var (OnlyStr "x")) (Let (OnlyStr "x") (BinaryOps Sub (Var (OnlyStr "x")) (Literal 1))))
       let finalMachine = initialMachine {getMem = scopeFromList [("x", IntVal 0)]}
       reduceFully term initialMachine `shouldBe` (Right (IntVal 0), finalMachine)
 
     it "reduces read and write" $ do
-      let term = Seq (Read "x") (Write (Var "x"))
+      let term = Seq (Read "x") (Write (Var (OnlyStr "x")))
       let machine = initialMachine {getInput = [IntVal 42]}
       let finalMachine = machine {getMem = scopeFromList [("x", IntVal 42)], getOutput = [IntVal 42], getInput = []}
       reduceFully term machine `shouldBe` (Right (IntVal 42), finalMachine)
@@ -281,20 +249,15 @@ spec = do
       let (result, _) = reduceFully term initialMachine
       result `shouldBe` Right (Tuple [IntVal 10, StringVal "hello", BoolVal True])
 
-    it "access a Tuple" $ do
-      let term = AccessBracket (TupleTerm [Literal 10, StringLiteral "hello", BoolLit True]) (Literal 1)
-      let (result, _) = reduceFully term initialMachine
-      result `shouldBe` Right (StringVal "hello")
-
     it "reduces a let tuple expression" $ do
-      let term = Seq (Let "x" (TupleTerm [Literal 10, StringLiteral "hello", BoolLit True])) (SetBracket "x" (TupleTerm [Literal 2]) (BoolLit False))
+      let term = Seq (Let (OnlyStr "x") (TupleTerm [Literal 10, StringLiteral "hello", BoolLit True])) (Let (Bracket (OnlyStr "x") (Literal 2)) (BoolLit False))
       let finalMachine = initialMachine {getMem = scopeFromList [("x", Tuple [IntVal 10, StringVal "hello", BoolVal False])]}
-      reduceFully term initialMachine `shouldBe` (Right (BoolVal False), finalMachine)
+      reduceFully term initialMachine `shouldBe` (Right (Tuple [IntVal 10, StringVal "hello", BoolVal False]), finalMachine)
 
     it "reduces a let nested tuple expression" $ do
-      let term = Seq (Let "x" (TupleTerm [Literal 10, TupleTerm [StringLiteral "hello"], BoolLit True])) (SetBracket "x" (TupleTerm [Literal 1, Literal 0]) (StringLiteral "goodbye"))
+      let term = Seq (Let (OnlyStr "x") (TupleTerm [Literal 10, TupleTerm [StringLiteral "hello"], BoolLit True])) (Let (Bracket (Bracket (OnlyStr "x") (Literal 1)) (Literal 0)) (StringLiteral "goodbye"))
       let finalMachine = initialMachine {getMem = scopeFromList [("x", Tuple [IntVal 10, Tuple [StringVal "goodbye"], BoolVal True])]}
-      reduceFully term initialMachine `shouldBe` (Right (StringVal "goodbye"), finalMachine)
+      reduceFully term initialMachine `shouldBe` (Right (Tuple [IntVal 10, Tuple[StringVal "goodbye"], BoolVal True]), finalMachine)
 
     -- Logical Operations Tests
     it "reduces logical AND operation" $ do
@@ -325,17 +288,17 @@ spec = do
     it "reduces while loop with complex condition" $ do
       let term =
             Seq
-              (Let "x" (Literal 5))
+              (Let (OnlyStr "x") (Literal 5))
               ( Seq
                   ( While
                       ( BinaryOps
                           And
-                          (BinaryOps Gt (Var "x") (Literal 0))
-                          (BinaryOps Lt (Var "x") (Literal 10))
+                          (BinaryOps Gt (Var (OnlyStr "x")) (Literal 0))
+                          (BinaryOps Lt (Var (OnlyStr "x")) (Literal 10))
                       )
-                      (Let "x" (BinaryOps Add (Var "x") (Literal 1)))
+                      (Let (OnlyStr "x") (BinaryOps Add (Var (OnlyStr "x")) (Literal 1)))
                   )
-                  (Var "x")
+                  (Var (OnlyStr "x"))
               )
       let finalMachine = initialMachine {getMem = scopeFromList [("x", IntVal 10)]}
       reduceFully term initialMachine `shouldBe` (Right (IntVal 10), finalMachine)
@@ -343,16 +306,16 @@ spec = do
     it "reduces a while loop with a break statement" $ do
       let term =
             Seq
-              (Let "x" (Literal 5))
+              (Let (OnlyStr "x") (Literal 5))
               ( Seq
                   ( While
-                      (Var "x")
+                      (Var (OnlyStr "x"))
                       ( Seq
-                          (If (BinaryOps Eq (Var "x") (Literal 3)) BreakSignal Skip)
-                          (Let "x" (BinaryOps Sub (Var "x") (Literal 1)))
+                          (If (BinaryOps Eq (Var (OnlyStr "x")) (Literal 3)) BreakSignal Skip)
+                          (Let (OnlyStr "x") (BinaryOps Sub (Var (OnlyStr "x")) (Literal 1)))
                       )
                   )
-                  (Var "x")
+                  (Var (OnlyStr "x"))
               )
       let finalMachine = initialMachine {getMem = scopeFromList [("x", IntVal 3)]}
       reduceFully term initialMachine `shouldBe` (Right (IntVal 3), finalMachine)
@@ -360,21 +323,21 @@ spec = do
     it "reduces a while loop with a complex break statement" $ do
       let term =
             Seq
-              (Let "x" (Literal 5))
+              (Let (OnlyStr "x") (Literal 5))
               ( Seq
-                  (Let "y" (Literal 0))
+                  (Let (OnlyStr "y") (Literal 0))
                   ( Seq
                       ( While
-                          (Var "x")
+                          (Var (OnlyStr "x"))
                           ( Seq
-                              (Let "x" (BinaryOps Sub (Var "x") (Literal 1)))
+                              (Let (OnlyStr "x") (BinaryOps Sub (Var (OnlyStr "x")) (Literal 1)))
                               ( Seq
-                                  (If (BinaryOps Eq (Var "x") (Literal 3)) BreakSignal Skip)
-                                  (Let "y" (BinaryOps Add (Var "y") (Var "x")))
+                                  (If (BinaryOps Eq (Var (OnlyStr "x")) (Literal 3)) BreakSignal Skip)
+                                  (Let (OnlyStr "y") (BinaryOps Add (Var (OnlyStr "y")) (Var (OnlyStr "x"))))
                               )
                           )
                       )
-                      (Var "y")
+                      (Var (OnlyStr "y"))
                   )
               )
 
@@ -384,21 +347,21 @@ spec = do
     it "reduces a while loop with a continue statement" $ do
       let term =
             Seq
-              (Let "x" (Literal 5))
+              (Let (OnlyStr "x") (Literal 5))
               ( Seq
-                  (Let "y" (Literal 0))
+                  (Let (OnlyStr "y") (Literal 0))
                   ( Seq
                       ( While
-                          (Var "x")
+                          (Var (OnlyStr "x"))
                           ( Seq
-                              (Let "x" (BinaryOps Sub (Var "x") (Literal 1)))
+                              (Let (OnlyStr "x") (BinaryOps Sub (Var (OnlyStr "x")) (Literal 1)))
                               ( Seq
-                                  (If (BinaryOps Eq (Var "x") (Literal 3)) ContinueSignal Skip)
-                                  (Let "y" (BinaryOps Add (Var "y") (Var "x")))
+                                  (If (BinaryOps Eq (Var (OnlyStr "x")) (Literal 3)) ContinueSignal Skip)
+                                  (Let (OnlyStr "y") (BinaryOps Add (Var (OnlyStr "y")) (Var (OnlyStr "x"))))
                               )
                           )
                       )
-                      (Var "y")
+                      (Var (OnlyStr "y"))
                   )
               )
 
@@ -408,10 +371,10 @@ spec = do
     it "makes break signals outside of while loops invalid" $ do
       let term =
             Seq
-              (Let "x" (Literal 5))
+              (Let (OnlyStr "x") (Literal 5))
               ( Seq
                   BreakSignal
-                  (Let "y" (BinaryOps Add (Var "x") (Literal 2)))
+                  (Let (OnlyStr "y") (BinaryOps Add (Var (OnlyStr "x")) (Literal 2)))
               )
 
       let (result, _) = reduceFully term initialMachine
@@ -420,10 +383,10 @@ spec = do
     it "makes continue signals outside of while loops invalid" $ do
       let term =
             Seq
-              (Let "x" (Literal 5))
+              (Let (OnlyStr "x") (Literal 5))
               ( Seq
                   ContinueSignal
-                  (Let "y" (BinaryOps Add (Var "x") (Literal 2)))
+                  (Let (OnlyStr "y") (BinaryOps Add (Var (OnlyStr "x")) (Literal 2)))
               )
 
       let (result, _) = reduceFully term initialMachine
@@ -432,17 +395,17 @@ spec = do
     it "break inside an if statement exits the while loop" $ do
       let term =
             Seq
-              (Let "x" (Literal 5))
+              (Let (OnlyStr "x") (Literal 5))
               ( Seq
-                  (Let "y" (Literal 0))
+                  (Let (OnlyStr "y") (Literal 0))
                   ( While
-                      (Var "x")
+                      (Var (OnlyStr "x"))
                       ( If
-                          (BinaryOps Eq (Var "x") (Literal 3))
+                          (BinaryOps Eq (Var (OnlyStr "x")) (Literal 3))
                           BreakSignal
                           ( Seq
-                              (Let "y" (BinaryOps Add (Var "y") (Var "x")))
-                              (Let "x" (BinaryOps Sub (Var "x") (Literal 1)))
+                              (Let (OnlyStr "y") (BinaryOps Add (Var (OnlyStr "y")) (Var (OnlyStr "x"))))
+                              (Let (OnlyStr "x") (BinaryOps Sub (Var (OnlyStr "x")) (Literal 1)))
                           )
                       )
                   )
@@ -454,26 +417,26 @@ spec = do
     it "inner loop break exits only the inner loop" $ do
       let term =
             Seq
-              (Let "x" (Literal 3))
+              (Let (OnlyStr "x") (Literal 3))
               ( Seq
-                  (Let "y" (Literal 0))
+                  (Let (OnlyStr "y") (Literal 0))
                   ( While
-                      (Var "x")
+                      (Var (OnlyStr "x"))
                       ( Seq
-                          (Let "z" (Literal 2))
+                          (Let (OnlyStr "z") (Literal 2))
                           ( Seq
                               ( While
-                                  (Var "z")
+                                  (Var (OnlyStr "z"))
                                   ( If
-                                      (BinaryOps Eq (Var "z") (Literal 1))
+                                      (BinaryOps Eq (Var (OnlyStr "z")) (Literal 1))
                                       BreakSignal
                                       ( Seq
-                                          (Let "y" (BinaryOps Add (Var "y") (Var "z")))
-                                          (Let "z" (BinaryOps Sub (Var "z") (Literal 1)))
+                                          (Let (OnlyStr "y") (BinaryOps Add (Var (OnlyStr "y")) (Var (OnlyStr "z"))))
+                                          (Let (OnlyStr "z") (BinaryOps Sub (Var (OnlyStr "z")) (Literal 1)))
                                       )
                                   )
                               )
-                              (Let "x" (BinaryOps Sub (Var "x") (Literal 1)))
+                              (Let (OnlyStr "x") (BinaryOps Sub (Var (OnlyStr "x")) (Literal 1)))
                           )
                       )
                   )
@@ -485,25 +448,25 @@ spec = do
     it "inner loop continue skips to next iteration" $ do
       let term =
             Seq
-              (Let "x" (Literal 3))
+              (Let (OnlyStr "x") (Literal 3))
               ( Seq
-                  (Let "y" (Literal 0))
+                  (Let (OnlyStr "y") (Literal 0))
                   ( While
-                      (Var "x")
+                      (Var (OnlyStr "x"))
                       ( Seq
-                          (Let "z" (Literal 3))
+                          (Let (OnlyStr "z") (Literal 3))
                           ( Seq
                               ( While
-                                  (Var "z")
+                                  (Var (OnlyStr "z"))
                                   ( Seq
-                                      (Let "z" (BinaryOps Sub (Var "z") (Literal 1)))
+                                      (Let (OnlyStr "z") (BinaryOps Sub (Var (OnlyStr "z")) (Literal 1)))
                                       ( Seq
-                                          (Let "y" (BinaryOps Add (Var "y") (Var "z")))
-                                          (If (BinaryOps Eq (Var "z") (Literal 2)) ContinueSignal Skip)
+                                          (Let (OnlyStr "y") (BinaryOps Add (Var (OnlyStr "y")) (Var (OnlyStr "z"))))
+                                          (If (BinaryOps Eq (Var (OnlyStr "z")) (Literal 2)) ContinueSignal Skip)
                                       )
                                   )
                               )
-                              (Let "x" (BinaryOps Sub (Var "x") (Literal 1)))
+                              (Let (OnlyStr "x") (BinaryOps Sub (Var (OnlyStr "x")) (Literal 1)))
                           )
                       )
                   )
@@ -528,10 +491,10 @@ spec = do
     it "handles multiple variables in scope" $ do
       let term =
             Seq
-              (Let "x" (Literal 10))
+              (Let (OnlyStr "x") (Literal 10))
               ( Seq
-                  (Let "y" (Literal 5))
-                  (BinaryOps Add (Var "x") (Var "y"))
+                  (Let (OnlyStr "y") (Literal 5))
+                  (BinaryOps Add (Var (OnlyStr "x")) (Var (OnlyStr "y")))
               )
       let finalMachine = initialMachine {getMem = scopeFromList [("x", IntVal 10), ("y", IntVal 5)]}
       reduceFully term initialMachine `shouldBe` (Right (IntVal 15), finalMachine)
@@ -543,7 +506,7 @@ spec = do
       reduceFully term initialMachine `shouldBe` (Right (IntVal 42), initialMachine)
 
     it "errors when invoking a function that expects arguments" $ do
-      let f1 = Fun ["x"] (Var "x")
+      let f1 = Fun ["x"] (Var (OnlyStr "x"))
       let term = ApplyFun f1 []
       let (result, _) = reduceFully term initialMachine
       result `shouldBe` Left "missing arguments: function requires parameters"
@@ -555,22 +518,22 @@ spec = do
       result `shouldBe` Left "too many arguments: function takes 0 arguments"
 
     it "applies a simple function" $ do
-      let inc = Fun ["x"] (BinaryOps Add (Var "x") (Literal 1))
+      let inc = Fun ["x"] (BinaryOps Add (Var (OnlyStr "x")) (Literal 1))
       let term = ApplyFun inc [Literal 41]
       reduceFully term initialMachine `shouldBe` (Right (IntVal 42), initialMachine)
 
     it "binds parameter in environment for body" $ do
-      let f = Fun ["x"] (Var "x")
+      let f = Fun ["x"] (Var (OnlyStr "x"))
       let term = ApplyFun f [Literal 7]
       reduceFully term initialMachine `shouldBe` (Right (IntVal 7), initialMachine)
 
     it "applies a two-argument function" $ do
-      let add2 = Fun ["x", "y"] (BinaryOps Add (Var "x") (Var "y"))
+      let add2 = Fun ["x", "y"] (BinaryOps Add (Var (OnlyStr "x")) (Var (OnlyStr "y")))
       let term = ApplyFun add2 [Literal 2, Literal 3]
       reduceFully term initialMachine `shouldBe` (Right (IntVal 5), initialMachine)
 
     it "applies a three-argument function via currying" $ do
-      let add3 = Fun ["x", "y", "z"] (BinaryOps Add (BinaryOps Add (Var "x") (Var "y")) (Var "z"))
+      let add3 = Fun ["x", "y", "z"] (BinaryOps Add (BinaryOps Add (Var (OnlyStr "x")) (Var (OnlyStr "y"))) (Var (OnlyStr "z")))
       let term = ApplyFun add3 [Literal 1, Literal 2, Literal 3]
       reduceFully term initialMachine `shouldBe` (Right (IntVal 6), initialMachine)
 
@@ -586,53 +549,53 @@ spec = do
       reduceFully term initialMachine `shouldBe` (Right (ClosureVal ["x"] (Literal 12) [("y", IntVal 5)]), initialMachine)
 
     it "creates local variables in functions" $ do
-      let f = Fun ["y"] (Let "x" (Var "y")) -- Should not affect outside x.
-      let term = Seq (Let "x" (Literal 1)) (ApplyFun f [Literal 99])
+      let f = Fun ["y"] (Let (OnlyStr "x") (Var (OnlyStr "y"))) -- Should not affect outside x.
+      let term = Seq (Let (OnlyStr "x") (Literal 1)) (ApplyFun f [Literal 99])
       let machine = initialMachine {getMem = scopeFromList [("x", IntVal 1)]}
       reduceFully term initialMachine `shouldBe` (Right (IntVal 99), machine)
 
     -- Variable Capture Tests
     it "captures environment for zero-argument functions" $ do
-      let f0 = Fun [] (Var "outside")
-      let f1 = Fun ["y"] (Seq (Let "outside" (Literal 99)) f0)
-      let term = Seq (Let "outside" (Literal 1)) (ApplyFun (ApplyFun f1 [Literal 0]) [])
+      let f0 = Fun [] (Var (OnlyStr "outside"))
+      let f1 = Fun ["y"] (Seq (Let (OnlyStr "outside") (Literal 99)) f0)
+      let term = Seq (Let (OnlyStr "outside") (Literal 1)) (ApplyFun (ApplyFun f1 [Literal 0]) [])
       let machine = initialMachine {getMem = scopeFromList [("outside", IntVal 1)]}
       reduceFully term initialMachine `shouldBe` (Right (IntVal 99), machine)
 
     it "captures environment for odd-argument functions" $ do
-      let f0 = Fun ["x"] (Var "outside") -- Created inside of f1.
-      let f1 = Fun ["y"] (Seq (Let "outside" (Literal 99)) f0)
+      let f0 = Fun ["x"] (Var (OnlyStr "outside")) -- Created inside of f1.
+      let f1 = Fun ["y"] (Seq (Let (OnlyStr "outside") (Literal 99)) f0)
       -- (f1(0))(0) -> f0(0), where outside refers to the 99 captured in f1.
-      let term = Seq (Let "outside" (Literal 1)) (ApplyFun (ApplyFun f1 [Literal 0]) [Literal 0])
+      let term = Seq (Let (OnlyStr "outside") (Literal 1)) (ApplyFun (ApplyFun f1 [Literal 0]) [Literal 0])
       let machine = initialMachine {getMem = scopeFromList [("outside", IntVal 1)]}
       reduceFully term initialMachine `shouldBe` (Right (IntVal 99), machine)
 
     it "captures environment for even-argument functions" $ do
-      let f0 = Fun ["x", "z"] (Var "outside")
-      let f1 = Fun ["y"] (Seq (Let "outside" (Literal 99)) f0)
-      let term = Seq (Let "outside" (Literal 1)) (ApplyFun (ApplyFun f1 [Literal 0]) [Literal 0, Literal 0])
+      let f0 = Fun ["x", "z"] (Var (OnlyStr "outside"))
+      let f1 = Fun ["y"] (Seq (Let (OnlyStr "outside") (Literal 99)) f0)
+      let term = Seq (Let (OnlyStr "outside") (Literal 1)) (ApplyFun (ApplyFun f1 [Literal 0]) [Literal 0, Literal 0])
       let machine = initialMachine {getMem = scopeFromList [("outside", IntVal 1)]}
       reduceFully term initialMachine `shouldBe` (Right (IntVal 99), machine)
 
     it "captures only the environment at function creation time" $ do
-      let f0 = Fun ["x"] (Var "outside")
-      let setupTerm = Seq (Let "outside" (Literal 1)) (Let "f" f0) -- Function f created here.
-      let f1 = Fun ["y"] (Seq (Let "outside" (Literal 99)) (ApplyFun (Var "f") [Literal 0])) -- 99 should not be captured.
+      let f0 = Fun ["x"] (Var (OnlyStr "outside"))
+      let setupTerm = Seq (Let (OnlyStr "outside") (Literal 1)) (Let (OnlyStr "f") f0) -- Function f created here.
+      let f1 = Fun ["y"] (Seq (Let (OnlyStr "outside") (Literal 99)) (ApplyFun (Var (OnlyStr "f")) [Literal 0])) -- 99 should not be captured.
       let term = Seq setupTerm (ApplyFun f1 [Literal 0])
-      let closureVal = ClosureVal ["x"] (Var "outside") [("outside", IntVal 1)] -- Captured 1 from outside.
+      let closureVal = ClosureVal ["x"] (Var (OnlyStr "outside")) [("outside", IntVal 1)] -- Captured 1 from outside.
       let machine = initialMachine {getMem = scopeFromList [("outside", IntVal 1), ("f", closureVal)]}
       reduceFully term initialMachine `shouldBe` (Right (IntVal 1), machine)
 
     it "captures all variables in nested scopes" $ do
-      let f0 = Fun ["x"] (BinaryOps Add (Var "a") (Var "b"))
-      let f1 = Fun ["y"] (Seq (Let "b" (Literal 4)) f0) -- b created (parent of f0).
-      let f2 = Fun ["z"] (Seq (Let "a" (Literal 3)) f1) -- a created (parent of f1).
+      let f0 = Fun ["x"] (BinaryOps Add (Var (OnlyStr "a")) (Var (OnlyStr "b")))
+      let f1 = Fun ["y"] (Seq (Let (OnlyStr "b") (Literal 4)) f0) -- b created (parent of f0).
+      let f2 = Fun ["z"] (Seq (Let (OnlyStr "a") (Literal 3)) f1) -- a created (parent of f1).
       let term = ApplyFun (ApplyFun (ApplyFun f2 [Literal 0]) [Literal 0]) [Literal 0]
       reduceFully term initialMachine `shouldBe` (Right (IntVal 7), initialMachine)
 
     it "handles parameter shadowing" $ do
-      let f = Fun ["x"] (Var "x")
-      let term = Seq (Let "x" (Literal 1)) (ApplyFun f [Literal 5]) -- Parameter x is 5.
+      let f = Fun ["x"] (Var (OnlyStr "x"))
+      let term = Seq (Let (OnlyStr "x") (Literal 1)) (ApplyFun f [Literal 5]) -- Parameter x is 5.
       let machine = initialMachine {getMem = scopeFromList [("x", IntVal 1)]}
       reduceFully term initialMachine `shouldBe` (Right (IntVal 5), machine)
 
@@ -674,11 +637,11 @@ spec = do
       reduceFully term initialMachine `shouldBe` (Right (Dictionary M.empty), initialMachine)
 
     it "set dictionary" $ do
-      let term = Seq (Let "x" NewDictionary) (SetBracket "x" (TupleTerm [Literal 3]) (StringLiteral "hello"))
+      let term = Seq (Let (OnlyStr "x") NewDictionary) (Let (Bracket (OnlyStr "x") (Literal 3)) (StringLiteral "hello"))
       let finalMachine = initialMachine {getMem = scopeFromList [("x", Dictionary (M.fromList [(3, StringVal "hello")]))]}
-      reduceFully term initialMachine `shouldBe` (Right (StringVal "hello"), finalMachine)
+      reduceFully term initialMachine `shouldBe` (Right (Dictionary (M.fromList [(3, StringVal "hello")])), finalMachine)
 
     it "access dictionary" $ do
-      let term = Seq (Let "x" NewDictionary) (Seq (SetBracket "x" (TupleTerm [Literal 3]) (StringLiteral "hello")) (AccessBracket (Var "x") (Literal 3)))
+      let term = Seq (Let (OnlyStr "x") NewDictionary) (Seq (Let (Bracket (OnlyStr "x") (Literal 3)) (StringLiteral "hello")) (Var (Bracket (OnlyStr "x") (Literal 3))))
       let finalMachine = initialMachine {getMem = scopeFromList [("x", Dictionary (M.fromList [(3, StringVal "hello")]))]}
       reduceFully term initialMachine `shouldBe` (Right (StringVal "hello"), finalMachine)

@@ -5,7 +5,7 @@ module FunSyntaxSpec (spec) where
 import FunLexer (Token (..))
 import FunSyntax (parse, prog)
 import ParserCombinators (eof)
-import Term (BinaryOp (..), ErrorKind (..), ErrorKindOrAny (..), Term (..))
+import Term (Ref(..), BinaryOp (..), ErrorKind (..), ErrorKindOrAny (..), Term (..))
 import Test.Hspec
 
 -- Helper function to parse from a string
@@ -52,14 +52,14 @@ spec = do
               t <- prog
               _ <- eof
               return t
-        result `shouldBe` Right (Var "x", [])
+        result `shouldBe` Right (Var (OnlyStr "x"), [])
 
       it "parses variable assignments" $ do
         let result = parse "x = 42" $ do
               t <- prog
               _ <- eof
               return t
-        result `shouldBe` Right (Let "x" (Literal 42), [])
+        result `shouldBe` Right (Let (OnlyStr "x") (Literal 42), [])
 
     describe "arithmetic expressions" $ do
       it "parses addition" $ do
@@ -67,21 +67,21 @@ spec = do
               t <- prog
               _ <- eof
               return t
-        result `shouldBe` Right (BinaryOps Add (Var "x") (Var "y"), [])
+        result `shouldBe` Right (BinaryOps Add (Var (OnlyStr "x")) (Var (OnlyStr "y")), [])
 
       it "parses multiplication" $ do
         let result = parse "x * y" $ do
               t <- prog
               _ <- eof
               return t
-        result `shouldBe` Right (BinaryOps Mul (Var "x") (Var "y"), [])
+        result `shouldBe` Right (BinaryOps Mul (Var (OnlyStr "x")) (Var (OnlyStr "y")), [])
 
       it "parses complex expressions with precedence" $ do
         let result = parse "x + y * z" $ do
               t <- prog
               _ <- eof
               return t
-        result `shouldBe` Right (BinaryOps Add (Var "x") (BinaryOps Mul (Var "y") (Var "z")), [])
+        result `shouldBe` Right (BinaryOps Add (Var (OnlyStr "x")) (BinaryOps Mul (Var (OnlyStr "y")) (Var (OnlyStr "z"))), [])
 
     describe "control flow" $ do
       it "parses if statements" $ do
@@ -89,14 +89,14 @@ spec = do
               t <- prog
               _ <- eof
               return t
-        result `shouldBe` Right (If (BinaryOps Gt (Var "x") (Literal 0)) (Let "y" (Literal 1)) (Let "y" (Literal 0)), [])
+        result `shouldBe` Right (If (BinaryOps Gt (Var (OnlyStr "x")) (Literal 0)) (Let (OnlyStr "y") (Literal 1)) (Let (OnlyStr "y") (Literal 0)), [])
 
       it "parses while loops" $ do
         let result = parse "while (x > 0) { x = x - 1 }" $ do
               t <- prog
               _ <- eof
               return t
-        result `shouldBe` Right (While (BinaryOps Gt (Var "x") (Literal 0)) (Let "x" (BinaryOps Sub (Var "x") (Literal 1))), [])
+        result `shouldBe` Right (While (BinaryOps Gt (Var (OnlyStr "x")) (Literal 0)) (Let (OnlyStr "x") (BinaryOps Sub (Var (OnlyStr "x")) (Literal 1))), [])
 
     describe "functions" $ do
       it "parses function definitions" $ do
@@ -104,21 +104,21 @@ spec = do
               t <- prog
               _ <- eof
               return t
-        result `shouldBe` Right (Let "f" (Fun [] (Write (Literal 42))), [])
+        result `shouldBe` Right (Let (OnlyStr "f") (Fun [] (Write (Literal 42))), [])
 
       it "parses function calls" $ do
         let result = parse "f()" $ do
               t <- prog
               _ <- eof
               return t
-        result `shouldBe` Right (ApplyFun (Var "f") [], [])
+        result `shouldBe` Right (ApplyFun (Var (OnlyStr "f")) [], [])
 
       it "parses function calls with arguments" $ do
         let result = parse "f(x, y)" $ do
               t <- prog
               _ <- eof
               return t
-        result `shouldBe` Right (ApplyFun (Var "f") [Var "x", Var "y"], [])
+        result `shouldBe` Right (ApplyFun (Var (OnlyStr "f")) [Var (OnlyStr "x"), Var (OnlyStr "y")], [])
 
     describe "tuples" $ do
       it "parses tuple creation" $ do
@@ -126,14 +126,14 @@ spec = do
               t <- prog
               _ <- eof
               return t
-        result `shouldBe` Right (Let "x" (TupleTerm [Literal 1, Literal 2, Literal 3]), [])
+        result `shouldBe` Right (Let (OnlyStr "x") (TupleTerm [Literal 1, Literal 2, Literal 3]), [])
 
       it "parses tuple access" $ do
         let result = parse "t[0]" $ do
               t <- prog
               _ <- eof
               return t
-        result `shouldBe` Right (AccessBracket (Var "t") (Literal 0), [])
+        result `shouldBe` Right (Var (Bracket (OnlyStr "t") (Literal 0)), [])
 
     describe "dictionary" $ do
       it "parses dictionary creation" $ do
@@ -149,7 +149,7 @@ spec = do
               t <- prog
               _ <- eof
               return t
-        result `shouldBe` Right (Try (Var "x") (Specific Arithmetic) (Literal 1), [])
+        result `shouldBe` Right (Try (Var (OnlyStr "x")) (Specific Arithmetic) (Literal 1), [])
 
     describe "error cases" $ do
       it "fails on invalid syntax" $ do
