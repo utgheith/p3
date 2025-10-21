@@ -51,6 +51,8 @@ keywords =
       "while",
       "print",
       "try",
+      "concur",
+      "atomic",
       "catch",
       "true",
       "false" -- force boolean literals to be tokens in the parser

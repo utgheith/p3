@@ -183,6 +183,23 @@ block = do
     [t] -> t
     _ -> foldl1 Seq ts
 
+concurblock :: Parser Token Term
+concurblock = do
+  _ <- keyword "concur"
+  _ <- token $ Symbol "{"
+  ts <- rpt term
+  _ <- token $ Symbol "}"
+  return $ case ts of
+    [] -> Skip
+    [t] -> t
+    _ -> foldl1 Concur ts
+
+atomic :: Parser Token Term
+atomic = do
+  _ <- keyword "atomic"
+  t <- term
+  return $ Atomic t
+
 ifExpr :: Parser Token Term
 ifExpr = do
   _ <- keyword "if"
@@ -259,7 +276,7 @@ printStmt = do
   return $ Write expr
 
 unaryExp :: Parser Token Term
-unaryExp = oneof [assign, ifExpr, block, funDef, minus, bitnot, preIncrement, preDecrement, num, string, bool, tuple, dictionary, bracketSet, bracketAccess, tryCatch, parens, varDef, funCall, postIncrement, postDecrement, varRef, whileTerm, printStmt]
+unaryExp = oneof [assign, ifExpr, concurblock, atomic, block, funDef, minus, bitnot, preIncrement, preDecrement, num, string, bool, tuple, dictionary, bracketSet, bracketAccess, tryCatch, parens, varDef, funCall, postIncrement, postDecrement, varRef, whileTerm, printStmt]
 
 ----------- prog ----------
 

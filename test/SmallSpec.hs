@@ -12,9 +12,14 @@ import Small
 import Term
 import Test.Hspec
 import Value (Value (..))
+import qualified System.Random as R
 
 -- A mock machine for testing
-data MockMachine = MockMachine {getMem :: Scope, getInput :: [Value], getOutput :: [Value]} deriving (Show, Eq)
+data MockMachine = MockMachine {getMem :: Scope, getInput :: [Value], getOutput :: [Value], getRng :: R.StdGen} deriving (Eq)
+
+instance Show MockMachine where
+  show (MockMachine mem input output _) =
+    "MockMachine {getMem = " ++ show mem ++ ", getInput = " ++ show input ++ ", getOutput = " ++ show output ++ ", getRng = <hidden>}"
 
 instance Machine MockMachine where
   type V MockMachine = Value
@@ -200,10 +205,24 @@ instance Machine MockMachine where
   selectValue (ClosureVal {}) _ _ = return $ Sad (Type, "Type error in select")
   selectValue (Dictionary _) _ _ = return $ Sad (Type, "Type error in select")
 
+  selectRandom m e1 e2 =
+    let (e', rng') = decide (getRng m) e1 e2
+     in do
+          v <- e'
+          m' <- S.get
+          S.put m' {getRng = rng'}
+          return v
+    where 
+      decide rng a1 a2 =
+        let (num, rng') = R.uniformR (0 :: Int, 1 :: Int) rng
+        in (if num == 0 then a1 else a2, rng')
+
+
 spec :: Spec
 spec = do
   describe "reduceFully" $ do
-    let initialMachine = MockMachine {getMem = emptyScope, getInput = [], getOutput = []}
+    let initialMachine = MockMachine {getMem = emptyScope, getInput = [], getOutput = [], getRng = R.mkStdGen 0}
+    let initialRandomMachine seed = MockMachine {getMem = emptyScope, getInput = [], getOutput = [], getRng = R.mkStdGen seed}
 
     it "reduces an integer literal" $ do
       let term = Literal 10
@@ -703,3 +722,27 @@ spec = do
       let term = Seq (Let (OnlyStr "x") NewDictionary) (Seq (Let (Bracket (OnlyStr "x") (Literal 3)) (StringLiteral "hello")) (Var (Bracket (OnlyStr "x") (Literal 3))))
       let finalMachine = initialMachine {getMem = scopeFromList [("x", Dictionary (M.fromList [(3, StringVal "hello")]))]}
       reduceFully term initialMachine `shouldBe` (Right (StringVal "hello"), finalMachine)
+
+    let getResults term =  [fst (reduceFully term (initialRandomMachine seed)) | seed <- [1 .. 100]]
+    it "can non-deterministically select between two expressions" $ do
+      let term = Concur (Literal 1) (Literal 2)
+      let results = getResults term
+      results `shouldSatisfy` (\res -> (Right (IntVal 1)) `elem` res && (Right (IntVal 2)) `elem` res)
+
+    it "data races are possible" $ do
+      let rx = OnlyStr "x"
+      let addop = BinaryOps Add (Var rx) (Literal 1)
+      let assign = Let rx (If (Literal 1) (addop) (addop))
+      let initx = Let rx (Literal 0)
+      let term = Seq (initx) (Concur assign assign)
+      let results = getResults term
+      results `shouldSatisfy` (\res -> (Right (IntVal 1)) `elem` res && (Right (IntVal 2)) `elem` res)
+    
+    it "Atomics guard against data races" $ do
+      let rx = OnlyStr "x"
+      let addop = BinaryOps Add (Var rx) (Literal 1)
+      let assign = Atomic (Let rx (If (Literal 1) (addop) (addop)))
+      let initx = Let rx (Literal 0)
+      let term = Seq (initx) (Concur assign assign)
+      let results = getResults term
+      results `shouldBe` replicate 100 (Right (IntVal 1))

@@ -161,6 +161,21 @@ spec = do
           Left _ -> True `shouldBe` True
           Right _ -> False `shouldBe` True
 
+    describe "concur" $ do
+      it "parses concur blocks" $ do
+        let result = parse "concur {\n x = 1 \n y = 2 \n}" $ do
+              t <- prog
+              _ <- eof
+              return t
+        result `shouldBe` Right (Concur (Let (OnlyStr "x") (Literal 1)) (Let (OnlyStr "y") (Literal 2)), [])
+    describe "atomic" $ do
+      it "parses atomic" $ do
+        let result = parse "atomic {\n x = x + 1 \n}" $ do
+              t <- prog
+              _ <- eof
+              return t
+        result `shouldBe` Right (Atomic (Let (OnlyStr "x") (BinaryOps Add (Var (OnlyStr "x")) (Literal 1))), [])
+
   describe "Integration tests" $ do
     it "parses a complete program" $ do
       let program = "x = 10\n y = x + 5\n print y"

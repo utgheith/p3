@@ -113,6 +113,8 @@ instance Machine Simulator where
   selectValue (ClosureVal {}) _ _ = return $ Sad (Type, "Type error in select")
   selectValue (Dictionary _) _ _ = return $ Sad (Type, "Type error in select")
 
+  selectRandom _ e1 _ = e1
+
   ltVal :: Value -> Value -> Env Simulator
   ltVal (IntVal v1) (IntVal v2) = return $ Happy (BoolVal (v1 < v2))
   ltVal (StringVal v1) (StringVal v2) = return $ Happy (BoolVal (v1 < v2))

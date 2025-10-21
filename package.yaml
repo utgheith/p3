@@ -23,6 +23,7 @@ dependencies:
 - base
 - containers
 - mtl
+- random
 
 build-tools:
 - ormolu

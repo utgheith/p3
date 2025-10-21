@@ -75,6 +75,9 @@ class Machine m where
   -- Control flow - selectValue uses boolean semantics
   selectValue :: V m -> Env m -> Env m -> Env m
 
+  -- Concurrency support
+  selectRandom :: m -> Env m -> Env m -> Env m
+
 ----- The Result type -----
 
 type Error = (ErrorKind, String)
@@ -159,6 +162,36 @@ reduce_ (Seq t1 t2) = do
     Continue ContinueSignal -> return $ Continue ContinueSignal
     Continue t' -> return $ Continue (Seq t' t2)
     Happy _ -> reduce t2 -- normal: continue with t2
+    Sad msg -> return $ Sad msg
+reduce_ (Concur t1 t2) = do
+  m <- S.get
+  selectRandom
+    m
+    ( premise
+        (reduce t1)
+        (`Concur` t2)
+        ( \v1 ->
+            premise
+              (reduce t2)
+              id
+              (\v2 -> selectRandom m (return $ Happy v1) (return $ Happy v2))
+        )
+    )
+    ( premise
+        (reduce t2)
+        (Concur t1)
+        ( \v2 ->
+            premise
+              (reduce t1)
+              id
+              (\v1 -> selectRandom m (return $ Happy v1) (return $ Happy v2))
+        )
+    )
+reduce_ (Atomic t) = do
+  v <- reduce t
+  case v of
+    Continue t' -> reduce t'
+    Happy n -> return $ Happy n
     Sad msg -> return $ Sad msg
 reduce_ (If cond tThen tElse) = do
   premise
