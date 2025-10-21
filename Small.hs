@@ -132,7 +132,7 @@ reduce_ (Let x t) = do
     OnlyStr s ->
       premise
         (reduce t)
-        (\t' -> Let x t')
+        (Let x)
         (setVar s)
     Bracket ref term -> return $ Continue $ Let (ref) (Merge (Var ref) term t)
 reduce_ (Merge t1 t2 t3) = do
@@ -147,9 +147,7 @@ reduce_ (Merge t1 t2 t3) = do
               premise
                 (reduce t3)
                 (\t3' -> Merge t1 t2 t3')
-                ( \v3 ->
-                    setBracketValue v1 v2 v3
-                )
+                (\v3 -> setBracketValue v1 v2 v3)
           )
     )
 reduce_ (Seq t1 t2) = do
@@ -165,32 +163,29 @@ reduce_ (If cond tThen tElse) = do
     (reduce cond)
     (\cond' -> If cond' tThen tElse)
     (\v -> selectValue v (return $ Continue tThen) (return $ Continue tElse))
-reduce_ (Try tTry catchableErrorKindOrAny tCatch) = do
+reduce_ (Try tTry catchableErrors tCatch) = do
   vTry <- reduce tTry
   case vTry of
     Continue tTry' -> return $ Continue (Try tTry' catchableErrorKindOrAny tCatch)
-    Happy n -> return $ Happy n
-    Sad (resultErrorKind, _) | errorShouldBeCaught resultErrorKind catchableErrorKindOrAny -> return $ Continue tCatch
+    Happy n -> return vTry
+    Sad (resultErrorKind, _) | errorShouldBeCaught resultErrorKind catchableErrors -> return $ Continue tCatch
     Sad _ -> return vTry
 reduce_ (While cond body) = do
   premise
     (reduce cond)
     (`While` body)
-    ( \v -> do
-        selectValue
-          v
+    (\v -> do
+        selectValue v
           ( do
               res <- reduce body
               case res of
-                Continue BreakSignal -> do return $ Happy (IntVal 0)
-                Continue ContinueSignal -> do return $ Continue (While cond body)
-                Continue t -> do return $ Continue (Seq t (While cond body))
-                Happy _ -> do return $ Continue (While cond body)
-                Sad msg -> do return $ Sad msg
+                Continue BreakSignal -> return $ Happy (IntVal 0)
+                Continue ContinueSignal -> return $ Continue (While cond body)
+                Continue t -> return $ Continue (Seq t (While cond body))
+                Happy _ -> return $ Continue (While cond body)
+                Sad msg -> return $ Sad msg
           )
-          ( do
-              return $ Continue Skip
-          )
+          (return $ Happy (IntVal 0))
     )
 reduce_ (Read x) =
   premise
@@ -208,7 +203,7 @@ reduce_ (BinaryOps op t1 t2) =
   premise
     (reduce t1)
     (\t1' -> BinaryOps op t1' t2)
-    ( \v1 ->
+    (\v1 ->
         premise
           (reduce t2)
           (BinaryOps op (Literal $ fromRight (-1) (valueToInt v1)))
@@ -268,10 +263,10 @@ reduce_ (TupleTerm elements) =
       premise
         (reduce x)
         (\term' -> TupleTerm $ term' : xs)
-        ( \v1 ->
+        (\v1 ->
             premise
               (reduce $ TupleTerm xs)
-              ( \case
+              (\case
                   TupleTerm xs' -> TupleTerm (x : xs')
                   _ -> error "TupleTerm recursion somehow returned a non TupleTerm continuation"
               )
@@ -281,6 +276,7 @@ reduce_ (TupleTerm elements) =
 reduce_ NewDictionary =
   return $ Happy $ Dictionary M.empty
 
+-- Reduces the first argument of a arg list, then calls applyFunArgList
 reduceArgsAndApply :: (Machine m, Show m, V m ~ Value) => Term -> [Term] -> Value -> Env m
 reduceArgsAndApply tf args funVal =
   case args of
@@ -291,6 +287,7 @@ reduceArgsAndApply tf args funVal =
         (\a' -> ApplyFun tf (a' : rest))
         (applyFunArgList tf rest funVal)
 
+-- Binds one argument in the funVal closure, then reduces the other "rest" arguments
 applyFunArgList :: (Machine m, Show m, V m ~ Value) => Term -> [Term] -> Value -> Value -> Env m
 applyFunArgList tf rest funVal argVal = do
   res1 <- applyFunArg funVal argVal
@@ -301,6 +298,7 @@ applyFunArgList tf rest funVal argVal = do
     Continue t -> return (Continue t)
     Sad msg -> return (Sad msg)
 
+-- Binds a value to the first free variable of a closure, potentially evaluating the body
 applyFunArg :: (Machine m, Show m, V m ~ Value) => Value -> Value -> Env m
 applyFunArg (ClosureVal [] _ _) _ = do
   return $ Sad (Arguments, "too many arguments: function takes 0 arguments")
@@ -311,6 +309,7 @@ applyFunArg (ClosureVal (x : xs) body caps) arg = do
     else return $ Happy (ClosureVal xs body newCaps)
 applyFunArg _ _ = return $ Sad (Type, "attempt to call a non-function")
 
+-- Tries to invoke a closure once all arguments are processed
 applyFuncNoArg :: (Machine m, Show m, V m ~ Value) => Value -> Env m
 applyFuncNoArg (ClosureVal [] body caps) = evalClosureBody body caps
 applyFuncNoArg (ClosureVal (_ : _) _ _) = return $ Sad (Arguments, "missing arguments: function requires parameters")
