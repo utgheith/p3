@@ -78,6 +78,8 @@ instance Machine Simulator where
 
   mulVal :: Value -> Value -> Env Simulator
   mulVal (IntVal v1) (IntVal v2) = return $ Happy (IntVal (v1 * v2))
+  mulVal (StringVal v1) (IntVal v2) = return $ Happy $ StringVal $ concat $ replicate (fromIntegral v2) v1
+  mulVal (IntVal v1) (StringVal v2) = return $ Happy $ StringVal $ concat $ replicate (fromIntegral v1) v2
   mulVal _ _ = return $ Sad (Type, "Type error in multiplication")
 
   divVal :: Value -> Value -> Env Simulator
