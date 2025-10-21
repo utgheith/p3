@@ -7,15 +7,12 @@ module Value
     isIntVal,
     isBoolVal,
     isStringVal,
-    extractInt,
-    extractBool,
-    extractString,
   )
 where
 
 import qualified Data.Map as M
-import Term (Term)
 import Sprintf ((%))
+import Term (Term)
 
 data Value
   = IntVal Integer
@@ -33,7 +30,7 @@ data Type
   | TupleType
   | ClosureType
   | DictionaryType
-  deriving Eq
+  deriving (Eq)
 
 typeOf :: Value -> Type
 typeOf (IntVal _) = IntType
@@ -78,15 +75,3 @@ isBoolVal = (==) BoolType . typeOf
 
 isStringVal :: Value -> Bool
 isStringVal = (==) StringType . typeOf
-
-extractInt :: Value -> Integer
-extractInt (IntVal n) = n
-extractInt _ = error "extractInt: not an IntVal"
-
-extractBool :: Value -> Bool
-extractBool (BoolVal b) = b
-extractBool _ = error "extractBool: not a BoolVal"
-
-extractString :: Value -> String
-extractString (StringVal s) = s
-extractString _ = error "extractString: not a StringVal"
