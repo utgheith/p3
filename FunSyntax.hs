@@ -43,7 +43,7 @@ checkSymbol predicate = satisfy $ \case
 ----------
 
 term :: Parser Token Term
-term = [t | binaryExp precedence, _ <- opt $ symbol ";"]
+term = [t | t <- binaryExp precedence, _ <- opt $ symbol ";"]
 
 ------------------- binary operators (left associative) -------------------
 
