@@ -323,8 +323,8 @@ evalClosureBody body caps = do
               Happy v -> return (Happy v)
               Sad msg -> return (Sad msg)
               Continue (ReturnExp ret) -> reduce ret
-              Continue BreakSignal -> return $ Continue BreakSignal
-              Continue ContinueSignal -> return $ Continue ContinueSignal
+              Continue BreakSignal -> return $ Sad (Type, "unhandled break signal")
+              Continue ContinueSignal -> return $ Sad (Type, "unhandled continue signal")
               Continue t' -> loop t'
       let (resBody, m3) = S.runState (loop body) m2
       let (_popped, m4) = S.runState popScope m3
