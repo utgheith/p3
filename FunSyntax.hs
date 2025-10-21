@@ -207,22 +207,25 @@ whileTerm = do
   body <- term
   return $ While cond body
 
+inBrackets :: Parser Token v -> Parser Token v
+inBrackets p = do
+  _ <- symbol "["
+  tok <- p
+  _ <- symbol "]"
+  return tok
+
 bracketSet :: Parser Token Term
 bracketSet = do
   name <- ident
-  _ <- symbol "["
-  index <- term
-  _ <- symbol "]"
+  index <- rpt (inBrackets term)
   _ <- symbol "="
   value <- term
-  return $ SetBracket name index value
+  return $ SetBracket name (TupleTerm index) value
 
 bracketAccess :: Parser Token Term
 bracketAccess = do
   tupleName <- varRef
-  _ <- symbol "["
-  index <- term
-  _ <- symbol "]"
+  index <- inBrackets term
   return $ AccessBracket tupleName index
 
 tryCatch :: Parser Token Term

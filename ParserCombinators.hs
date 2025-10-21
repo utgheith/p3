@@ -3,6 +3,7 @@ module ParserCombinators (eof, oneof, opt, Parser, Result, rpt, rptSep, rptDropS
 import Control.Monad.Except (catchError, throwError)
 import Control.Monad.State.Lazy (StateT, get, put, runStateT)
 import qualified Data.Functor
+import Sprintf ((%), (<<))
 
 -- Parse combinators:
 --
@@ -42,8 +43,8 @@ eof = do
     [] -> return ()
     _ -> throwError $ "expected eof but found: " ++ show ts
 
-satisfy :: (Show t) => (t -> Maybe a) -> Parser t a
-satisfy p = do
+assert :: (Show t) => [Char] -> (t -> Maybe a) -> Parser t a
+assert msg p = do
   ts <- get
   case ts of
     [] -> throwError "out of tokens" -- need better error reporting
@@ -52,19 +53,15 @@ satisfy p = do
         Just a -> do
           put rest
           return a
-        Nothing -> throwError $ "failed to satisfy predicate at " ++ show (t : rest)
+        Nothing -> throwError $ msg % (t : rest) << []
+
+satisfy :: (Show t) => (t -> Maybe a) -> Parser t a
+satisfy = assert "failed to satisfy predicate at %s"
 
 token :: (Show t, Eq t) => t -> Parser t t
-token t = do
-  ts <- get
-  case ts of
-    [] -> throwError "out of tokens"
-    (t' : rest) ->
-      if t == t'
-        then do
-          put rest
-          return t
-        else throwError ("expected " ++ show t ++ ", found " ++ show (t' : rest))
+token t = assert
+  ("expected %s, found %%s" % t << [])
+  $ \t' -> if t == t' then Just t else Nothing
 
 -- Choice operator: try first parser, if it fails try second
 (<|>) :: Parser t a -> Parser t a -> Parser t a
