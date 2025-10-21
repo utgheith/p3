@@ -107,6 +107,15 @@ errorShouldBeCaught :: ErrorKind -> ErrorKindOrAny -> Bool
 errorShouldBeCaught _ Any = True
 errorShouldBeCaught resultErrorKind (Specific catchableErrorKind) = resultErrorKind == catchableErrorKind
 
+-- Convert evaluated values back into Terms for small-step continuations.
+-- Supports common literal cases; otherwise signal an unsupported type.
+valueToTermForCont :: Value -> Maybe Term
+valueToTermForCont v = case v of
+  IntVal n    -> Just (Literal n)
+  BoolVal b   -> Just (BoolLit b)
+  StringVal s -> Just (StringLiteral s)
+  _           -> Nothing
+
 ------ Small-step reduction ------
 
 reduce_ :: (Machine m, Show m, V m ~ Value) => Term -> Env m
@@ -178,10 +187,14 @@ reduce_ (BinaryOps op t1 t2) =
     (reduce t1)
     (\t1' -> BinaryOps op t1' t2)
     ( \v1 ->
-        premise
-          (reduce t2)
-          (BinaryOps op (Literal $ fromRight (-1) (valueToInt v1)))
-          (applyBinaryOp op v1)
+        case valueToTermForCont v1 of
+          Nothing ->
+            return $ Sad (Type, "invalid left operand type for binary operator")
+          Just t1AsTerm ->
+            premise
+              (reduce t2)
+              (BinaryOps op t1AsTerm)
+              (applyBinaryOp op v1)
     )
   where
     applyBinaryOp Add = addVal
