@@ -175,7 +175,7 @@ instance Machine MockMachine where
   setBracketValue (Dictionary current) (IntVal index) val =
     return $ Happy $ Dictionary (M.insert index val current)
   setBracketValue (Tuple t) (IntVal index) val =
-    let returnVal = loop (Tuple t) (IntVal (index)) val
+    let returnVal = loop (Tuple t) (IntVal index) val
      in case returnVal of
           Left e -> return $ Sad e
           Right v -> return $ Happy v
