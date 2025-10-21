@@ -9,10 +9,10 @@ import Data.Bits (complement)
 import qualified Data.Map as M
 import Scope (Scope (..), emptyScope, getAllBindings, insertScope, lookupScope, scopeFromList)
 import Small
+import qualified System.Random as R
 import Term
 import Test.Hspec
 import Value (Value (..))
-import qualified System.Random as R
 
 -- A mock machine for testing
 data MockMachine = MockMachine {getMem :: Scope, getInput :: [Value], getOutput :: [Value], getRng :: R.StdGen} deriving (Eq)
@@ -212,11 +212,10 @@ instance Machine MockMachine where
           m' <- S.get
           S.put m' {getRng = rng'}
           return v
-    where 
+    where
       decide rng a1 a2 =
         let (num, rng') = R.uniformR (0 :: Int, 1 :: Int) rng
-        in (if num == 0 then a1 else a2, rng')
-
+         in (if num == 0 then a1 else a2, rng')
 
 spec :: Spec
 spec = do
@@ -723,7 +722,7 @@ spec = do
       let finalMachine = initialMachine {getMem = scopeFromList [("x", Dictionary (M.fromList [(3, StringVal "hello")]))]}
       reduceFully term initialMachine `shouldBe` (Right (StringVal "hello"), finalMachine)
 
-    let getResults term =  [fst (reduceFully term (initialRandomMachine seed)) | seed <- [1 .. 100]]
+    let getResults term = [fst (reduceFully term (initialRandomMachine seed)) | seed <- [1 .. 100]]
     it "can non-deterministically select between two expressions" $ do
       let term = Concur (Literal 1) (Literal 2)
       let results = getResults term
@@ -737,7 +736,7 @@ spec = do
       let term = Seq (initx) (Concur assign assign)
       let results = getResults term
       results `shouldSatisfy` (\res -> (Right (IntVal 1)) `elem` res && (Right (IntVal 2)) `elem` res)
-    
+
     it "Atomics guard against data races" $ do
       let rx = OnlyStr "x"
       let addop = BinaryOps Add (Var rx) (Literal 1)
