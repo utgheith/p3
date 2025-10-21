@@ -1,6 +1,6 @@
 module FunLexer (lexer, Token (Num, Ident, Keyword, Symbol, StringLiteralLexed, Error)) where
 
-import Data.Char (isAlpha, isAlphaNum, isNumber, isSpace)
+import Data.Char (isAlpha, isAlphaNum, isDigit, isSpace)
 import Data.List (sortOn, stripPrefix, unfoldr)
 import Data.Ord (Down (Down))
 import qualified Data.Set as S
@@ -37,8 +37,7 @@ symbols =
       "[",
       "]",
       "=",
-      ",",
-      "#"
+      ","
     ]
 
 keywords :: S.Set String
@@ -64,16 +63,24 @@ matches s (p : ps) =
     Nothing -> matches s ps
 matches _ [] = Nothing
 
-lexer :: [Char] -> [Token]
-lexer = unfoldr step
+-- Drop leading whitespace and line comments. Single source of truth.
+dropSpaceAndComments :: String -> String
+dropSpaceAndComments = go
+  where
+    go [] = []
+    go (c:cs)
+      | isSpace c   = go cs
+      | c == '#'    = go (dropWhile (/= '\n') cs) 
+      | otherwise   = (c:cs)
+
+lexer :: String -> [Token]
+lexer = unfoldr (\s0 -> let s = dropSpaceAndComments s0 in step s)
   where
     step [] = Nothing
-    -- skip spaces and new lines
-    step (c : rest) | isSpace c = step rest
     -- numbers
     step s@(c : _)
-      | isNumber c =
-          let (num, rest) = span isNumber s
+      | isDigit c =
+          let (num, rest) = span isDigit s
            in Just (Num $ read num, rest)
     -- identifiers
     step s@(c : _)
@@ -92,12 +99,6 @@ lexer = unfoldr step
        in case rest2 of
             ('\'' : rest3) -> Just (StringLiteralLexed str, rest3)
             _ -> Just (Error "Unclosed string literal", "")
-    -- comments
-    step ('$' : rest) =
-      let (_, rest2) = span (/= '$') rest
-       in case rest2 of
-            ('$' : rest3) -> step rest3
-            _ -> Just (Error "Unclosed comment", "")
     -- special tokens
     step s = case matches s symbols of
       Just (p, rest) -> Just (Symbol p, rest)

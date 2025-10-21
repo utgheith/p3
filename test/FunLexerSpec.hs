@@ -38,3 +38,12 @@ spec = do
 
     it "handles an unexpected character" $ do
       lexer "@" `shouldBe` [Error "Unexpected character: @"]
+
+    -- DX: \'#' comments are ignored as whitespace
+    it "ignores # line comments" $ do
+      lexer "+   # comment\n   *"
+        `shouldBe` [Symbol "+", Symbol "*"]
+
+    -- DX: keywords don't split identifiers (no 'if' + 'x' for 'ifx')
+    it "doesn't split keyword prefixes inside identifiers" $ do
+      lexer "ifx <= 1" `shouldBe` [Ident "ifx", Symbol "<=", Num 1]

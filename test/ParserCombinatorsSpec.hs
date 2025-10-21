@@ -89,6 +89,9 @@ spec = do
       let p = sepBy (token '1') (token '0')
       runStateT p ['1', '0', '1', '2'] `shouldBe` Right (['1', '1'], ['2'])
       runStateT p ['2', '1', '0'] `shouldBe` Right ([], ['2', '1', '0'])
+    it "does not consume a leading separator when no item precedes it" $ do
+      let p = sepBy (token '1') (token '0')
+      runStateT p ['0','1'] `shouldBe` Right ([], ['0','1'])
 
   describe "sepBy1" $ do
     it "parses one or more occurrences separated by a separator" $ do
