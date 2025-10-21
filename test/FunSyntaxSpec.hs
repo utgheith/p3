@@ -69,12 +69,103 @@ spec = do
               return t
         result `shouldBe` Right (BinaryOps Add (Var (OnlyStr "x")) (Var (OnlyStr "y")), [])
 
+      it "parses subtraction" $ do
+        let result = parse "x - y" $ do
+              t <- prog
+              _ <- eof
+              return t
+        result `shouldBe` Right (BinaryOps Sub (Var (OnlyStr "x")) (Var (OnlyStr "y")), [])
+
       it "parses multiplication" $ do
         let result = parse "x * y" $ do
               t <- prog
               _ <- eof
               return t
         result `shouldBe` Right (BinaryOps Mul (Var (OnlyStr "x")) (Var (OnlyStr "y")), [])
+
+      it "parses division" $ do
+        let result = parse "x / y" $ do
+              t <- prog
+              _ <- eof
+              return t
+        result `shouldBe` Right (BinaryOps Div (Var (OnlyStr "x")) (Var (OnlyStr "y")), [])
+
+      it "parses modulus" $ do
+        let result = parse "x % y" $ do
+              t <- prog
+              _ <- eof
+              return t
+        result `shouldBe` Right (BinaryOps Mod (Var (OnlyStr "x")) (Var (OnlyStr "y")), [])
+
+      it "parses less than" $ do
+        let result = parse "x < y" $ do
+              t <- prog
+              _ <- eof
+              return t
+        result `shouldBe` Right (BinaryOps Lt (Var (OnlyStr "x")) (Var (OnlyStr "y")), [])
+
+      it "parses greater than" $ do
+        let result = parse "x > y" $ do
+              t <- prog
+              _ <- eof
+              return t
+        result `shouldBe` Right (BinaryOps Gt (Var (OnlyStr "x")) (Var (OnlyStr "y")), [])
+
+      it "parses less than equal" $ do
+        let result = parse "x <= y" $ do
+              t <- prog
+              _ <- eof
+              return t
+        result `shouldBe` Right (BinaryOps Lte (Var (OnlyStr "x")) (Var (OnlyStr "y")), [])
+
+      it "parses greater than equal" $ do
+        let result = parse "x >= y" $ do
+              t <- prog
+              _ <- eof
+              return t
+        result `shouldBe` Right (BinaryOps Gte (Var (OnlyStr "x")) (Var (OnlyStr "y")), [])
+
+      it "parses equal to" $ do
+        let result = parse "x == y" $ do
+              t <- prog
+              _ <- eof
+              return t
+        result `shouldBe` Right (BinaryOps Eq (Var (OnlyStr "x")) (Var (OnlyStr "y")), [])
+
+      it "parses not equal" $ do
+        let result = parse "x != y" $ do
+              t <- prog
+              _ <- eof
+              return t
+        result `shouldBe` Right (BinaryOps Neq (Var (OnlyStr "x")) (Var (OnlyStr "y")), [])
+
+      it "parses and" $ do
+        let result = parse "x && y" $ do
+              t <- prog
+              _ <- eof
+              return t
+        result `shouldBe` Right (BinaryOps And (Var (OnlyStr "x")) (Var (OnlyStr "y")), [])
+
+      it "parses or" $ do
+        let result = parse "x || y" $ do
+              t <- prog
+              _ <- eof
+              return t
+        result `shouldBe` Right (BinaryOps Or (Var (OnlyStr "x")) (Var (OnlyStr "y")), [])
+
+      it "parses pow" $ do
+        let result = parse "x ** y" $ do
+              t <- prog
+              _ <- eof
+              return t
+        result `shouldBe` Right (BinaryOps Pow (Var (OnlyStr "x")) (Var (OnlyStr "y")), [])
+
+      it "parses xor" $ do
+        let result = parse "x ^ y" $ do
+              t <- prog
+              _ <- eof
+              return t
+        result `shouldBe` Right (BinaryOps Xor (Var (OnlyStr "x")) (Var (OnlyStr "y")), [])
 
       it "parses complex expressions with precedence" $ do
         let result = parse "x + y * z" $ do
