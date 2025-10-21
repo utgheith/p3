@@ -204,3 +204,25 @@ spec = do
         Left err -> fail $ "Parse error: " ++ err
         Right (ast, _) -> do
           ast `shouldSatisfy` const True
+
+  describe "Variable Capture with Closures" $ do
+    it "correctly captures variables in nested functions" $ do
+      let program =
+            unlines
+              [ "fun outer() {",
+                "    var x = 5",
+                "    fun inner() {",
+                "       capture x",
+                "       x + 10",
+                "    }",
+                "    inner",
+                "}",
+                "result = outer()",
+                "result()"
+              ]
+      let result = parseString program
+      case result of
+        Left err -> fail $ "Parse error: " ++ err
+        Right (ast, _) -> do
+          print ast
+          ast `shouldSatisfy` const True

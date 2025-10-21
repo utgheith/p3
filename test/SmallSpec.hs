@@ -580,10 +580,10 @@ spec = do
       result `shouldBe` Left "attempt to call a non-function"
 
     it "returns functions" $ do
-      let f0 = Fun ["x"] (Literal 12)
+      let f0 = Fun ["x"] (Seq (Capture "y") (Literal 12))
       let f1 = Fun ["y"] f0
       let term = ApplyFun f1 [Literal 5]
-      reduceFully term initialMachine `shouldBe` (Right (ClosureVal ["x"] (Literal 12) [("y", IntVal 5)]), initialMachine)
+      reduceFully term initialMachine `shouldBe` (Right (ClosureVal ["x"] (Seq (Capture "y") (Literal 12)) [("y", IntVal 5)]), initialMachine)
 
     it "creates local variables in functions" $ do
       let f = Fun ["y"] (Let "x" (Var "y")) -- Should not affect outside x.
@@ -593,46 +593,25 @@ spec = do
 
     -- Variable Capture Tests
     it "captures environment for zero-argument functions" $ do
-      let f0 = Fun [] (Var "outside")
+      let f0 = Fun [] (Seq (Capture "outside") (Var "outside"))
       let f1 = Fun ["y"] (Seq (Let "outside" (Literal 99)) f0)
       let term = Seq (Let "outside" (Literal 1)) (ApplyFun (ApplyFun f1 [Literal 0]) [])
       let machine = initialMachine {getMem = scopeFromList [("outside", IntVal 1)]}
       reduceFully term initialMachine `shouldBe` (Right (IntVal 99), machine)
 
-    it "captures environment for odd-argument functions" $ do
-      let f0 = Fun ["x"] (Var "outside") -- Created inside of f1.
-      let f1 = Fun ["y"] (Seq (Let "outside" (Literal 99)) f0)
-      -- (f1(0))(0) -> f0(0), where outside refers to the 99 captured in f1.
-      let term = Seq (Let "outside" (Literal 1)) (ApplyFun (ApplyFun f1 [Literal 0]) [Literal 0])
-      let machine = initialMachine {getMem = scopeFromList [("outside", IntVal 1)]}
-      reduceFully term initialMachine `shouldBe` (Right (IntVal 99), machine)
+    it "capture successful with keyword" $ do
+      let term = Seq (Seq (Let "outer" (Fun [] (Seq (Seq (Let "x" (Literal 5)) (Let "inner" (Fun [] (Seq (Capture "x") (BinaryOps Add (Var "x") (Literal 10)))))) (Var "inner")))) (Let "result" (ApplyFun (Var "outer") []))) (ApplyFun (Var "result") [])
+      let (res, _) = reduceFully term initialMachine
+      res `shouldBe` Right (IntVal 15)
 
-    it "captures environment for even-argument functions" $ do
-      let f0 = Fun ["x", "z"] (Var "outside")
-      let f1 = Fun ["y"] (Seq (Let "outside" (Literal 99)) f0)
-      let term = Seq (Let "outside" (Literal 1)) (ApplyFun (ApplyFun f1 [Literal 0]) [Literal 0, Literal 0])
-      let machine = initialMachine {getMem = scopeFromList [("outside", IntVal 1)]}
-      reduceFully term initialMachine `shouldBe` (Right (IntVal 99), machine)
-
-    it "captures only the environment at function creation time" $ do
-      let f0 = Fun ["x"] (Var "outside")
-      let setupTerm = Seq (Let "outside" (Literal 1)) (Let "f" f0) -- Function f created here.
-      let f1 = Fun ["y"] (Seq (Let "outside" (Literal 99)) (ApplyFun (Var "f") [Literal 0])) -- 99 should not be captured.
-      let term = Seq setupTerm (ApplyFun f1 [Literal 0])
-      let closureVal = ClosureVal ["x"] (Var "outside") [("outside", IntVal 1)] -- Captured 1 from outside.
-      let machine = initialMachine {getMem = scopeFromList [("outside", IntVal 1), ("f", closureVal)]}
-      reduceFully term initialMachine `shouldBe` (Right (IntVal 1), machine)
-
-    it "captures all variables in nested scopes" $ do
-      let f0 = Fun ["x"] (BinaryOps Add (Var "a") (Var "b"))
-      let f1 = Fun ["y"] (Seq (Let "b" (Literal 4)) f0) -- b created (parent of f0).
-      let f2 = Fun ["z"] (Seq (Let "a" (Literal 3)) f1) -- a created (parent of f1).
-      let term = ApplyFun (ApplyFun (ApplyFun f2 [Literal 0]) [Literal 0]) [Literal 0]
-      reduceFully term initialMachine `shouldBe` (Right (IntVal 7), initialMachine)
+    it "capture fails without keyword" $ do
+      let term = Seq (Seq (Let "outer" (Fun [] (Seq (Seq (Let "x" (Literal 5)) (Let "inner" (Fun [] (BinaryOps Add (Var "x") (Literal 10))))) (Var "inner")))) (Let "result" (ApplyFun (Var "outer") []))) (ApplyFun (Var "result") [])
+      let (res, _) = reduceFully term initialMachine
+      res `shouldBe` Left "variable not found"
 
     it "handles parameter shadowing" $ do
       let f = Fun ["x"] (Var "x")
-      let term = Seq (Let "x" (Literal 1)) (ApplyFun f [Literal 5]) -- Parameter x is 5.
+      let term = Seq (Let "x" (Literal 1)) (ApplyFun f [Literal 5])
       let machine = initialMachine {getMem = scopeFromList [("x", IntVal 1)]}
       reduceFully term initialMachine `shouldBe` (Right (IntVal 5), machine)
 

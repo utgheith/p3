@@ -16,6 +16,8 @@ import FunLexer (Token (Ident, Keyword, Num, StringLiteralLexed, Symbol), lexer)
 import ParserCombinators (Parser, Result, oneof, opt, rpt, rptDropSep, satisfy, token)
 import Term (BinaryOp (..), ErrorKind (..), ErrorKindOrAny (..), Term (..), UnaryOp (..))
 
+-- Add Capture to export list if needed
+
 -- data Term
 --   = Assign String Term
 --   | BinaryOp String Term Term
@@ -247,8 +249,15 @@ printStmt = do
   expr <- term
   return $ Write expr
 
+-- Parser for 'capture x' statement
+captureStmt :: Parser Token Term
+captureStmt = do
+  _ <- keyword "capture"
+  name <- ident
+  return $ Capture name
+
 unaryExp :: Parser Token Term
-unaryExp = oneof [assign, ifExpr, block, funDef, minus, num, string, bool, tuple, dictionary, bracketSet, bracketAccess, tryCatch, parens, varDef, funCall, varRef, whileTerm, printStmt]
+unaryExp = oneof [captureStmt, assign, ifExpr, block, funDef, minus, num, string, bool, tuple, dictionary, bracketSet, bracketAccess, tryCatch, parens, varDef, funCall, varRef, whileTerm, printStmt]
 
 ----------- prog ----------
 

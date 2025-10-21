@@ -26,12 +26,12 @@ data Value
   deriving (Eq, Show)
 
 valueToDebugString :: Value -> String
-valueToDebugString(IntVal _) = "Integer"
-valueToDebugString(BoolVal _) = "Boolean"
-valueToDebugString(StringVal _) = "String"
-valueToDebugString(Tuple _) = "Tuple"
-valueToDebugString(ClosureVal {}) = "Function"
-valueToDebugString(Dictionary _) = "Dictionary"
+valueToDebugString (IntVal _) = "Integer"
+valueToDebugString (BoolVal _) = "Boolean"
+valueToDebugString (StringVal _) = "String"
+valueToDebugString (Tuple _) = "Tuple"
+valueToDebugString (ClosureVal {}) = "Function"
+valueToDebugString (Dictionary _) = "Dictionary"
 
 valueToInt :: Value -> Either String Integer
 valueToInt (IntVal n) = Right n

@@ -98,6 +98,14 @@ errorShouldBeCaught :: ErrorKind -> ErrorKindOrAny -> Bool
 errorShouldBeCaught _ Any = True
 errorShouldBeCaught resultErrorKind (Specific catchableErrorKind) = resultErrorKind == catchableErrorKind
 
+-- Helper to collect captured variable names from function body
+collectCaptures :: Term -> [String]
+collectCaptures t = go t
+  where
+    go (Seq a b) = go a ++ go b
+    go (Capture x) = [x]
+    go _ = []
+
 ------ Small-step reduction ------
 
 reduce_ :: (Machine m, Show m, V m ~ Value) => Term -> Env m
@@ -204,8 +212,12 @@ reduce_ ContinueSignal =
   return $ Continue ContinueSignal
 reduce_ (Fun xs t) = do
   env <- S.get
-  let vars = getScope env
-  return $ Happy (ClosureVal xs t vars)
+  let scopeVars = getScope env
+      capturedNames = collectCaptures t
+      capturedVars = filter (\(name, _) -> name `elem` capturedNames) scopeVars
+  return $ Happy (ClosureVal xs t capturedVars)
+reduce_ (Capture _) =
+  return $ Happy (IntVal 0)
 reduce_ (ApplyFun tf tas) =
   premise
     (reduce tf)
