@@ -763,6 +763,7 @@ spec = do
 
     it "return doesn't leak local bindings" $ do
       let f = Fun [] (Seq (Let "x" (Literal 1)) (ReturnExp (Literal 2)))
-      let (_, m1) = reduceFully (ApplyFun f []) initialMachine
+      let (res1, m1) = reduceFully (ApplyFun f []) initialMachine
       let (res2, _) = reduceFully (Var "x") m1
+      res1 `shouldBe` Right (IntVal 2)
       res2 `shouldBe` Left "variable not found"
