@@ -39,4 +39,5 @@ data Term
   | PostDecrement String
   | BreakSignal
   | ContinueSignal
+  | ReturnExp Term
   deriving (Eq, Show)
