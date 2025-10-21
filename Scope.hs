@@ -15,13 +15,10 @@ data Scope = Scope (M.Map String Value) (Maybe Scope)
   deriving (Eq, Show)
 
 lookupScope :: String -> Scope -> Maybe Value
-lookupScope name (Scope m parent) =
+lookupScope name (Scope m _) =
   case M.lookup name m of
     Just v -> Just v
-    Nothing ->
-      case parent of
-        Just p -> lookupScope name p -- Look in parent scope.
-        Nothing -> Nothing
+    Nothing -> Nothing -- Do not look in parent scopes.
 
 insertScope :: String -> Value -> Scope -> Scope
 insertScope name val (Scope m parent) = Scope (M.insert name val m) parent -- Insert into inner scope.
