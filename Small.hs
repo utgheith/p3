@@ -266,6 +266,70 @@ reduce_ (SetBracket name terms val) =
     _ -> error "SetBracket should only have tuple term as second argument"
 reduce_ NewDictionary =
   return $ Happy $ Dictionary M.empty
+-- Traditional for loop: for (var = init; cond; incr) body
+-- Translates to: let var = init; while (cond) (body; incr)
+reduce_ (ForLoop varName initExpr condExpr incrExpr body) = do
+  return $
+    Continue $
+      Seq
+        (Let varName initExpr)
+        (While condExpr (Seq body incrExpr))
+
+-- For-each loop: for each var in iterable body
+-- Translates to iterating through each element of a tuple/list
+reduce_ (ForEach varName iterable body) = do
+  premise
+    (reduce iterable)
+    (\iter' -> ForEach varName iter' body)
+    ( \case
+        Tuple [] -> return $ Continue Skip
+        Tuple (x : xs) -> do
+          let restIterable = TupleTerm (map valueToTerm xs)
+              currentIteration = Let varName (valueToTerm x)
+              nextIterations = ForEach varName restIterable body
+          return $ Continue $ Seq currentIteration (Seq body nextIterations)
+        _ -> return $ Sad (Type, "for-each requires a tuple/list")
+    )
+
+-- Compound assignment: variable += expression
+reduce_ (AddAssign varName expr) = do
+  premise
+    (reduce expr)
+    (AddAssign varName)
+    ( \exprVal -> do
+        varVal <- getVar varName
+        case varVal of
+          Happy v -> do
+            result <- addVal v exprVal
+            case result of
+              Happy newVal -> setVar varName newVal
+              _ -> return result
+          _ -> return varVal
+    )
+
+-- Compound assignment: variable -= expression
+reduce_ (SubAssign varName expr) = do
+  premise
+    (reduce expr)
+    (SubAssign varName)
+    ( \exprVal -> do
+        varVal <- getVar varName
+        case varVal of
+          Happy v -> do
+            result <- subVal v exprVal
+            case result of
+              Happy newVal -> setVar varName newVal
+              _ -> return result
+          _ -> return varVal
+    )
+
+-- Helper function to convert Value back to Term
+valueToTerm :: Value -> Term
+valueToTerm (IntVal n) = Literal n
+valueToTerm (BoolVal b) = BoolLit b
+valueToTerm (StringVal s) = StringLiteral s
+valueToTerm (Tuple vs) = TupleTerm (map valueToTerm vs)
+valueToTerm v = error $ "valueToTerm: unsupported value type: " ++ show v
 
 reduceArgsAndApply :: (Machine m, Show m, V m ~ Value) => Term -> [Term] -> Value -> Env m
 reduceArgsAndApply tf args funVal =
