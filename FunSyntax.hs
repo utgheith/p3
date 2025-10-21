@@ -32,6 +32,14 @@ ident = satisfy $ \case
   Ident name -> Just name
   _ -> Nothing
 
+-- Parse an identifier you can *bind* (not a reserved word).
+pBinder :: Parser String
+pBinder = do
+  x <- ident  
+  if x `S.member` keywords
+    then fail ("reserved word in binder: " <> x)
+    else pure x
+
 -- symbol
 checkSymbol :: (String -> Bool) -> Parser Token String
 checkSymbol predicate = satisfy $ \case
@@ -257,6 +265,19 @@ printStmt = do
 
 unaryExp :: Parser Token Term
 unaryExp = oneof [assign, ifExpr, block, funDef, minus, bitnot, preIncrement, preDecrement, num, string, bool, tuple, dictionary, bracketSet, bracketAccess, tryCatch, parens, varDef, funCall, postIncrement, postDecrement, varRef, whileTerm, printStmt]
+
+eqLevel :: Parser Term
+eqLevel = do
+  lhs <- addLevel
+  -- Peek for a single '=' and fail with a helpful message:
+  try (symbol "=" *> fail "Use '==' for equality. Bindings must use 'let x = ...'") <|> pure ()
+  -- Then parse the real comparison operators as usual:
+  rest lhs
+ where
+  rest lhs = (do op <- choice (map (symbol . fst) cmpOps)
+                 rhs <- addLevel
+                 rest (Bin (toOp op) lhs rhs))
+         <|> pure lhs
 
 ----------- prog ----------
 
