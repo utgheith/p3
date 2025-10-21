@@ -33,6 +33,7 @@ data Type
   | TupleType
   | ClosureType
   | DictionaryType
+  deriving Eq
 
 typeOf :: Value -> Type
 typeOf (IntVal _) = IntType
@@ -70,16 +71,13 @@ valueToTuple (Tuple s) = Right s
 valueToTuple other = typeError TupleType other
 
 isIntVal :: Value -> Bool
-isIntVal (IntVal _) = True
-isIntVal _ = False
+isIntVal = (==) IntType . typeOf
 
 isBoolVal :: Value -> Bool
-isBoolVal (BoolVal _) = True
-isBoolVal _ = False
+isBoolVal = (==) BoolType . typeOf
 
 isStringVal :: Value -> Bool
-isStringVal (StringVal _) = True
-isStringVal _ = False
+isStringVal = (==) StringType . typeOf
 
 extractInt :: Value -> Integer
 extractInt (IntVal n) = n
