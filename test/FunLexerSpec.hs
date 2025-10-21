@@ -33,5 +33,8 @@ spec = do
     it "lexes a string" $ do
       lexer "\"hello\"" `shouldBe` [StringLiteralLexed "hello"]
 
+    it "lexes a string with single quotes" $ do
+      lexer "'\"'" `shouldBe` [StringLiteralLexed "\""]
+
     it "handles an unexpected character" $ do
       lexer "@" `shouldBe` [Error "Unexpected character: @"]
