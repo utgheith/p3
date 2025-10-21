@@ -73,6 +73,7 @@ instance Machine Simulator where
 
   addVal :: Value -> Value -> Env Simulator
   addVal (IntVal v1) (IntVal v2) = return $ Happy (IntVal (v1 + v2))
+  addVal (StringVal v1) (StringVal v2) = return $ Happy (StringVal (v1 ++ v2))
   addVal _ _ = return $ Sad (Type, "Type error in addition")
 
   mulVal :: Value -> Value -> Env Simulator
@@ -114,18 +115,22 @@ instance Machine Simulator where
 
   ltVal :: Value -> Value -> Env Simulator
   ltVal (IntVal v1) (IntVal v2) = return $ Happy (BoolVal (v1 < v2))
+  ltVal (StringVal v1) (StringVal v2) = return $ Happy (BoolVal (v1 < v2))
   ltVal _ _ = return $ Sad (Type, "Type error in <")
 
   gtVal :: Value -> Value -> Env Simulator
   gtVal (IntVal v1) (IntVal v2) = return $ Happy (BoolVal (v1 > v2))
+  gtVal (StringVal v1) (StringVal v2) = return $ Happy (BoolVal (v1 > v2))
   gtVal _ _ = return $ Sad (Type, "Type error in >")
 
   lteVal :: Value -> Value -> Env Simulator
   lteVal (IntVal v1) (IntVal v2) = return $ Happy (BoolVal (v1 <= v2))
+  lteVal (StringVal v1) (StringVal v2) = return $ Happy (BoolVal (v1 <= v2))
   lteVal _ _ = return $ Sad (Type, "Type error in <=")
 
   gteVal :: Value -> Value -> Env Simulator
   gteVal (IntVal v1) (IntVal v2) = return $ Happy (BoolVal (v1 >= v2))
+  gtVal (StringVal v1) (StringVal v2) = return $ Happy (BoolVal (v1 >= v2))
   gteVal _ _ = return $ Sad (Type, "Type error in >=")
 
   eqVal :: Value -> Value -> Env Simulator
