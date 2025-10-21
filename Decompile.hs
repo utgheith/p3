@@ -1,4 +1,4 @@
-module Deompile (decompile) where
+module Decompile (decompile) where
 
 import Data.Functor.Foldable (cata)
 import Data.List (intercalate)
@@ -28,7 +28,7 @@ decompile = cata go
     go (UnaryOpsF op t) =
       sprintf "%s(%s)" [show op, t]
     go (VarF _) =
-      sprintf "Var %s" (error "decompile: Ref decompilation not implemented")
+      sprintf "Var %s" ["<decompile: Ref decompilation not implemented>"]
     go (WhileF cond body) =
       sprintf "While (%s) (%s)" [cond, body]
     go (WriteF t) =
@@ -60,4 +60,4 @@ decompile = cata go
     go ContinueSignalF =
       "ContinueSignal"
     go (LetF _ t) =
-      sprintf "Let (%s) (%s)" [error "decompile: Ref decompilation not implemented", t]
+      sprintf "Let (%s) (%s)" ["<decompile: Ref decompilation not implemented>", t]
