@@ -125,6 +125,9 @@ instance Machine MockMachine where
   bitNotVal (IntVal v) = return $ Happy (IntVal (complement v))
   bitNotVal _ = return $ Sad (Type, "Type error in ~")
 
+  impliesVal (BoolVal v1) (BoolVal v2) = return $ Happy (BoolVal (not v1 || v2))
+  impliesVal _ _ = return $ Sad (Type, "Type error in =>")
+  
   preIncrementVal x = do
     m <- S.get
     case lookupScope x (getMem m) of

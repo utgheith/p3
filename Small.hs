@@ -62,6 +62,7 @@ class Machine m where
   xorVal :: V m -> V m -> Env m
   notVal :: V m -> Env m
   bitNotVal :: V m -> Env m
+  impliesVal :: V m -> V m -> Env m
 
   -- Increment/Decrement operations (modify variables)
   preIncrementVal :: String -> Env m -- ++x: increment then return new value
@@ -227,6 +228,7 @@ reduce_ (BinaryOps op t1 t2) =
     applyBinaryOp And = andVal
     applyBinaryOp Or = orVal
     applyBinaryOp Xor = xorVal
+    applyBinaryOp Implies = impliesVal
 reduce_ (BoolLit b) =
   return $ Happy $ BoolVal b
 reduce_ (UnaryOps op t) =

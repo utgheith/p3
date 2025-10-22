@@ -167,6 +167,10 @@ instance Machine Simulator where
   bitNotVal (IntVal v) = return $ Happy (IntVal (complement v))
   bitNotVal _ = return $ Sad (Type, "Type error in ~")
 
+  impliesVal :: Value -> Value -> Env Simulator
+  impliesVal (BoolVal v1) (BoolVal v2) = return $ Happy (BoolVal (not v1 || v2))
+  impliesVal _ _ = return $ Sad (Type, "Type error in =>")
+
   preIncrementVal :: String -> Env Simulator
   preIncrementVal x = do
     (Simulator m inp out) <- S.get
