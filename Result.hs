@@ -4,6 +4,8 @@
 
 module Result (Result (..)) where
 
+import Control.Applicative (Alternative (empty, (<|>)))
+import Control.Monad (MonadPlus (mplus, mzero))
 import Control.Monad.Except (MonadError (catchError, throwError))
 import Data.String (IsString (fromString))
 
@@ -43,3 +45,21 @@ instance MonadError e (Result e) where
   catchError :: Result e a -> (e -> Result e a) -> Result e a
   catchError (Ok a) _ = Ok a
   catchError (Err e) handler = handler e
+
+instance (IsString e) => Alternative (Result e) where
+  empty :: Result e a
+  empty = Err (fromString "no rule matched")
+
+  (<|>) :: Result e a -> Result e a -> Result e a
+  (Ok a) <|> _ = Ok a -- precedence to left alternative
+  _ <|> (Ok a) = Ok a
+  _ <|> _ = empty
+
+instance (IsString e) => MonadPlus (Result e) where
+  mzero :: Result e a
+  mzero = Err (fromString "no rule matched")
+
+  mplus :: Result e a -> Result e a -> Result e a
+  (Ok a) `mplus` _ = Ok a -- precedence to left alternative
+  _ `mplus` (Ok a) = Ok a
+  _ `mplus` _ = mzero

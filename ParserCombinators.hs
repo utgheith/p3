@@ -3,7 +3,7 @@
 
 module ParserCombinators (eof, oneof, opt, Parser, Result, rpt, rptSep, rptDropSep, satisfy, token, tokens, string, (<|>), alt, some, sepBy, sepBy1, between, skip, lookAhead, chainl1, chainr1, parse) where
 
-import Control.Applicative (Alternative (empty, (<|>)), asum)
+import Control.Applicative (asum, (<|>))
 import Control.Monad.Except (catchError, throwError)
 import Control.Monad.State.Lazy (StateT, get, put, runStateT)
 import qualified Data.Functor
