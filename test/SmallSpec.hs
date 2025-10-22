@@ -729,7 +729,7 @@ spec = do
       reduceFully term initialMachine `shouldBe` (Right (Dictionary (M.fromList [(3, StringVal "hello")])), finalMachine)
 
     it "set nested dictionary" $ do
-      let term = Seq (Let (OnlyStr "x") NewDictionary) (Seq (Let (Bracket (OnlyStr "x") (Literal 3)) (NewDictionary)) (Let (Bracket (Bracket (OnlyStr "x") (Literal 3)) (Literal 4)) (StringLiteral "hello")))
+      let term = Seq (Let (OnlyStr "x") NewDictionary) (Seq (Let (Bracket (OnlyStr "x") (Literal 3)) NewDictionary) (Let (Bracket (Bracket (OnlyStr "x") (Literal 3)) (Literal 4)) (StringLiteral "hello")))
       let finalMachine = initialMachine {getMem = scopeFromList [("x", Dictionary (M.fromList [(3, Dictionary (M.fromList [(4, StringVal "hello")]))]))]}
       reduceFully term initialMachine `shouldBe` (Right (Dictionary (M.fromList [(3, Dictionary (M.fromList [(4, StringVal "hello")]))])), finalMachine)
 
@@ -739,7 +739,7 @@ spec = do
       reduceFully term initialMachine `shouldBe` (Right (StringVal "hello"), finalMachine)
 
     it "access nested dictionary" $ do
-      let term = Seq (Let (OnlyStr "x") NewDictionary) (Seq (Let (Bracket (OnlyStr "x") (Literal 3)) (NewDictionary)) (Seq (Let (Bracket (Bracket (OnlyStr "x") (Literal 3)) (Literal 4)) (StringLiteral "hello")) (Var (Bracket (Bracket (OnlyStr "x") (Literal 3)) (Literal 4)))))
+      let term = Seq (Let (OnlyStr "x") NewDictionary) (Seq (Let (Bracket (OnlyStr "x") (Literal 3)) NewDictionary) (Seq (Let (Bracket (Bracket (OnlyStr "x") (Literal 3)) (Literal 4)) (StringLiteral "hello")) (Var (Bracket (Bracket (OnlyStr "x") (Literal 3)) (Literal 4)))))
       let finalMachine = initialMachine {getMem = scopeFromList [("x", Dictionary (M.fromList [(3, Dictionary (M.fromList [(4, StringVal "hello")]))]))]}
       reduceFully term initialMachine `shouldBe` (Right (StringVal "hello"), finalMachine)
 
@@ -754,6 +754,6 @@ spec = do
       reduceFully term initialMachine `shouldBe` (Right (StringVal "hello"), finalMachine)
 
     it "invalid term in bracket lookup" $ do
-      let term = Seq (Let (OnlyStr "x") (TupleTerm [Literal 10, StringLiteral "hello", BoolLit True])) (Var (Bracket (OnlyStr "x") (BinaryOps (Div) (Literal 2) (Literal 0))))
+      let term = Seq (Let (OnlyStr "x") (TupleTerm [Literal 10, StringLiteral "hello", BoolLit True])) (Var (Bracket (OnlyStr "x") (BinaryOps Div (Literal 2) (Literal 0))))
       let finalMachine = initialMachine {getMem = scopeFromList [("x", Tuple [IntVal 10, StringVal "hello", BoolVal True])]}
       reduceFully term initialMachine `shouldBe` (Left "Cannot divide by 0", finalMachine)
