@@ -1,5 +1,9 @@
+{-# LANGUAGE FlexibleInstances #-}
+{-# OPTIONS_GHC -Wno-orphans #-}
+
 module ParserCombinators (eof, oneof, opt, Parser, Result, rpt, rptSep, rptDropSep, satisfy, token, tokens, string, (<|>), alt, some, sepBy, sepBy1, between, skip, lookAhead, chainl1, chainr1, parse) where
 
+import Control.Applicative (Alternative (empty, (<|>)), asum)
 import Control.Monad.Except (catchError, throwError)
 import Control.Monad.State.Lazy (StateT, get, put, runStateT)
 import qualified Data.Functor
@@ -60,10 +64,6 @@ token t = assert
   ("expected %s, found %%s" % t << [])
   $ \t' -> if t == t' then Just t else Nothing
 
--- Choice operator: try first parser, if it fails try second
-(<|>) :: Parser t a -> Parser t a -> Parser t a
-p1 <|> p2 = catchError p1 (const p2)
-
 -- Alternative operator that preserves both types
 alt :: Parser t a -> Parser t b -> Parser t (Either a b)
 alt p1 p2 =
@@ -72,7 +72,7 @@ alt p1 p2 =
     (\_ -> Right <$> p2)
 
 oneof :: [Parser t a] -> Parser t a
-oneof = foldr (<|>) (throwError "no choices left in oneof")
+oneof = asum
 
 opt :: Parser t a -> Parser t (Maybe a)
 opt p =
