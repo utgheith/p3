@@ -39,4 +39,6 @@ data Term
   | PostDecrement String
   | BreakSignal
   | ContinueSignal
+  | Concur Term Term
+  | Atomic Term
   deriving (Eq, Show)
