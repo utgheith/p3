@@ -35,7 +35,7 @@ ident = satisfy $ \case
 -- Parse an identifier you can *bind* (not a reserved word).
 pBinder :: Parser String
 pBinder = do
-  x <- ident  
+  x <- ident
   if x `S.member` keywords
     then fail ("reserved word in binder: " <> x)
     else pure x
@@ -276,11 +276,14 @@ eqLevel = do
   try (symbol "=" *> fail "Use '==' for equality. Bindings must use 'let x = ...'") <|> pure ()
   -- Then parse the real comparison operators as usual:
   rest lhs
- where
-  rest lhs = (do op <- choice (map (symbol . fst) cmpOps)
-                 rhs <- addLevel
-                 rest (Bin (toOp op) lhs rhs))
-         <|> pure lhs
+  where
+    rest lhs =
+      ( do
+          op <- choice (map (symbol . fst) cmpOps)
+          rhs <- addLevel
+          rest (Bin (toOp op) lhs rhs)
+      )
+        <|> pure lhs
 
 ----------- prog ----------
 

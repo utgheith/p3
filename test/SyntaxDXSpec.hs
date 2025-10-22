@@ -1,9 +1,10 @@
 {-# LANGUAGE OverloadedStrings #-}
+
 module SyntaxDXSpec where
 
+import ParserCombinators (parseTerm)
+import Sprintf (renderError)
 import Test.Hspec
-import ParserCombinators (parseTerm)  
-import Sprintf (renderError)          
 
 spec :: Spec
 spec = do
@@ -25,7 +26,7 @@ spec = do
   describe "bare equals in expressions" $ do
     it "rejects lone '='" $ do
       case parseTerm "1 = 2" of
-        Left e  -> renderError e `shouldContain` "Use '==' for equality"
+        Left e -> renderError e `shouldContain` "Use '==' for equality"
         Right _ -> expectationFailure "expected an error"
 
   describe "keywords cannot be bound" $ do
