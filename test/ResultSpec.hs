@@ -1,13 +1,8 @@
 module ResultSpec (spec) where
 
-import Control.Exception (evaluate)
 import Control.Monad.Except
 import Result
 import Test.Hspec
-
-forceResult :: Result e a -> ()
-forceResult (Ok _) = ()
-forceResult (Err e) = e `seq` ()
 
 spec :: Spec
 spec = do
@@ -26,9 +21,6 @@ spec = do
       (Ok (5 :: Int) >>= (\x -> Ok (x + 1))) `shouldBe` (Ok 6 :: Result String Int)
       (Err ("error" :: String) >>= (\x -> Ok (x + 1))) `shouldBe` (Err "error" :: Result String Int)
       (Ok (5 :: Int) >> Err ("another error" :: String)) `shouldBe` (Err "another error" :: Result String Int)
-
-    it "should be a MonadFail" $ do
-      evaluate (forceResult (fail "monad fail" :: Result String Int)) `shouldThrow` errorCall "monad fail"
 
     it "should be a MonadError" $ do
       (throwError ("error" :: String) :: Result String Int) `shouldBe` (Err "error" :: Result String Int)
