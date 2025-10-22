@@ -173,8 +173,9 @@ reduce_ (While cond body) = do
   premise
     (reduce cond)
     (`While` body)
-    (\v -> do
-        selectValue v
+    ( \v -> do
+        selectValue
+          v
           ( do
               res <- reduce body
               case res of
@@ -202,7 +203,7 @@ reduce_ (BinaryOps op t1 t2) =
   premise
     (reduce t1)
     (\t1' -> BinaryOps op t1' t2)
-    (\v1 ->
+    ( \v1 ->
         premise
           (reduce t2)
           (BinaryOps op (Literal $ fromRight (-1) (valueToInt v1)))
@@ -262,10 +263,10 @@ reduce_ (TupleTerm elements) =
       premise
         (reduce x)
         (\term' -> TupleTerm $ term' : xs)
-        (\v1 ->
+        ( \v1 ->
             premise
               (reduce $ TupleTerm xs)
-              (\case
+              ( \case
                   TupleTerm xs' -> TupleTerm (x : xs')
                   _ -> error "TupleTerm recursion somehow returned a non TupleTerm continuation"
               )
