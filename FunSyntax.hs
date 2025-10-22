@@ -43,7 +43,7 @@ checkSymbol predicate = satisfy $ \case
 ----------
 
 term :: Parser Token Term
-term = binaryExp precedence
+term = [t | t <- binaryExp precedence, _ <- opt $ symbol ";"]
 
 ------------------- binary operators (left associative) -------------------
 
@@ -155,7 +155,7 @@ dictionary = do
   _ <- symbol "#"
   _ <- symbol "["
   _ <- symbol "]"
-  return $ NewDictionary
+  return NewDictionary
 
 parens :: Parser Token Term
 parens = [t | _ <- symbol "(", t <- term, _ <- symbol ")"]
@@ -171,7 +171,7 @@ funDef = do
   return $ Let (OnlyStr name) (Fun params body)
 
 varRef :: Parser Token Term
-varRef = (\name -> Var (OnlyStr name)) <$> ident
+varRef = Var . OnlyStr <$> ident
 
 block :: Parser Token Term
 block = do
@@ -253,12 +253,12 @@ tryCatch = do
   errorType <- ident
   catchBranch <- term
   case errorType of
-    ("Any") -> return $ Try tryBranch (Any) catchBranch
-    ("Arithmetic") -> return $ Try tryBranch (Specific Arithmetic) catchBranch
-    ("Type") -> return $ Try tryBranch (Specific Type) catchBranch
-    ("Input") -> return $ Try tryBranch (Specific Input) catchBranch
-    ("VariableNotFound") -> return $ Try tryBranch (Specific VariableNotFound) catchBranch
-    ("Arguments") -> return $ Try tryBranch (Specific Arguments) catchBranch
+    "Any" -> return $ Try tryBranch Any catchBranch
+    "Arithmetic" -> return $ Try tryBranch (Specific Arithmetic) catchBranch
+    "Type" -> return $ Try tryBranch (Specific Type) catchBranch
+    "Input" -> return $ Try tryBranch (Specific Input) catchBranch
+    "VariableNotFound" -> return $ Try tryBranch (Specific VariableNotFound) catchBranch
+    "Arguments" -> return $ Try tryBranch (Specific Arguments) catchBranch
     _ -> error "Invalid Error Type Provided"
 
 funCall :: Parser Token Term

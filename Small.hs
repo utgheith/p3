@@ -6,6 +6,7 @@
 
 module Small (reduceFully, Machine (..), Result (..), Error, Env) where
 
+import Control.Arrow ((>>>))
 import qualified Control.Monad.State as S
 import Data.Either
 import qualified Data.Map as M
@@ -123,21 +124,20 @@ reduce_ (Var x) = do
 reduce_ (Retrieve t1 t2) = do
   premise
     (reduce t1)
-    (\t1' -> Retrieve t1' t2)
-    ( \v1 ->
-        premise
+    (`Retrieve` t2)
+    ( getBracketValue
+        >>> premise
           (reduce t2)
-          (\t2' -> Retrieve t1 t2')
-          (\v2 -> getBracketValue v1 v2)
+          (Retrieve t1)
     )
 reduce_ (Let x t) = do
   case x of
     OnlyStr s ->
       premise
         (reduce t)
-        (\t' -> Let x t')
+        (Let x)
         (setVar s)
-    Bracket ref term -> return $ Continue $ Let (ref) (Merge (Var ref) term t)
+    Bracket ref term -> return $ Continue $ Let ref (Merge (Var ref) term t)
 reduce_ (Merge t1 t2 t3) = do
   premise
     (reduce t1)
@@ -146,13 +146,10 @@ reduce_ (Merge t1 t2 t3) = do
         premise
           (reduce t2)
           (\t2' -> Merge t1 t2' t3)
-          ( \v2 ->
-              premise
+          ( setBracketValue v1
+              >>> premise
                 (reduce t3)
-                (\t3' -> Merge t1 t2 t3')
-                ( \v3 ->
-                    setBracketValue v1 v2 v3
-                )
+                (Merge t1 t2)
           )
     )
 reduce_ (Seq t1 t2) = do
