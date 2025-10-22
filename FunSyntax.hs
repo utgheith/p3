@@ -275,7 +275,7 @@ prog = do
 
 ----------- parse ----------
 
-parse :: [Char] -> Parser Token a -> Result (a, [Token])
+parse :: [Char] -> Parser Token a -> Result String (a, [Token])
 parse input p =
   let tokens = lexer input
    in runStateT p tokens

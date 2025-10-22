@@ -3,6 +3,7 @@ module ParserCombinators (eof, oneof, opt, Parser, Result, rpt, rptSep, rptDropS
 import Control.Monad.Except (catchError, throwError)
 import Control.Monad.State.Lazy (StateT, get, put, runStateT)
 import qualified Data.Functor
+import Result (Result (..))
 import Sprintf ((%), (<<))
 
 -- Parse combinators:
@@ -27,13 +28,9 @@ import Sprintf ((%), (<<))
 --       use of 'catchError' to implement choice and optionality.
 --
 
------------ Result -----------
-
-type Result = Either String
-
 ----------- Parser -----------
 
-type Parser t = StateT [t] Result
+type Parser t = StateT [t] (Result String)
 
 -- Succeed if there are no more tokens, fail otherwise
 eof :: (Show t) => Parser t ()
@@ -187,7 +184,7 @@ string :: String -> Parser Char String
 string = tokens
 
 -- Run parser and ensure EOF
-parse :: (Show t) => Parser t a -> [t] -> Result a
+parse :: (Show t) => Parser t a -> [t] -> Result String a
 parse p ts = do
   (result, _) <- runStateT (p <* eof) ts
   return result
