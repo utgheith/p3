@@ -31,9 +31,9 @@ instance Monad (Result e) where
   (Err e) >>= _ = Err e
   (Ok a) >>= f = f a
 
-instance MonadFail (Result e) where
+instance Monoid e => MonadFail (Result e) where
   fail :: String -> Result e a
-  fail msg = Err (error msg)
+  fail _ = Err mempty
 
 instance MonadError e (Result e) where
   throwError :: e -> Result e a
