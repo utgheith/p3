@@ -270,7 +270,6 @@ spec = do
               t <- prog
               _ <- eof
               return t
-
         result `shouldBe` Ok (Try (Var (OnlyStr "x")) Any (Literal 1), [])
 
       it "parses try-catch arithmetic" $ do
