@@ -269,7 +269,7 @@ spec = do
               t <- prog
               _ <- eof
               return t
-        result `shouldBe` Right (Try (Var (OnlyStr "x")) (Any) (Literal 1), [])
+        result `shouldBe` Right (Try (Var (OnlyStr "x")) Any (Literal 1), [])
 
       it "parses try-catch arithmetic" $ do
         let result = parse "try x catch Arithmetic 1" $ do
