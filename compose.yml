@@ -1,0 +1,41 @@
+# Instructions:
+# `docker compose watch` (bring up the dev environment)
+# `docker compose exec dev stack test` (run "stack test" in the environment, replace with "bash" to get a shell)
+
+services:
+  dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    working_dir: /workspace
+
+    # Interactive terminal support
+    stdin_open: true
+    tty: true
+
+    # Keep container running for interactive development
+    command: tail -f /dev/null
+
+    # Volume mounts
+    volumes:
+      - stack-work:/workspace/.stack-work
+
+    # probably not really necessary
+    develop:
+      watch:
+        # Sync Haskell source files
+        - action: sync
+          path: .
+          target: /workspace
+
+        # Rebuild when dependencies change
+        - action: rebuild
+          path: ./stack.yaml
+
+        - action: rebuild
+          path: ./package.yaml
+
+# Build artifacts and cache
+volumes:
+  stack-work:

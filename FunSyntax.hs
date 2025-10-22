@@ -12,7 +12,7 @@ import Data.Maybe (fromMaybe)
 import qualified Data.Set as S
 import FunLexer (Token (Ident, Keyword, Num, StringLiteralLexed, Symbol), lexer)
 import ParserCombinators (Parser, Result, oneof, opt, rpt, rptDropSep, satisfy, token)
-import Term (BinaryOp (..), ErrorKind (..), ErrorKindOrAny (..), Term (..), UnaryOp (..))
+import Term (BinaryOp (..), ErrorKind (..), ErrorKindOrAny (..), Ref (..), Term (..), UnaryOp (..))
 
 -- succeed if the next token is the given symbol
 symbol :: String -> Parser Token ()
@@ -51,13 +51,13 @@ checkSymbol predicate = satisfy $ \case
 ----------
 
 term :: Parser Token Term
-term = binaryExp precedence
+term = [t | t <- binaryExp precedence, _ <- opt $ symbol ";"]
 
 ------------------- binary operators (left associative) -------------------
 
 -- precedence levels, from lowest to highest
 precedence :: [S.Set String]
-precedence = [S.fromList ["||"], S.fromList ["^"], S.fromList ["&&"], S.fromList ["==", "!="], S.fromList ["<", ">", "<=", ">="], S.fromList ["+", "-"], S.fromList ["*", "/", "%"], S.fromList ["**"]]
+precedence = map S.fromList [["||"], ["^"], ["&&"], ["==", "!="], ["<", ">", "<=", ">="], ["+", "-"], ["*", "/", "%"], ["**"]]
 
 binaryExp :: [S.Set String] -> Parser Token Term
 binaryExp [] = unaryExp
@@ -96,7 +96,7 @@ stringToBinaryOp _ = error "Unknown binary operator"
 ------------------- unary operators  -------------------
 
 assign :: Parser Token Term
-assign = [Let name expr | name <- ident, _ <- symbol "=", expr <- term]
+assign = [Let (OnlyStr name) expr | name <- ident, _ <- symbol "=", expr <- term]
 
 -- We can use monad comprehensions (GHC extension) to make parsers more concise
 minus :: Parser Token Term
@@ -163,7 +163,7 @@ dictionary = do
   _ <- symbol "#"
   _ <- symbol "["
   _ <- symbol "]"
-  return $ NewDictionary
+  return NewDictionary
 
 parens :: Parser Token Term
 parens = [t | _ <- symbol "(", t <- term, _ <- symbol ")"]
@@ -176,10 +176,10 @@ funDef = do
   params <- rptDropSep ident (symbol ",")
   _ <- symbol ")"
   body <- term
-  return $ Let name (Fun params body)
+  return $ Let (OnlyStr name) (Fun params body)
 
 varRef :: Parser Token Term
-varRef = Var <$> ident
+varRef = Var . OnlyStr <$> ident
 
 block :: Parser Token Term
 block = do
@@ -205,8 +205,8 @@ varDef = do
   name <- ident
   expr <- opt $ symbol "=" >> term
   return $ case expr of
-    Nothing -> Let name (Literal 0)
-    Just e -> Let name e
+    Nothing -> Let (OnlyStr name) (Literal 0)
+    Just e -> Let (OnlyStr name) e
 
 whileTerm :: Parser Token Term
 whileTerm = do
@@ -215,23 +215,26 @@ whileTerm = do
   body <- term
   return $ While cond body
 
+inBrackets :: Parser Token v -> Parser Token v
+inBrackets p = do
+  _ <- symbol "["
+  tok <- p
+  _ <- symbol "]"
+  return tok
+
 bracketSet :: Parser Token Term
 bracketSet = do
   name <- ident
-  _ <- symbol "["
-  index <- term
-  _ <- symbol "]"
+  index <- inBrackets term
   _ <- symbol "="
   value <- term
-  return $ SetBracket name index value
+  return $ Let (Bracket (OnlyStr name) index) value
 
 bracketAccess :: Parser Token Term
 bracketAccess = do
-  tupleName <- varRef
-  _ <- symbol "["
-  index <- term
-  _ <- symbol "]"
-  return $ AccessBracket tupleName index
+  name <- ident
+  index <- inBrackets term
+  return $ Var (Bracket (OnlyStr name) index)
 
 tryCatch :: Parser Token Term
 tryCatch = do
@@ -241,12 +244,12 @@ tryCatch = do
   errorType <- ident
   catchBranch <- term
   case errorType of
-    ("Any") -> return $ Try tryBranch (Any) catchBranch
-    ("Arithmetic") -> return $ Try tryBranch (Specific Arithmetic) catchBranch
-    ("Type") -> return $ Try tryBranch (Specific Type) catchBranch
-    ("Input") -> return $ Try tryBranch (Specific Input) catchBranch
-    ("VariableNotFound") -> return $ Try tryBranch (Specific VariableNotFound) catchBranch
-    ("Arguments") -> return $ Try tryBranch (Specific Arguments) catchBranch
+    "Any" -> return $ Try tryBranch Any catchBranch
+    "Arithmetic" -> return $ Try tryBranch (Specific Arithmetic) catchBranch
+    "Type" -> return $ Try tryBranch (Specific Type) catchBranch
+    "Input" -> return $ Try tryBranch (Specific Input) catchBranch
+    "VariableNotFound" -> return $ Try tryBranch (Specific VariableNotFound) catchBranch
+    "Arguments" -> return $ Try tryBranch (Specific Arguments) catchBranch
     _ -> error "Invalid Error Type Provided"
 
 funCall :: Parser Token Term
@@ -255,7 +258,7 @@ funCall = do
   _ <- symbol "("
   args <- rptDropSep term (symbol ",")
   _ <- symbol ")"
-  return $ ApplyFun (Var name) args
+  return $ ApplyFun (Var (OnlyStr name)) args
 
 printStmt :: Parser Token Term
 printStmt = do

@@ -1,4 +1,4 @@
-module Term (Term (..), BinaryOp (..), UnaryOp (..), ErrorKind (..), ErrorKindOrAny (..)) where
+module Term (Ref (..), Term (..), BinaryOp (..), UnaryOp (..), ErrorKind (..), ErrorKindOrAny (..)) where
 
 data BinaryOp = Add | Sub | Mul | Div | Mod | Lt | Gt | Lte | Gte | Eq | Neq | And | Or | Pow | Xor
   deriving (Eq, Show)
@@ -10,10 +10,12 @@ data ErrorKind = Arithmetic | Type | Input | VariableNotFound | Arguments derivi
 
 data ErrorKindOrAny = Specific ErrorKind | Any deriving (Eq, Show)
 
+data Ref = OnlyStr String | Bracket Ref Term deriving (Eq, Show)
+
 data Term
   = If Term Term Term
   | Try Term ErrorKindOrAny Term
-  | Let String Term
+  | Let Ref Term
   | Literal Integer
   | StringLiteral String
   | Read String
@@ -21,14 +23,14 @@ data Term
   | Skip
   | BinaryOps BinaryOp Term Term
   | UnaryOps UnaryOp Term
-  | Var String
+  | Var Ref
   | While Term Term
   | Write Term
   | BoolLit Bool
   | TupleTerm [Term]
   | NewDictionary
-  | AccessBracket Term Term
-  | SetBracket String Term Term
+  | Retrieve Term Term
+  | Merge Term Term Term -- current value, index, value
   | Fun [String] Term
   | ApplyFun Term [Term]
   | PreIncrement String

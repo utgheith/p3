@@ -1,8 +1,14 @@
+{-# LANGUAGE FlexibleInstances #-}
+{-# OPTIONS_GHC -Wno-orphans #-}
+
 module ParserCombinators (eof, oneof, opt, Parser, Result, rpt, rptSep, rptDropSep, satisfy, token, tokens, string, (<|>), alt, some, sepBy, sepBy1, between, skip, lookAhead, chainl1, chainr1, parse) where
 
+import Control.Applicative (Alternative (empty, (<|>)), asum)
 import Control.Monad.Except (catchError, throwError)
 import Control.Monad.State.Lazy (StateT, get, put, runStateT)
 import qualified Data.Functor
+import qualified GHC.Base
+import Sprintf ((%), (<<))
 
 -- Parse combinators:
 --
@@ -40,10 +46,10 @@ eof = do
   ts <- get
   case ts of
     [] -> return ()
-    _ -> throwError $ "expected eof but found: " ++ show ts
+    _ -> throwError $ "expected eof but found: %s" % ts << []
 
-satisfy :: (Show t) => (t -> Maybe a) -> Parser t a
-satisfy p = do
+assert :: (Show t) => [Char] -> (t -> Maybe a) -> Parser t a
+assert msg p = do
   ts <- get
   case ts of
     [] -> throwError "out of tokens" -- need better error reporting
@@ -52,23 +58,25 @@ satisfy p = do
         Just a -> do
           put rest
           return a
-        Nothing -> throwError $ "failed to satisfy predicate at " ++ show (t : rest)
+        Nothing -> throwError $ msg % (t : rest) << []
+
+satisfy :: (Show t) => (t -> Maybe a) -> Parser t a
+satisfy = assert "failed to satisfy predicate at %s"
 
 token :: (Show t, Eq t) => t -> Parser t t
-token t = do
-  ts <- get
-  case ts of
-    [] -> throwError "out of tokens"
-    (t' : rest) ->
-      if t == t'
-        then do
-          put rest
-          return t
-        else throwError ("expected " ++ show t ++ ", found " ++ show (t' : rest))
+token t = assert
+  ("expected %s, found %%s" % t << [])
+  $ \t' -> if t == t' then Just t else Nothing
 
--- Choice operator: try first parser, if it fails try second
-(<|>) :: Parser t a -> Parser t a -> Parser t a
-p1 <|> p2 = catchError p1 (const p2)
+-- this defines the following instance
+instance Alternative Result where
+  empty = Left "no rule matched"
+  (Right a) <|> _ = Right a -- precedence to left alternative
+  _ <|> (Right a) = Right a
+  _ <|> _ = empty
+
+-- need this to infer instance of Alternative for Parser t
+instance GHC.Base.MonadPlus Result
 
 -- Alternative operator that preserves both types
 alt :: Parser t a -> Parser t b -> Parser t (Either a b)
@@ -78,7 +86,7 @@ alt p1 p2 =
     (\_ -> Right <$> p2)
 
 oneof :: [Parser t a] -> Parser t a
-oneof = foldr (<|>) (throwError "no choices left in oneof")
+oneof = asum
 
 opt :: Parser t a -> Parser t (Maybe a)
 opt p =
