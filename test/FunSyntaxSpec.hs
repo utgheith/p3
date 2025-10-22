@@ -135,7 +135,6 @@ spec = do
       it "parses try-catch any" $ do
         parseString "try x catch Any 1" `shouldBe` Right (Try (Var (OnlyStr "x")) Any (Literal 1), [])
 
-
       it "parses try-catch arithmetic" $ do
         parseString "try x catch Arithmetic 1" `shouldBe` Right (Try (Var (OnlyStr "x")) (Specific Arithmetic) (Literal 1), [])
 
