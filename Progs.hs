@@ -9,7 +9,7 @@ infixl 1 ~
 
 infixl 9 <=>
 
-(<=>) :: Ref -> Term -> Term
+(<=>) :: Term -> Term -> Term
 (<=>) = Let
 
 prog :: Term

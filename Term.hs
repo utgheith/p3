@@ -2,7 +2,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
 
-module Term (Ref (..), Term (..), TermF (..), BinaryOp (..), UnaryOp (..), ErrorKind (..), ErrorKindOrAny (..)) where
+module Term (Term (..), TermF (..), BinaryOp (..), UnaryOp (..), ErrorKind (..), ErrorKindOrAny (..)) where
 
 import Data.Functor.Foldable.TH (makeBaseFunctor)
 
@@ -16,12 +16,10 @@ data ErrorKind = Arithmetic | Type | Input | VariableNotFound | Arguments derivi
 
 data ErrorKindOrAny = Specific ErrorKind | Any deriving (Eq, Show)
 
-data Ref = OnlyStr String | Bracket Ref Term deriving (Eq, Show)
-
 data Term
   = If Term Term Term
   | Try Term ErrorKindOrAny Term
-  | Let Ref Term
+  | Let Term Term
   | Literal Integer
   | StringLiteral String
   | Read String
@@ -29,7 +27,9 @@ data Term
   | Skip
   | BinaryOps BinaryOp Term Term
   | UnaryOps UnaryOp Term
-  | Var Ref
+  | Var Term
+  | OnlyStr String
+  | Bracket Term Term
   | While Term Term
   | Write Term
   | BoolLit Bool

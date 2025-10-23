@@ -11,6 +11,8 @@ on:
 jobs:
   ormolu:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v2
       - uses: haskell-actions/run-ormolu@v14

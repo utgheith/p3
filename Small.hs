@@ -11,7 +11,7 @@ import qualified Control.Monad.State as S
 import Data.Either
 import qualified Data.Map as M
 import Debug.Trace (trace)
-import Term (BinaryOp (..), ErrorKind (..), ErrorKindOrAny (..), Ref (..), Term (..), UnaryOp (..))
+import Term (BinaryOp (..), ErrorKind (..), ErrorKindOrAny (..), Term (..), UnaryOp (..))
 import Value (Value (..), valueToInt, valueToTuple)
 
 ----- The Machine type class -----
@@ -118,6 +118,11 @@ reduce_ (Var x) = do
   case x of
     OnlyStr s -> getVar s
     Bracket ref term -> return $ Continue (Retrieve (Var ref) term)
+    _ -> return $ Sad (Type, "Operand of Var must be a reference")
+reduce_ (OnlyStr s) =
+  return $ Continue $ Var (OnlyStr s)
+reduce_ (Bracket t1 t2) =
+  return $ Continue $ Var (Bracket t1 t2)
 reduce_ (Retrieve t1 t2) = do
   premise
     (reduce t1)
@@ -135,6 +140,7 @@ reduce_ (Let x t) = do
         (Let x)
         (setVar s)
     Bracket ref term -> return $ Continue $ Let ref (Merge (Var ref) term t)
+    _ -> return $ Sad (Type, "Left-hand side of Let must be reference")
 reduce_ (Merge t1 t2 t3) = do
   premise
     (reduce t1)
