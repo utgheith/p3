@@ -18,34 +18,34 @@ data ErrorKindOrAny = Specific ErrorKind | Any deriving (Eq, Show)
 data TermPosition = Both | RValue deriving (Eq, Show)
 
 data TermG (p :: TermPosition) where
-  If :: TermG 'RValue -> TermG 'RValue -> TermG 'RValue -> TermG 'RValue
-  Try :: TermG 'RValue -> ErrorKindOrAny -> TermG 'RValue -> TermG 'RValue
-  Let :: TermG 'Both -> TermG 'RValue -> TermG 'RValue
-  Literal :: Integer -> TermG 'RValue
-  StringLiteral :: String -> TermG 'RValue
-  Read :: String -> TermG 'RValue
-  Seq :: TermG 'RValue -> TermG 'RValue -> TermG 'RValue
-  Skip :: TermG 'RValue
-  BinaryOps :: BinaryOp -> TermG 'RValue -> TermG 'RValue -> TermG 'RValue
-  UnaryOps :: UnaryOp -> TermG 'RValue -> TermG 'RValue
-  Var :: TermG 'Both -> TermG 'RValue
-  While :: TermG 'RValue -> TermG 'RValue -> TermG 'RValue
-  Write :: TermG 'RValue -> TermG 'RValue
-  BoolLit :: Bool -> TermG 'RValue
-  TupleTerm :: [TermG 'RValue] -> TermG 'RValue
-  NewDictionary :: TermG 'RValue
-  Retrieve :: TermG 'RValue -> TermG 'RValue -> TermG 'RValue
-  Merge :: TermG 'RValue -> TermG 'RValue -> TermG 'RValue -> TermG 'RValue
-  Fun :: [String] -> TermG 'RValue -> TermG 'RValue
-  ApplyFun :: TermG 'RValue -> [TermG 'RValue] -> TermG 'RValue
-  PreIncrement :: String -> TermG 'RValue
-  PreDecrement :: String -> TermG 'RValue
-  PostIncrement :: String -> TermG 'RValue
-  PostDecrement :: String -> TermG 'RValue
-  BreakSignal :: TermG 'RValue
-  ContinueSignal :: TermG 'RValue
-  OnlyStr :: String -> TermG 'Both
-  Bracket :: TermG 'Both -> TermG 'RValue -> TermG 'Both
+  If :: Term -> Term -> Term -> Term
+  Try :: Term -> ErrorKindOrAny -> Term -> Term
+  Let :: Ref -> Term -> Term
+  Literal :: Integer -> Term
+  StringLiteral :: String -> Term
+  Read :: String -> Term
+  Seq :: Term -> Term -> Term
+  Skip :: Term
+  BinaryOps :: BinaryOp -> Term -> Term -> Term
+  UnaryOps :: UnaryOp -> Term -> Term
+  Var :: Ref -> Term
+  While :: Term -> Term -> Term
+  Write :: Term -> Term
+  BoolLit :: Bool -> Term
+  TupleTerm :: [Term] -> Term
+  NewDictionary :: Term
+  Retrieve :: Term -> Term -> Term
+  Merge :: Term -> Term -> Term -> Term
+  Fun :: [String] -> Term -> Term
+  ApplyFun :: Term -> [Term] -> Term
+  PreIncrement :: String -> Term
+  PreDecrement :: String -> Term
+  PostIncrement :: String -> Term
+  PostDecrement :: String -> Term
+  BreakSignal :: Term
+  ContinueSignal :: Term
+  OnlyStr :: String -> Ref
+  Bracket :: Ref -> Term -> Ref
 
 deriving instance Show (TermG p)
 

@@ -11,7 +11,7 @@ import qualified Control.Monad.State as S
 import Data.Either
 import qualified Data.Map as M
 import Debug.Trace (trace)
-import Term (BinaryOp (..), ErrorKind (..), ErrorKindOrAny (..), Term, UnaryOp (..))
+import Term (BinaryOp (..), ErrorKind (..), ErrorKindOrAny (..), Term, TermG (..), UnaryOp (..))
 import Value (Value (..), valueToInt, valueToTuple)
 
 ----- The Machine type class -----
