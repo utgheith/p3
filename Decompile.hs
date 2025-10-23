@@ -27,8 +27,12 @@ decompile = cata go
       sprintf "(%s %s %s)" [t1, show op, t2]
     go (UnaryOpsF op t) =
       sprintf "%s(%s)" [show op, t]
-    go (VarF _) =
-      sprintf "Var %s" ["<decompile: Ref decompilation not implemented>"]
+    go (VarF r) =
+      sprintf "Var %s" [r]
+    go (OnlyStrF s) =
+      sprintf "OnlyStr %s" [s]
+    go (BracketF t1 t2) =
+      sprintf "%s[%s]" [t1, t2]
     go (WhileF cond body) =
       sprintf "While (%s) (%s)" [cond, body]
     go (WriteF t) =
@@ -59,5 +63,5 @@ decompile = cata go
       "BreakSignal"
     go ContinueSignalF =
       "ContinueSignal"
-    go (LetF _ t) =
-      sprintf "Let (%s) (%s)" ["<decompile: Ref decompilation not implemented>", t]
+    go (LetF r t) =
+      sprintf "Let (%s) (%s)" [r, t]
