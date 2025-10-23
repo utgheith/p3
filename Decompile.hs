@@ -32,7 +32,7 @@ decompile = cata go
     go (OnlyStrF s) =
       sprintf "OnlyStr %s" [s]
     go (BracketF t1 t2) =
-      sprintf "%s[%s]" [t1, t2]
+      sprintf "Bracket (%s) (%s)" [t1, t2]
     go (WhileF cond body) =
       sprintf "While (%s) (%s)" [cond, body]
     go (WriteF t) =
