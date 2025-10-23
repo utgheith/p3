@@ -71,7 +71,7 @@ class Machine m where
 
   -- Access/Manage Bracket Values
   getBracketValue :: V m -> V m -> Env m
-  setBracketValue :: String -> V m -> V m -> Env m
+  setBracketValue :: V m -> V m -> V m -> Env m
 
   -- Control flow - selectValue uses boolean semantics
   selectValue :: V m -> Env m -> Env m -> Env m
@@ -114,13 +114,47 @@ reduce_ (Literal n) =
   return $ Happy $ IntVal n
 reduce_ (StringLiteral s) =
   return $ Happy $ StringVal s
-reduce_ (Var x) =
-  getVar x
-reduce_ (Let x t) = do
+reduce_ (Var x) = do
+  case x of
+    OnlyStr s -> getVar s
+    Bracket ref term -> return $ Continue (Retrieve (Var ref) term)
+    _ -> return $ Sad (Type, "Operand of Var must be a reference")
+reduce_ (OnlyStr s) =
+  return $ Continue $ Var (OnlyStr s)
+reduce_ (Bracket t1 t2) =
+  return $ Continue $ Var (Bracket t1 t2)
+reduce_ (Retrieve t1 t2) = do
   premise
-    (reduce t)
-    (Let x)
-    (setVar x)
+    (reduce t1)
+    (`Retrieve` t2)
+    ( getBracketValue
+        >>> premise
+          (reduce t2)
+          (Retrieve t1)
+    )
+reduce_ (Let x t) = do
+  case x of
+    OnlyStr s ->
+      premise
+        (reduce t)
+        (Let x)
+        (setVar s)
+    Bracket ref term -> return $ Continue $ Let ref (Merge (Var ref) term t)
+    _ -> return $ Sad (Type, "Left-hand side of Let must be reference")
+reduce_ (Merge t1 t2 t3) = do
+  premise
+    (reduce t1)
+    (\t1' -> Merge t1' t2 t3)
+    ( \v1 ->
+        premise
+          (reduce t2)
+          (\t2' -> Merge t1 t2' t3)
+          ( setBracketValue v1
+              >>> premise
+                (reduce t3)
+                (Merge t1 t2)
+          )
+    )
 reduce_ (Seq t1 t2) = do
   res1 <- reduce t1 -- run t1 normally
   case res1 of
@@ -247,23 +281,6 @@ reduce_ (TupleTerm elements) =
               (\v2 -> return $ Happy $ Tuple $ v1 : fromRight [] (valueToTuple v2))
         )
     [] -> return $ Happy $ Tuple []
-reduce_ (AccessBracket t i) =
-  premise
-    (reduce t)
-    (`AccessBracket` i)
-    (getBracketValue >>> premise (reduce i) (AccessBracket t)) -- (f >>> g) == (g . f) == (\x -> g (f x))
-reduce_ (SetBracket name terms val) =
-  case terms of
-    TupleTerm tupleTerm ->
-      premise
-        (reduce $ TupleTerm tupleTerm)
-        (\terms' -> SetBracket name terms' val)
-        ( setBracketValue name
-            >>> premise
-              (reduce val)
-              (SetBracket name terms)
-        )
-    _ -> error "SetBracket should only have tuple term as second argument"
 reduce_ NewDictionary =
   return $ Happy $ Dictionary M.empty
 

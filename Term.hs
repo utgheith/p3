@@ -13,7 +13,7 @@ data ErrorKindOrAny = Specific ErrorKind | Any deriving (Eq, Show)
 data Term
   = If Term Term Term
   | Try Term ErrorKindOrAny Term
-  | Let String Term
+  | Let Term Term
   | Literal Integer
   | StringLiteral String
   | Read String
@@ -21,14 +21,16 @@ data Term
   | Skip
   | BinaryOps BinaryOp Term Term
   | UnaryOps UnaryOp Term
-  | Var String
+  | Var Term
+  | OnlyStr String
+  | Bracket Term Term
   | While Term Term
   | Write Term
   | BoolLit Bool
   | TupleTerm [Term]
   | NewDictionary
-  | AccessBracket Term Term
-  | SetBracket String Term Term
+  | Retrieve Term Term
+  | Merge Term Term Term -- current value, index, value
   | Fun [String] Term
   | ApplyFun Term [Term]
   | PreIncrement String
