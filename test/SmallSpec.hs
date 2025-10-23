@@ -787,7 +787,7 @@ spec = do
       reduceFully term initialMachine `shouldBe` (Right (IntVal 2), initialMachine)
 
     it "reduces ternary operator with variable access" $ do
-      let term = Seq (Let "x" (Literal 10)) (If (BinaryOps Gt (Var "x") (Literal 5)) (Var "x") (Literal 0))
+      let term = Seq (Let (OnlyStr "x") (Literal 10)) (If (BinaryOps Gt (Var (OnlyStr "x")) (Literal 5)) (Var (OnlyStr "x")) (Literal 0))
       let finalMachine = initialMachine {getMem = scopeFromList [("x", IntVal 10)]}
       reduceFully term initialMachine `shouldBe` (Right (IntVal 10), finalMachine)
 

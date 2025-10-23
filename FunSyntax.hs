@@ -49,25 +49,29 @@ blockToSeq (t : ts) = Seq t (blockToSeq ts)
 ----------
 
 term :: Parser Token Term
-term = [t | t <- ternaryExp <|> refassign <|> binaryExp precedence, _ <- opt $ symbol ";"]
+term = [t | t <- ternaryExp, _ <- opt $ symbol ";"]
 
 ------------------- ternary operator --------------------------
+
 -- Ternary operator has lower precedence than binary operators
 -- Right-associative: a ? b : c ? d : e parses as a ? b : (c ? d : e)
 ternaryExp :: Parser Token Term
 ternaryExp =
   [ If cond trueBranch falseBranch
-    | cond <- binaryExp precedence,
+    | cond <- binaryExp precedence, -- Only allow binary expressions in condition
       _ <- symbol "?",
-      trueBranch <- binaryExp precedence, -- Only allow binary expressions in true branch
+      trueBranch <- refassign, -- Only allow binary expressions and assignments in true branch
       _ <- symbol ":",
       falseBranch <- ternaryExp -- Allow ternary in false branch for right-associativity
   ]
+    <|> refassign
 
 ------------------- assignment --------------------------
 
 refassign :: Parser Token Term
-refassign = [Let ref expr | ref <- reference, _ <- symbol "=", expr <- term]
+refassign =
+  [Let ref expr | ref <- reference, _ <- symbol "=", expr <- term]
+    <|> binaryExp precedence
 
 reference :: Parser Token Term
 reference = do
