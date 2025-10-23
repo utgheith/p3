@@ -38,12 +38,18 @@ checkSymbol predicate = satisfy $ \case
   Symbol s | predicate s -> Just s
   _ -> Nothing
 
+-- convert list of statements to seq chain
+blockToSeq :: [Term] -> Term
+blockToSeq [] = Skip
+blockToSeq [t] = t
+blockToSeq (t : ts) = Seq t (blockToSeq ts)
+
 ----------
 -- term --
 ----------
 
 term :: Parser Token Term
-term = refassign <|> binaryExp precedence
+term = [t | t <- refassign <|> binaryExp precedence, _ <- opt $ symbol ";"]
 
 ------------------- assignment --------------------------
 refassign :: Parser Token Term
@@ -80,7 +86,7 @@ binaryExp (ops : rest) = do
   -- then combine them left to right
   rhss <- rpt $ do
     op <- checkSymbol (`S.member` ops)
-    rhs <- term
+    rhs <- binaryExp rest
     return (op, rhs)
 
   -- combine results left to right
@@ -114,144 +120,116 @@ bitnot :: Parser Token Term
 bitnot = [UnaryOps BitNot e | _ <- symbol "~", e <- unaryExp]
 
 preIncrement :: Parser Token Term
-preIncrement = do
-  _ <- symbol "++"
-  var <- ident
-  return $ PreIncrement var
+preIncrement = [PreIncrement var | _ <- symbol "++", var <- ident]
 
 preDecrement :: Parser Token Term
-preDecrement = do
-  _ <- symbol "--"
-  var <- ident
-  return $ PreDecrement var
+preDecrement = [PreDecrement var | _ <- symbol "--", var <- ident]
 
 postIncrement :: Parser Token Term
-postIncrement = do
-  var <- ident
-  _ <- symbol "++"
-  return $ PostIncrement var
+postIncrement = [PostIncrement var | var <- ident, _ <- symbol "++"]
 
 postDecrement :: Parser Token Term
-postDecrement = do
-  var <- ident
-  _ <- symbol "--"
-  return $ PostDecrement var
+postDecrement = [PostDecrement var | var <- ident, _ <- symbol "--"]
 
 num :: Parser Token Term
-num = do
-  n <- satisfy $ \case
-    Num n -> Just n
-    _ -> Nothing
-  return $ Literal n
+num =
+  [ Literal n
+    | n <- satisfy $ \case
+        Num n -> Just n
+        _ -> Nothing
+  ]
 
 string :: Parser Token Term
-string = do
-  s <- satisfy $ \case
-    StringLiteralLexed s -> Just s
-    _ -> Nothing
-  return $ StringLiteral s
+string =
+  [ StringLiteral s
+    | s <- satisfy $ \case
+        StringLiteralLexed s -> Just s
+        _ -> Nothing
+  ]
 
 bool :: Parser Token Term
-bool = do
-  b <- satisfy $ \case
-    Keyword "true" -> Just True
-    Keyword "false" -> Just False
-    _ -> Nothing
-  return $ BoolLit b
+bool = [BoolLit b | b <- oneof [keyword "true" >> return True, keyword "false" >> return False]]
 
 tuple :: Parser Token Term
-tuple = do
-  _ <- symbol "["
-  elems <- rptDropSep term (symbol ",")
-  _ <- symbol "]"
-  return $ TupleTerm elems
+tuple = [TupleTerm elems | _ <- symbol "[", elems <- rptDropSep term (symbol ","), _ <- symbol "]"]
 
 dictionary :: Parser Token Term
-dictionary = do
-  _ <- symbol "#"
-  _ <- symbol "["
-  _ <- symbol "]"
-  return $ NewDictionary
+dictionary = [NewDictionary | _ <- symbol "#", _ <- symbol "[", _ <- symbol "]"]
 
 parens :: Parser Token Term
 parens = [t | _ <- symbol "(", t <- term, _ <- symbol ")"]
 
 funDef :: Parser Token Term
-funDef = do
-  _ <- keyword "fun"
-  name <- ident
-  _ <- symbol "("
-  params <- rptDropSep ident (symbol ",")
-  _ <- symbol ")"
-  body <- term
-  return $ Let (OnlyStr name) (Fun params body)
+funDef =
+  [ Let (OnlyStr name) (Fun params body)
+    | _ <- keyword "fun",
+      name <- ident,
+      _ <- symbol "(",
+      params <- rptDropSep ident (symbol ","),
+      _ <- symbol ")",
+      body <- term
+  ]
 
 varRef :: Parser Token Term
 varRef = Var <$> reference
 
 block :: Parser Token Term
-block = do
-  _ <- token $ Symbol "{"
-  ts <- rpt term
-  _ <- token $ Symbol "}"
-  return $ case ts of
-    [] -> Skip
-    [t] -> t
-    _ -> foldl1 Seq ts
+block = [blockToSeq ts | _ <- token $ Symbol "{", ts <- rpt term, _ <- token $ Symbol "}"]
 
 ifExpr :: Parser Token Term
-ifExpr = do
-  _ <- keyword "if"
-  cond <- term
-  thenTerm <- term
-  elseTerm <- opt $ keyword "else" >> term
-  return $ If cond thenTerm (fromMaybe Skip elseTerm)
+ifExpr =
+  [ If cond thenTerm (fromMaybe Skip elseTerm)
+    | _ <- keyword "if",
+      cond <- term,
+      thenTerm <- term,
+      elseTerm <- opt $ keyword "else" >> term
+  ]
 
 varDef :: Parser Token Term
-varDef = do
-  _ <- keyword "var"
-  name <- ident
-  expr <- opt $ symbol "=" >> term
-  return $ case expr of
-    Nothing -> Let (OnlyStr name) (Literal 0)
-    Just e -> Let (OnlyStr name) e
+varDef =
+  [ Let (OnlyStr name) (fromMaybe (Literal 0) expr)
+    | _ <- keyword "var",
+      name <- ident,
+      expr <- opt $ symbol "=" >> term
+  ]
 
 whileTerm :: Parser Token Term
-whileTerm = do
-  _ <- keyword "while"
-  cond <- term
-  body <- term
-  return $ While cond body
+whileTerm = [While cond body | _ <- keyword "while", cond <- term, body <- term]
 
 tryCatch :: Parser Token Term
-tryCatch = do
-  _ <- keyword "try"
-  tryBranch <- term
-  _ <- keyword "catch"
-  errorType <- ident
-  catchBranch <- term
-  case errorType of
-    ("Any") -> return $ Try tryBranch (Any) catchBranch
-    ("Arithmetic") -> return $ Try tryBranch (Specific Arithmetic) catchBranch
-    ("Type") -> return $ Try tryBranch (Specific Type) catchBranch
-    ("Input") -> return $ Try tryBranch (Specific Input) catchBranch
-    ("VariableNotFound") -> return $ Try tryBranch (Specific VariableNotFound) catchBranch
-    ("Arguments") -> return $ Try tryBranch (Specific Arguments) catchBranch
-    _ -> error "Invalid Error Type Provided"
+tryCatch =
+  [ Try tryBranch (errorType err) catchBranch
+    | _ <- keyword "try",
+      tryBranch <- term,
+      _ <- keyword "catch",
+      err <- ident,
+      catchBranch <- term
+  ]
+  where
+    errorType err = case err of
+      "Any" -> Any
+      "Arithmetic" -> Specific Arithmetic
+      "Type" -> Specific Type
+      "Input" -> Specific Input
+      "VariableNotFound" -> Specific VariableNotFound
+      "Arguments" -> Specific Arguments
+      _ -> error "Invalid Error Type Provided"
 
 funCall :: Parser Token Term
-funCall = do
-  name <- ident
-  _ <- symbol "("
-  args <- rptDropSep term (symbol ",")
-  _ <- symbol ")"
-  return $ ApplyFun (Var (OnlyStr name)) args
+funCall =
+  [ ApplyFun (Var (OnlyStr name)) args
+    | name <- ident,
+      _ <- symbol "(",
+      args <- rptDropSep term (symbol ","),
+      _ <- symbol ")"
+  ]
 
 printStmt :: Parser Token Term
-printStmt = do
-  _ <- keyword "print"
-  expr <- term
-  return $ Write expr
+printStmt =
+  [ Write expr
+    | _ <- keyword "print",
+      expr <- term
+  ]
 
 unaryExp :: Parser Token Term
 unaryExp = oneof [ifExpr, block, funDef, minus, bitnot, preIncrement, preDecrement, num, string, bool, tuple, dictionary, tryCatch, parens, varDef, funCall, postIncrement, postDecrement, varRef, whileTerm, printStmt]
@@ -259,14 +237,7 @@ unaryExp = oneof [ifExpr, block, funDef, minus, bitnot, preIncrement, preDecreme
 ----------- prog ----------
 
 prog :: Parser Token Term
-prog = do
-  ts <- rpt term
-  return $ case ts of
-    [] -> Skip
-    [t] -> t
-    _ -> foldl1 Seq ts
-
--- since we don't have a block constructor, this was a temporary fix
+prog = blockToSeq <$> rpt term
 
 ----------- parse ----------
 
