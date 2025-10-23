@@ -160,7 +160,7 @@ spec = do
         Left _ -> return ()
         Right _ -> expectationFailure "Expected failure but got success"
     it "succeeds on empty sequence" $ do
-      let p = tokens ([] :: [Char])
+      let p = tokens ""
       runStateT p ['a', 'b'] `shouldBe` Right ([], ['a', 'b'])
 
   describe "string" $ do

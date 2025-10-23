@@ -259,7 +259,7 @@ prog = blockToSeq <$> rpt term
 
 ----------- parse ----------
 
-parse :: [Char] -> Parser Token a -> Result (a, [Token])
+parse :: String -> Parser Token a -> Result (a, [Token])
 parse input p =
   let tokens = lexer input
    in runStateT p tokens
