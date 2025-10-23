@@ -12,7 +12,7 @@ import Data.Maybe (fromMaybe)
 import qualified Data.Set as S
 import FunLexer (Token (Ident, Keyword, Num, StringLiteralLexed, Symbol), lexer)
 import ParserCombinators (Parser, Result, oneof, opt, rpt, rptDropSep, satisfy, token, (<|>))
-import Term (BinaryOp (..), ErrorKind (..), ErrorKindOrAny (..), Ref (..), Term (..), UnaryOp (..))
+import Term (BinaryOp (..), ErrorKind (..), ErrorKindOrAny (..), Term (..), UnaryOp (..))
 
 -- succeed if the next token is the given symbol
 symbol :: String -> Parser Token ()
@@ -55,7 +55,7 @@ term = [t | t <- refassign <|> binaryExp precedence, _ <- opt $ symbol ";"]
 refassign :: Parser Token Term
 refassign = [Let ref expr | ref <- reference, _ <- symbol "=", expr <- term]
 
-reference :: Parser Token Ref
+reference :: Parser Token Term
 reference = do
   -- very similar to chainl1
   x <- OnlyStr <$> ident
