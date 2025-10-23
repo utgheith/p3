@@ -833,7 +833,7 @@ spec = do
       -- This represents: true ? 1 : (false ? 2 : 3) which should equal 1
       let chainedTernary = If (BoolLit True) (Literal 1) (If (BoolLit False) (Literal 2) (Literal 3))
       reduceFully chainedTernary initialMachine `shouldBe` (Right (IntVal 1), initialMachine)
-      
+
     it "handles invalid term in bracket lookup" $ do
       let term = Seq (Let (OnlyStr "x") (TupleTerm [Literal 10, StringLiteral "hello", BoolLit True])) (Var (Bracket (OnlyStr "x") (BinaryOps Div (Literal 2) (Literal 0))))
       let finalMachine = initialMachine {getMem = scopeFromList [("x", Tuple [IntVal 10, StringVal "hello", BoolVal True])]}
