@@ -10,7 +10,7 @@ import qualified Data.Map as M
 import qualified Progs
 import Scope (Scope (..), emptyScope, getAllBindings, insertScope, lookupScope)
 import Small (Env, Error, Machine (..), Result (..), reduceFully)
-import Term (ErrorKind (..), Ref, Term, TermG)
+import Term (ErrorKind (..), Ref, Term, TermG (..))
 import Value (Value (..))
 
 data Simulator = Simulator Scope [Value] [Value] deriving (Eq, Show)
