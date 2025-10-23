@@ -227,6 +227,17 @@ funCall =
       _ <- symbol ")"
   ]
 
+methodCall :: Parser Token Term
+methodCall =
+  [ ApplyFun (Var (OnlyStr name)) (Var (OnlyStr caller) : args)
+    | caller <- ident,
+      _ <- symbol ".",
+      name <- ident,
+      _ <- symbol "(",
+      args <- rptDropSep term (symbol ","),
+      _ <- symbol ")"
+  ]
+
 printStmt :: Parser Token Term
 printStmt =
   [ Write expr
@@ -235,7 +246,7 @@ printStmt =
   ]
 
 unaryExp :: Parser Token Term
-unaryExp = oneof [assign, ifExpr, block, funDef, minus, bitnot, preIncrement, preDecrement, num, string, bool, tuple, dictionary, bracketSet, bracketAccess, tryCatch, parens, varDef, funCall, postIncrement, postDecrement, varRef, whileTerm, printStmt]
+unaryExp = oneof [assign, ifExpr, block, funDef, minus, bitnot, preIncrement, preDecrement, num, string, bool, tuple, dictionary, bracketSet, bracketAccess, tryCatch, parens, varDef, funCall, methodCall, postIncrement, postDecrement, varRef, whileTerm, printStmt]
 
 ----------- prog ----------
 
