@@ -95,7 +95,7 @@ precedence :: [S.Set String]
 precedence = map S.fromList [["||"], ["^"], ["&&"], ["==", "!="], ["<", ">", "<=", ">="], ["+", "-"], ["*", "/", "%"], ["**"]]
 
 binaryExp :: [S.Set String] -> Parser Token Term
-binaryExp [] = unaryExp
+binaryExp [] = methodCall
 binaryExp (ops : rest) = do
   -- lhs
   lhs <- binaryExp rest
@@ -127,6 +127,20 @@ stringToBinaryOp "||" = Or
 stringToBinaryOp "**" = Pow
 stringToBinaryOp "^" = Xor
 stringToBinaryOp _ = error "Unknown binary operator"
+
+------------------- method calls -----------------------
+
+methodCall :: Parser Token Term
+methodCall =
+  [ ApplyFun (Var (OnlyStr name)) (caller : args)
+    | caller <- varRef <|> parens,
+      _ <- symbol ".",
+      name <- ident,
+      _ <- symbol "(",
+      args <- rptDropSep term (symbol ","),
+      _ <- symbol ")"
+  ]
+    <|> unaryExp
 
 ------------------- unary operators  -------------------
 
@@ -242,17 +256,6 @@ funCall =
       _ <- symbol ")"
   ]
 
-methodCall :: Parser Token Term
-methodCall =
-  [ ApplyFun (Var (OnlyStr name)) (Var (OnlyStr caller) : args)
-    | caller <- ident,
-      _ <- symbol ".",
-      name <- ident,
-      _ <- symbol "(",
-      args <- rptDropSep term (symbol ","),
-      _ <- symbol ")"
-  ]
-
 printStmt :: Parser Token Term
 printStmt =
   [ Write expr
@@ -261,7 +264,7 @@ printStmt =
   ]
 
 unaryExp :: Parser Token Term
-unaryExp = oneof [ifExpr, block, funDef, minus, bitnot, preIncrement, preDecrement, num, string, bool, tuple, dictionary, tryCatch, parens, varDef, funCall, methodCall, postIncrement, postDecrement, varRef, whileTerm, printStmt]
+unaryExp = oneof [ifExpr, block, funDef, minus, bitnot, preIncrement, preDecrement, num, string, bool, tuple, dictionary, tryCatch, parens, varDef, funCall, postIncrement, postDecrement, varRef, whileTerm, printStmt]
 
 ----------- prog ----------
 
