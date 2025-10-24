@@ -43,8 +43,8 @@ typer = para go
             Neq -> both t1Type --> TBool
             And -> both TBool --> TBool
             Or -> both TBool --> TBool
-            Pow -> both TBool --> TInt
-            Xor -> both TInt --> TInt
+            Pow -> both TInt --> TInt
+            Xor -> both TBool --> TBool
     go (UnaryOpsF op (_, tType)) =
       case op of
         Not -> (tType == TBool) --> TBool
