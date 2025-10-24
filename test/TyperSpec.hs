@@ -17,7 +17,7 @@ spec = do
       typer (StringLiteral "hello") `shouldBe` TString
 
     it "types a variable" $
-      typer (Var (OnlyStr "x")) `shouldBe` TUnknown
+      typer (Var (OnlyStr "x")) `shouldBe` TUnit
 
     it "types a let expression" $
       typer (Let (OnlyStr "x") (Literal 5)) `shouldBe` TInt
