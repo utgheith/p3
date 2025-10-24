@@ -199,11 +199,11 @@ instance Machine MockMachine where
   selectValue (IntVal n) c t = if n /= 0 then c else t
   selectValue (StringVal s) c t = if not (null s) then c else t
   selectValue (Tuple l) c t = if not (null l) then c else t
-  selectValue (ClosureVal {}) _ _ = return $ Sad (Type, "Type error in select")
+  selectValue ClosureVal {} _ _ = return $ Sad (Type, "Type error in select")
   selectValue (Dictionary _) _ _ = return $ Sad (Type, "Type error in select")
 
 spec :: Spec
-spec = do
+spec =
   describe "reduceFully" $ do
     let initialMachine = MockMachine {getMem = emptyScope, getInput = [], getOutput = []}
 
@@ -226,9 +226,9 @@ spec = do
       reduceFully term initialMachine `shouldBe` (Right (IntVal 5), finalMachine)
 
     it "reduces a sequence" $ do
-      let term = Seq (Let (OnlyStr "x") (Literal 5)) (Var (OnlyStr "x"))
+      let term = Seq (Let (OnlyStr "x") (Literal 5)) (BinaryOps Add (Var (OnlyStr "x")) (Literal 1))
       let finalMachine = initialMachine {getMem = scopeFromList [("x", IntVal 5)]}
-      reduceFully term initialMachine `shouldBe` (Right (IntVal 5), finalMachine)
+      reduceFully term initialMachine `shouldBe` (Right (IntVal 6), finalMachine)
 
     it "reduces an if expression (then)" $ do
       let term = If (BoolLit True) (Literal 10) (Literal 20)

@@ -53,7 +53,7 @@ assert msg p = do
   ts <- get
   case ts of
     [] -> throwError "out of tokens" -- need better error reporting
-    (t : rest) -> do
+    (t : rest) ->
       case p t of
         Just a -> do
           put rest
@@ -97,11 +97,7 @@ opt p =
 rpt :: Parser t a -> Parser t [a]
 rpt p =
   catchError
-    ( do
-        x <- p
-        xs <- rpt p
-        return (x : xs)
-    )
+    (some p)
     (const $ return [])
 
 type RepeatResult a b = Maybe (a, [(b, a)])
