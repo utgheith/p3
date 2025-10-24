@@ -4,7 +4,7 @@
 
 {-# HLINT ignore "Use <$>" #-}
 
-module FunSyntax (parse, prog, term, Term (Let, BinaryOps, Seq, Skip, UnaryOps, Var, While, Write, BoolLit, Literal, StringLiteral, Fun, ApplyFun)) where
+module FunSyntax (parse, prog, term, Term (Let, BinaryOps, Seq, Skip, UnaryOps, Var, While, Write, BoolLit, Literal, StringLiteral, Fun, ApplyFun, If)) where
 
 import qualified Control.Monad as M
 import Control.Monad.State.Lazy (runStateT)
@@ -49,11 +49,29 @@ blockToSeq (t : ts) = Seq t (blockToSeq ts)
 ----------
 
 term :: Parser Token Term
-term = [t | t <- refassign <|> binaryExp precedence, _ <- opt $ symbol ";"]
+term = [t | t <- ternaryExp, _ <- opt $ symbol ";"]
+
+------------------- ternary operator --------------------------
+
+-- Ternary operator has lower precedence than binary operators
+-- Right-associative: a ? b : c ? d : e parses as a ? b : (c ? d : e)
+ternaryExp :: Parser Token Term
+ternaryExp =
+  [ If cond trueBranch falseBranch
+    | cond <- binaryExp precedence, -- Only allow binary expressions in condition
+      _ <- symbol "?",
+      trueBranch <- refassign, -- Only allow binary expressions and assignments in true branch
+      _ <- symbol ":",
+      falseBranch <- ternaryExp -- Allow ternary in false branch for right-associativity
+  ]
+    <|> refassign
 
 ------------------- assignment --------------------------
+
 refassign :: Parser Token Term
-refassign = [Let ref expr | ref <- reference, _ <- symbol "=", expr <- term]
+refassign =
+  [Let ref expr | ref <- reference, _ <- symbol "=", expr <- term]
+    <|> binaryExp precedence
 
 reference :: Parser Token Term
 reference = do

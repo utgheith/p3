@@ -753,7 +753,88 @@ spec = do
       let finalMachine = initialMachine {getMem = scopeFromList [("x", Dictionary (M.fromList [(3, Tuple [IntVal 0, IntVal 1, StringVal "hello"])]))]}
       reduceFully term initialMachine `shouldBe` (Right (StringVal "hello"), finalMachine)
 
-    it "invalid term in bracket lookup" $ do
+    -- Ternary Operator Tests
+    it "reduces ternary operator with true condition" $ do
+      let term = If (BoolLit True) (Literal 10) (Literal 20)
+      reduceFully term initialMachine `shouldBe` (Right (IntVal 10), initialMachine)
+
+    it "reduces ternary operator with false condition" $ do
+      let term = If (BoolLit False) (Literal 10) (Literal 20)
+      reduceFully term initialMachine `shouldBe` (Right (IntVal 20), initialMachine)
+
+    it "reduces ternary operator with integer condition (non-zero)" $ do
+      let term = If (Literal 5) (StringLiteral "true") (StringLiteral "false")
+      reduceFully term initialMachine `shouldBe` (Right (StringVal "true"), initialMachine)
+
+    it "reduces ternary operator with integer condition (zero)" $ do
+      let term = If (Literal 0) (StringLiteral "true") (StringLiteral "false")
+      reduceFully term initialMachine `shouldBe` (Right (StringVal "false"), initialMachine)
+
+    it "reduces ternary operator with string condition (non-empty)" $ do
+      let term = If (StringLiteral "hello") (Literal 100) (Literal 200)
+      reduceFully term initialMachine `shouldBe` (Right (IntVal 100), initialMachine)
+
+    it "reduces ternary operator with string condition (empty)" $ do
+      let term = If (StringLiteral "") (Literal 100) (Literal 200)
+      reduceFully term initialMachine `shouldBe` (Right (IntVal 200), initialMachine)
+
+    it "reduces ternary operator with comparison condition" $ do
+      let term = If (BinaryOps Gt (Literal 10) (Literal 5)) (StringLiteral "greater") (StringLiteral "not greater")
+      reduceFully term initialMachine `shouldBe` (Right (StringVal "greater"), initialMachine)
+
+    it "reduces nested ternary operators" $ do
+      let term = If (BoolLit True) (If (BoolLit False) (Literal 1) (Literal 2)) (Literal 3)
+      reduceFully term initialMachine `shouldBe` (Right (IntVal 2), initialMachine)
+
+    it "reduces ternary operator with variable access" $ do
+      let term = Seq (Let (OnlyStr "x") (Literal 10)) (If (BinaryOps Gt (Var (OnlyStr "x")) (Literal 5)) (Var (OnlyStr "x")) (Literal 0))
+      let finalMachine = initialMachine {getMem = scopeFromList [("x", IntVal 10)]}
+      reduceFully term initialMachine `shouldBe` (Right (IntVal 10), finalMachine)
+
+    it "reduces ternary operator with complex expressions" $ do
+      let term =
+            If
+              (BinaryOps And (BoolLit True) (BoolLit False))
+              (BinaryOps Add (Literal 10) (Literal 5))
+              (BinaryOps Mul (Literal 3) (Literal 4))
+      reduceFully term initialMachine `shouldBe` (Right (IntVal 12), initialMachine)
+
+    it "reduces right-associative ternary operators" $ do
+      let term = If (BoolLit False) (Literal 1) (If (BoolLit True) (Literal 2) (Literal 3))
+      reduceFully term initialMachine `shouldBe` (Right (IntVal 2), initialMachine)
+
+    it "handles ternary operator precedence correctly" $ do
+      let term = If (BinaryOps Gt (BinaryOps Add (Literal 1) (Literal 2)) (Literal 2)) (Literal 10) (Literal 20)
+      reduceFully term initialMachine `shouldBe` (Right (IntVal 10), initialMachine)
+
+    it "evaluates chained ternary operators" $ do
+      let chainedTernary = If (BoolLit True) (Literal 1) (If (BoolLit False) (Literal 2) (Literal 3))
+      reduceFully chainedTernary initialMachine `shouldBe` (Right (IntVal 1), initialMachine)
+
+    it "reduces ternary operator with complex expressions" $ do
+      let term =
+            If
+              (BinaryOps And (BinaryOps Gt (Literal 10) (Literal 5)) (BinaryOps Lt (Literal 3) (Literal 7)))
+              (BinaryOps Add (Literal 1) (Literal 2))
+              (BinaryOps Mul (Literal 3) (Literal 4))
+      reduceFully term initialMachine `shouldBe` (Right (IntVal 3), initialMachine)
+
+    it "reduces right-associative ternary operators" $ do
+      -- This represents: false ? 1 : (true ? 2 : 3) which should equal 2
+      let term = If (BoolLit False) (Literal 1) (If (BoolLit True) (Literal 2) (Literal 3))
+      reduceFully term initialMachine `shouldBe` (Right (IntVal 2), initialMachine)
+
+    it "handles ternary operator precedence correctly" $ do
+      -- This represents: (1 + 2) > 2 ? 10 : 20, which should equal 10
+      let term = If (BinaryOps Gt (BinaryOps Add (Literal 1) (Literal 2)) (Literal 2)) (Literal 10) (Literal 20)
+      reduceFully term initialMachine `shouldBe` (Right (IntVal 10), initialMachine)
+
+    it "reduces chained ternary operators (right-associative)" $ do
+      -- This represents: true ? 1 : (false ? 2 : 3) which should equal 1
+      let chainedTernary = If (BoolLit True) (Literal 1) (If (BoolLit False) (Literal 2) (Literal 3))
+      reduceFully chainedTernary initialMachine `shouldBe` (Right (IntVal 1), initialMachine)
+
+    it "handles invalid term in bracket lookup" $ do
       let term = Seq (Let (OnlyStr "x") (TupleTerm [Literal 10, StringLiteral "hello", BoolLit True])) (Var (Bracket (OnlyStr "x") (BinaryOps Div (Literal 2) (Literal 0))))
       let finalMachine = initialMachine {getMem = scopeFromList [("x", Tuple [IntVal 10, StringVal "hello", BoolVal True])]}
       reduceFully term initialMachine `shouldBe` (Left "Cannot divide by 0", finalMachine)
