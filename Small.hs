@@ -191,8 +191,7 @@ reduce_ (While cond body) =
                 Happy _ -> return $ Continue (While cond body)
                 Sad msg -> return $ Sad msg
           )
-          (
-              return $ Continue Skip
+          ( return $ Continue Skip
           )
     )
 reduce_ (Read x) =
