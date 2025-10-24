@@ -63,14 +63,14 @@ keywords =
     ]
 
 -- a lexer combinator, i suppose
-matches :: [Char] -> [String] -> Maybe (String, [Char])
+matches :: String -> [String] -> Maybe (String, String)
 matches s (p : ps) =
   case stripPrefix p s of
     Just rest -> Just (p, rest)
     Nothing -> matches s ps
 matches _ [] = Nothing
 
-lexer :: [Char] -> [Token]
+lexer :: String -> [Token]
 lexer = unfoldr step
   where
     step [] = Nothing

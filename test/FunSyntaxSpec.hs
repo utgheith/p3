@@ -6,7 +6,7 @@ import FunLexer (Token (..))
 import FunSyntax (parse, prog)
 import ParserCombinators (eof)
 import Result (Result (..))
-import Term (BinaryOp (..), ErrorKind (..), ErrorKindOrAny (..), Ref (..), Term (..))
+import Term (BinaryOp (..), ErrorKind (..), ErrorKindOrAny (..), Term (..))
 import Test.Hspec
 
 -- Helper function to parse from a string
@@ -26,293 +26,134 @@ spec :: Spec
 spec = do
   describe "Parser" $ do
     describe "basic literals" $ do
-      it "parses integer literals" $ do
-        let result = parse "42" $ do
-              t <- prog
-              _ <- eof
-              return t
-        result `shouldBe` Ok (Literal 42, [])
+      it "parses integer literals" $
+        parseString "42" `shouldBe` Ok (Literal 42, [])
 
-      it "parses string literals" $ do
-        let result = parse "\"hello\"" $ do
-              t <- prog
-              _ <- eof
-              return t
-        result `shouldBe` Ok (StringLiteral "hello", [])
+      it "parses string literals" $
+        parseString "\"hello\"" `shouldBe` Ok (StringLiteral "hello", [])
 
-      it "parses boolean literals" $ do
-        let result = parse "true false" $ do
-              t <- prog
-              _ <- eof
-              return t
-        result `shouldBe` Ok (Seq (BoolLit True) (BoolLit False), [])
+      it "parses boolean literals" $
+        parseString "true false" `shouldBe` Ok (Seq (BoolLit True) (BoolLit False), [])
 
     describe "variables" $ do
-      it "parses variable references" $ do
-        let result = parse "x" $ do
-              t <- prog
-              _ <- eof
-              return t
-        result `shouldBe` Ok (Var (OnlyStr "x"), [])
+      it "parses variable references" $
+        parseString "x" `shouldBe` Ok (Var (OnlyStr "x"), [])
 
-      it "parses variable assignments" $ do
-        let result = parse "x = 42" $ do
-              t <- prog
-              _ <- eof
-              return t
-        result `shouldBe` Ok (Let (OnlyStr "x") (Literal 42), [])
+      it "parses variable assignments" $
+        parseString "x = 42" `shouldBe` Ok (Let (OnlyStr "x") (Literal 42), [])
 
     describe "arithmetic expressions" $ do
-      it "parses addition" $ do
-        let result = parse "x + y" $ do
-              t <- prog
-              _ <- eof
-              return t
-        result `shouldBe` Ok (BinaryOps Add (Var (OnlyStr "x")) (Var (OnlyStr "y")), [])
+      it "parses addition" $
+        parseString "x + y" `shouldBe` Ok (BinaryOps Add (Var (OnlyStr "x")) (Var (OnlyStr "y")), [])
 
-      it "parses subtraction" $ do
-        let result = parse "x - y" $ do
-              t <- prog
-              _ <- eof
-              return t
-        result `shouldBe` Ok (BinaryOps Sub (Var (OnlyStr "x")) (Var (OnlyStr "y")), [])
+      it "parses subtraction" $
+        parseString "x - y" `shouldBe` Ok (BinaryOps Sub (Var (OnlyStr "x")) (Var (OnlyStr "y")), [])
 
-      it "parses multiplication" $ do
-        let result = parse "x * y" $ do
-              t <- prog
-              _ <- eof
-              return t
-        result `shouldBe` Ok (BinaryOps Mul (Var (OnlyStr "x")) (Var (OnlyStr "y")), [])
+      it "parses multiplication" $
+        parseString "x * y" `shouldBe` Ok (BinaryOps Mul (Var (OnlyStr "x")) (Var (OnlyStr "y")), [])
 
-      it "parses division" $ do
-        let result = parse "x / y" $ do
-              t <- prog
-              _ <- eof
-              return t
-        result `shouldBe` Ok (BinaryOps Div (Var (OnlyStr "x")) (Var (OnlyStr "y")), [])
+      it "parses division" $
+        parseString "x / y" `shouldBe` Ok (BinaryOps Div (Var (OnlyStr "x")) (Var (OnlyStr "y")), [])
 
-      it "parses modulus" $ do
-        let result = parse "x % y" $ do
-              t <- prog
-              _ <- eof
-              return t
-        result `shouldBe` Ok (BinaryOps Mod (Var (OnlyStr "x")) (Var (OnlyStr "y")), [])
+      it "parses modulus" $
+        parseString "x % y" `shouldBe` Ok (BinaryOps Mod (Var (OnlyStr "x")) (Var (OnlyStr "y")), [])
 
-      it "parses less than" $ do
-        let result = parse "x < y" $ do
-              t <- prog
-              _ <- eof
-              return t
-        result `shouldBe` Ok (BinaryOps Lt (Var (OnlyStr "x")) (Var (OnlyStr "y")), [])
+      it "parses less than" $
+        parseString "x < y" `shouldBe` Ok (BinaryOps Lt (Var (OnlyStr "x")) (Var (OnlyStr "y")), [])
 
-      it "parses greater than" $ do
-        let result = parse "x > y" $ do
-              t <- prog
-              _ <- eof
-              return t
-        result `shouldBe` Ok (BinaryOps Gt (Var (OnlyStr "x")) (Var (OnlyStr "y")), [])
+      it "parses greater than" $
+        parseString "x > y" `shouldBe` Ok (BinaryOps Gt (Var (OnlyStr "x")) (Var (OnlyStr "y")), [])
 
-      it "parses less than equal" $ do
-        let result = parse "x <= y" $ do
-              t <- prog
-              _ <- eof
-              return t
-        result `shouldBe` Ok (BinaryOps Lte (Var (OnlyStr "x")) (Var (OnlyStr "y")), [])
+      it "parses less than equal" $
+        parseString "x <= y" `shouldBe` Ok (BinaryOps Lte (Var (OnlyStr "x")) (Var (OnlyStr "y")), [])
 
-      it "parses greater than equal" $ do
-        let result = parse "x >= y" $ do
-              t <- prog
-              _ <- eof
-              return t
-        result `shouldBe` Ok (BinaryOps Gte (Var (OnlyStr "x")) (Var (OnlyStr "y")), [])
+      it "parses greater than equal" $
+        parseString "x >= y" `shouldBe` Ok (BinaryOps Gte (Var (OnlyStr "x")) (Var (OnlyStr "y")), [])
 
-      it "parses equal to" $ do
-        let result = parse "x == y" $ do
-              t <- prog
-              _ <- eof
-              return t
-        result `shouldBe` Ok (BinaryOps Eq (Var (OnlyStr "x")) (Var (OnlyStr "y")), [])
+      it "parses equal to" $
+        parseString "x == y" `shouldBe` Ok (BinaryOps Eq (Var (OnlyStr "x")) (Var (OnlyStr "y")), [])
 
-      it "parses not equal" $ do
-        let result = parse "x != y" $ do
-              t <- prog
-              _ <- eof
-              return t
-        result `shouldBe` Ok (BinaryOps Neq (Var (OnlyStr "x")) (Var (OnlyStr "y")), [])
+      it "parses not equal" $
+        parseString "x != y" `shouldBe` Ok (BinaryOps Neq (Var (OnlyStr "x")) (Var (OnlyStr "y")), [])
 
-      it "parses and" $ do
-        let result = parse "x && y" $ do
-              t <- prog
-              _ <- eof
-              return t
-        result `shouldBe` Ok (BinaryOps And (Var (OnlyStr "x")) (Var (OnlyStr "y")), [])
+      it "parses and" $
+        parseString "x && y" `shouldBe` Ok (BinaryOps And (Var (OnlyStr "x")) (Var (OnlyStr "y")), [])
 
-      it "parses or" $ do
-        let result = parse "x || y" $ do
-              t <- prog
-              _ <- eof
-              return t
-        result `shouldBe` Ok (BinaryOps Or (Var (OnlyStr "x")) (Var (OnlyStr "y")), [])
+      it "parses or" $
+        parseString "x || y" `shouldBe` Ok (BinaryOps Or (Var (OnlyStr "x")) (Var (OnlyStr "y")), [])
 
-      it "parses pow" $ do
-        let result = parse "x ** y" $ do
-              t <- prog
-              _ <- eof
-              return t
-        result `shouldBe` Ok (BinaryOps Pow (Var (OnlyStr "x")) (Var (OnlyStr "y")), [])
+      it "parses pow" $
+        parseString "x ** y" `shouldBe` Ok (BinaryOps Pow (Var (OnlyStr "x")) (Var (OnlyStr "y")), [])
 
-      it "parses xor" $ do
-        let result = parse "x ^ y" $ do
-              t <- prog
-              _ <- eof
-              return t
-        result `shouldBe` Ok (BinaryOps Xor (Var (OnlyStr "x")) (Var (OnlyStr "y")), [])
+      it "parses xor" $
+        parseString "x ^ y" `shouldBe` Ok (BinaryOps Xor (Var (OnlyStr "x")) (Var (OnlyStr "y")), [])
 
-      it "parses complex expressions with precedence" $ do
-        let result = parse "x + y * z" $ do
-              t <- prog
-              _ <- eof
-              return t
-        result `shouldBe` Ok (BinaryOps Add (Var (OnlyStr "x")) (BinaryOps Mul (Var (OnlyStr "y")) (Var (OnlyStr "z"))), [])
+      it "parses complex expressions with precedence" $
+        parseString "x + y * z" `shouldBe` Ok (BinaryOps Add (Var (OnlyStr "x")) (BinaryOps Mul (Var (OnlyStr "y")) (Var (OnlyStr "z"))), [])
 
     describe "pre/post inc/dec" $ do
-      it "parses pre increment" $ do
-        let result = parse "++x" $ do
-              t <- prog
-              _ <- eof
-              return t
-        result `shouldBe` Ok (PreIncrement "x", [])
+      it "parses pre increment" $
+        parseString "++x" `shouldBe` Ok (PreIncrement "x", [])
 
-      it "parses post increment" $ do
-        let result = parse "x++" $ do
-              t <- prog
-              _ <- eof
-              return t
-        result `shouldBe` Ok (PostIncrement "x", [])
+      it "parses post increment" $
+        parseString "x++" `shouldBe` Ok (PostIncrement "x", [])
 
-      it "parses pre decrement" $ do
-        let result = parse "--x" $ do
-              t <- prog
-              _ <- eof
-              return t
-        result `shouldBe` Ok (PreDecrement "x", [])
+      it "parses pre decrement" $
+        parseString "--x" `shouldBe` Ok (PreDecrement "x", [])
 
-      it "parses post decrement" $ do
-        let result = parse "x--" $ do
-              t <- prog
-              _ <- eof
-              return t
-        result `shouldBe` Ok (PostDecrement "x", [])
+      it "parses post decrement" $
+        parseString "x--" `shouldBe` Ok (PostDecrement "x", [])
 
     describe "control flow" $ do
-      it "parses if statements" $ do
-        let result = parse "if (x > 0) { y = 1 } else { y = 0 }" $ do
-              t <- prog
-              _ <- eof
-              return t
-        result `shouldBe` Ok (If (BinaryOps Gt (Var (OnlyStr "x")) (Literal 0)) (Let (OnlyStr "y") (Literal 1)) (Let (OnlyStr "y") (Literal 0)), [])
+      it "parses if statements" $
+        parseString "if (x > 0) { y = 1 } else { y = 0 }" `shouldBe` Ok (If (BinaryOps Gt (Var (OnlyStr "x")) (Literal 0)) (Let (OnlyStr "y") (Literal 1)) (Let (OnlyStr "y") (Literal 0)), [])
 
-      it "parses while loops" $ do
-        let result = parse "while (x > 0) { x = x - 1 }" $ do
-              t <- prog
-              _ <- eof
-              return t
-        result `shouldBe` Ok (While (BinaryOps Gt (Var (OnlyStr "x")) (Literal 0)) (Let (OnlyStr "x") (BinaryOps Sub (Var (OnlyStr "x")) (Literal 1))), [])
+      it "parses while loops" $
+        parseString "while (x > 0) { x = x - 1 }" `shouldBe` Ok (While (BinaryOps Gt (Var (OnlyStr "x")) (Literal 0)) (Let (OnlyStr "x") (BinaryOps Sub (Var (OnlyStr "x")) (Literal 1))), [])
 
     describe "functions" $ do
-      it "parses function definitions" $ do
-        let result = parse "fun f() { print 42 }" $ do
-              t <- prog
-              _ <- eof
-              return t
-        result `shouldBe` Ok (Let (OnlyStr "f") (Fun [] (Write (Literal 42))), [])
+      it "parses function definitions" $
+        parseString "fun f() { print 42 }" `shouldBe` Ok (Let (OnlyStr "f") (Fun [] (Write (Literal 42))), [])
 
-      it "parses function calls" $ do
-        let result = parse "f()" $ do
-              t <- prog
-              _ <- eof
-              return t
-        result `shouldBe` Ok (ApplyFun (Var (OnlyStr "f")) [], [])
+      it "parses function calls" $
+        parseString "f()" `shouldBe` Ok (ApplyFun (Var (OnlyStr "f")) [], [])
 
-      it "parses function calls with arguments" $ do
-        let result = parse "f(x, y)" $ do
-              t <- prog
-              _ <- eof
-              return t
-        result `shouldBe` Ok (ApplyFun (Var (OnlyStr "f")) [Var (OnlyStr "x"), Var (OnlyStr "y")], [])
+      it "parses function calls with arguments" $
+        parseString "f(x, y)" `shouldBe` Ok (ApplyFun (Var (OnlyStr "f")) [Var (OnlyStr "x"), Var (OnlyStr "y")], [])
 
     describe "tuples" $ do
-      it "parses tuple creation" $ do
-        let result = parse "x = [1, 2, 3]" $ do
-              t <- prog
-              _ <- eof
-              return t
-        result `shouldBe` Ok (Let (OnlyStr "x") (TupleTerm [Literal 1, Literal 2, Literal 3]), [])
+      it "parses tuple creation" $
+        parseString "x = [1, 2, 3]" `shouldBe` Ok (Let (OnlyStr "x") (TupleTerm [Literal 1, Literal 2, Literal 3]), [])
 
-      it "parses tuple access" $ do
-        let result = parse "t[0]" $ do
-              t <- prog
-              _ <- eof
-              return t
-        result `shouldBe` Ok (Var (Bracket (OnlyStr "t") (Literal 0)), [])
+      it "parses tuple access" $
+        parseString "t[0]" `shouldBe` Ok (Var (Bracket (OnlyStr "t") (Literal 0)), [])
 
-    describe "dictionary" $ do
-      it "parses dictionary creation" $ do
-        let result = parse "#[]" $ do
-              t <- prog
-              _ <- eof
-              return t
-        result `shouldBe` Ok (NewDictionary, [])
+    describe "dictionary" $
+      it "parses dictionary creation" $
+        parseString "#[]" `shouldBe` Ok (NewDictionary, [])
 
     describe "try-catch creation" $ do
-      it "parses try-catch any" $ do
-        let result = parse "try x catch Any 1" $ do
-              t <- prog
-              _ <- eof
-              return t
-        result `shouldBe` Ok (Try (Var (OnlyStr "x")) Any (Literal 1), [])
+      it "parses try-catch any" $
+        parseString "try x catch Any 1" `shouldBe` Ok (Try (Var (OnlyStr "x")) Any (Literal 1), [])
 
-      it "parses try-catch arithmetic" $ do
-        let result = parse "try x catch Arithmetic 1" $ do
-              t <- prog
-              _ <- eof
-              return t
-        result `shouldBe` Ok (Try (Var (OnlyStr "x")) (Specific Arithmetic) (Literal 1), [])
+      it "parses try-catch arithmetic" $
+        parseString "try x catch Arithmetic 1" `shouldBe` Ok (Try (Var (OnlyStr "x")) (Specific Arithmetic) (Literal 1), [])
 
-      it "parses try-catch type" $ do
-        let result = parse "try x catch Type 1" $ do
-              t <- prog
-              _ <- eof
-              return t
-        result `shouldBe` Ok (Try (Var (OnlyStr "x")) (Specific Type) (Literal 1), [])
+      it "parses try-catch type" $
+        parseString "try x catch Type 1" `shouldBe` Ok (Try (Var (OnlyStr "x")) (Specific Type) (Literal 1), [])
 
-      it "parses try-catch input" $ do
-        let result = parse "try x catch Input 1" $ do
-              t <- prog
-              _ <- eof
-              return t
-        result `shouldBe` Ok (Try (Var (OnlyStr "x")) (Specific Input) (Literal 1), [])
+      it "parses try-catch input" $
+        parseString "try x catch Input 1" `shouldBe` Ok (Try (Var (OnlyStr "x")) (Specific Input) (Literal 1), [])
 
-      it "parses try-catch variable not found" $ do
-        let result = parse "try x catch VariableNotFound 1" $ do
-              t <- prog
-              _ <- eof
-              return t
-        result `shouldBe` Ok (Try (Var (OnlyStr "x")) (Specific VariableNotFound) (Literal 1), [])
+      it "parses try-catch variable not found" $
+        parseString "try x catch VariableNotFound 1" `shouldBe` Ok (Try (Var (OnlyStr "x")) (Specific VariableNotFound) (Literal 1), [])
 
-      it "parses try-catch arguments" $ do
-        let result = parse "try x catch Arguments 1" $ do
-              t <- prog
-              _ <- eof
-              return t
-        result `shouldBe` Ok (Try (Var (OnlyStr "x")) (Specific Arguments) (Literal 1), [])
+      it "parses try-catch arguments" $
+        parseString "try x catch Arguments 1" `shouldBe` Ok (Try (Var (OnlyStr "x")) (Specific Arguments) (Literal 1), [])
 
-    describe "error cases" $ do
+    describe "error cases" $
       it "fails on invalid syntax" $ do
-        let result = parse "x +" $ do
-              t <- prog
-              _ <- eof
-              return t
+        let result = parseString "x +"
         case result of
           Err _ -> True `shouldBe` True
           Ok _ -> False `shouldBe` True
@@ -323,7 +164,7 @@ spec = do
       let result = parseString program
       case result of
         Err err -> fail $ "Parse error: " ++ err
-        Ok (ast, _) -> do
+        Ok (ast, _) ->
           ast `shouldSatisfy` \case
             Seq _ _ -> True
             _ -> False
@@ -335,12 +176,12 @@ spec = do
             result <- parseFile file
             case result of
               Err err -> fail $ "Failed to parse " ++ file ++ ": " ++ err
-              Ok (ast, _) -> do
+              Ok (ast, _) ->
                 ast `shouldSatisfy` const True -- Just check it parses successfully
         )
         testFiles
 
-  describe "File-based tests" $ do
+  describe "File-based tests" $
     it "can parse complex programs from files" $ do
       let complexProgram =
             unlines
@@ -358,5 +199,5 @@ spec = do
       let result = parseString complexProgram
       case result of
         Err err -> fail $ "Parse error: " ++ err
-        Ok (ast, _) -> do
+        Ok (ast, _) ->
           ast `shouldSatisfy` const True

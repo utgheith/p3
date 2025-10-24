@@ -37,7 +37,7 @@ typeOf (IntVal _) = IntType
 typeOf (BoolVal _) = BoolType
 typeOf (StringVal _) = StringType
 typeOf (Tuple _) = TupleType
-typeOf (ClosureVal {}) = ClosureType
+typeOf ClosureVal {} = ClosureType
 typeOf (Dictionary _) = DictionaryType
 
 typeName :: Type -> String
