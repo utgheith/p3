@@ -35,6 +35,8 @@ decompile = cata go
       sprintf "Bracket (%s) (%s)" [t1, t2]
     go (WhileF cond body) =
       sprintf "While (%s) (%s)" [cond, body]
+    go (ForF var start end body) =
+      sprintf "For %s (%s) (%s) (%s)" [var, start, end, body]
     go (WriteF t) =
       sprintf "Write (%s)" [t]
     go (BoolLitF b) =
