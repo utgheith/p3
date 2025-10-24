@@ -23,6 +23,7 @@ dependencies:
 - base
 - containers
 - mtl
+- recursion-schemes
 
 build-tools:
 - ormolu

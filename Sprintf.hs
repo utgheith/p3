@@ -7,7 +7,7 @@ module Sprintf (sprintf, (%), (<<)) where
 -- we can at least get string substitution (%s).
 -- for example: sprintf "%s + %s = %s" [show 2, show 2, show 4] = "'2' + '2' = '4'"
 
-sprintf :: [Char] -> [[Char]] -> [Char]
+sprintf :: String -> [String] -> String
 sprintf [] [] = []
 sprintf [] _ = error "sprintf: too many arguments"
 sprintf ('%' : '%' : rest) args = '%' : sprintf rest args
@@ -20,12 +20,12 @@ sprintf (c : rest) args = c : sprintf rest args
 -- Example: "%s:%s:%s" % [show 2, show 2, show 4] = "'2' + '2' = '4'"
 infixl 7 %
 
-(%) :: [Char] -> [[Char]] -> [Char]
+(%) :: String -> [String] -> String
 (%) = sprintf
 
 -- Infix operator to convert terms with Show instances into strings.
 -- Example: "%s:%s:%s" % 2 << 2 << 4 << [] = "'2' + '2' = '4'"
 infixr 8 <<
 
-(<<) :: (Show a) => a -> [[Char]] -> [[Char]]
+(<<) :: (Show a) => a -> [String] -> [String]
 (<<) a l = show a : l

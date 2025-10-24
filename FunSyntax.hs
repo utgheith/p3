@@ -4,15 +4,15 @@
 
 {-# HLINT ignore "Use <$>" #-}
 
-module FunSyntax (parse, prog, term, Term (Let, BinaryOps, Seq, Skip, UnaryOps, Var, While, Write, BoolLit, Literal, StringLiteral, Fun, ApplyFun)) where
+module FunSyntax (parse, prog, term, Term (Let, BinaryOps, Seq, Skip, UnaryOps, Var, While, Write, BoolLit, Literal, StringLiteral, Fun, ApplyFun, If)) where
 
 import qualified Control.Monad as M
 import Control.Monad.State.Lazy (runStateT)
 import Data.Maybe (fromMaybe)
 import qualified Data.Set as S
 import FunLexer (Token (Ident, Keyword, Num, StringLiteralLexed, Symbol), lexer)
-import ParserCombinators (Parser, Result, oneof, opt, rpt, rptDropSep, satisfy, token)
-import Term (BinaryOp (..), ErrorKind (..), ErrorKindOrAny (..), Ref (..), Term (..), UnaryOp (..))
+import ParserCombinators (Parser, Result, oneof, opt, rpt, rptDropSep, satisfy, token, (<|>))
+import Term (BinaryOp (..), ErrorKind (..), ErrorKindOrAny (..), Term (..), UnaryOp (..))
 
 -- succeed if the next token is the given symbol
 symbol :: String -> Parser Token ()
@@ -49,7 +49,44 @@ blockToSeq (t : ts) = Seq t (blockToSeq ts)
 ----------
 
 term :: Parser Token Term
-term = [t | t <- binaryExp precedence, _ <- opt $ symbol ";"]
+term = [t | t <- ternaryExp, _ <- opt $ symbol ";"]
+
+------------------- ternary operator --------------------------
+
+-- Ternary operator has lower precedence than binary operators
+-- Right-associative: a ? b : c ? d : e parses as a ? b : (c ? d : e)
+ternaryExp :: Parser Token Term
+ternaryExp =
+  [ If cond trueBranch falseBranch
+    | cond <- binaryExp precedence, -- Only allow binary expressions in condition
+      _ <- symbol "?",
+      trueBranch <- refassign, -- Only allow binary expressions and assignments in true branch
+      _ <- symbol ":",
+      falseBranch <- ternaryExp -- Allow ternary in false branch for right-associativity
+  ]
+    <|> refassign
+
+------------------- assignment --------------------------
+
+refassign :: Parser Token Term
+refassign =
+  [Let ref expr | ref <- reference, _ <- symbol "=", expr <- term]
+    <|> binaryExp precedence
+
+reference :: Parser Token Term
+reference = do
+  -- very similar to chainl1
+  x <- OnlyStr <$> ident
+  rest x
+  where
+    rest x =
+      ( do
+          _ <- symbol "["
+          idx <- term
+          _ <- symbol "]"
+          rest (Bracket x idx)
+      )
+        <|> return x
 
 ------------------- binary operators (left associative) -------------------
 
@@ -92,9 +129,6 @@ stringToBinaryOp "^" = Xor
 stringToBinaryOp _ = error "Unknown binary operator"
 
 ------------------- unary operators  -------------------
-
-assign :: Parser Token Term
-assign = [Let (OnlyStr name) expr | name <- ident, _ <- symbol "=", expr <- term]
 
 -- We can use monad comprehensions (GHC extension) to make parsers more concise
 minus :: Parser Token Term
@@ -155,7 +189,7 @@ funDef =
   ]
 
 varRef :: Parser Token Term
-varRef = Var . OnlyStr <$> ident
+varRef = Var <$> reference
 
 block :: Parser Token Term
 block = [blockToSeq ts | _ <- token $ Symbol "{", ts <- rpt term, _ <- token $ Symbol "}"]
@@ -179,25 +213,6 @@ varDef =
 
 whileTerm :: Parser Token Term
 whileTerm = [While cond body | _ <- keyword "while", cond <- term, body <- term]
-
-inBrackets :: Parser Token v -> Parser Token v
-inBrackets p = [tok | _ <- symbol "[", tok <- p, _ <- symbol "]"]
-
-bracketSet :: Parser Token Term
-bracketSet =
-  [ Let (Bracket (OnlyStr name) index) value
-    | name <- ident,
-      index <- inBrackets term,
-      _ <- symbol "=",
-      value <- term
-  ]
-
-bracketAccess :: Parser Token Term
-bracketAccess =
-  [ Var (Bracket (OnlyStr name) index)
-    | name <- ident,
-      index <- inBrackets term
-  ]
 
 tryCatch :: Parser Token Term
 tryCatch =
@@ -246,7 +261,7 @@ printStmt =
   ]
 
 unaryExp :: Parser Token Term
-unaryExp = oneof [assign, ifExpr, block, funDef, minus, bitnot, preIncrement, preDecrement, num, string, bool, tuple, dictionary, bracketSet, bracketAccess, tryCatch, parens, varDef, funCall, methodCall, postIncrement, postDecrement, varRef, whileTerm, printStmt]
+unaryExp = oneof [ifExpr, block, funDef, minus, bitnot, preIncrement, preDecrement, num, string, bool, tuple, dictionary, tryCatch, parens, varDef, funCall, methodCall, postIncrement, postDecrement, varRef, whileTerm, printStmt]
 
 ----------- prog ----------
 
@@ -255,7 +270,7 @@ prog = blockToSeq <$> rpt term
 
 ----------- parse ----------
 
-parse :: [Char] -> Parser Token a -> Result (a, [Token])
+parse :: String -> Parser Token a -> Result (a, [Token])
 parse input p =
   let tokens = lexer input
    in runStateT p tokens
