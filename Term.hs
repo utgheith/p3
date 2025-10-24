@@ -12,7 +12,7 @@ data BinaryOp = Add | Sub | Mul | Div | Mod | Lt | Gt | Lte | Gte | Eq | Neq | A
 data UnaryOp = Neg | Not | BitNot
   deriving (Eq, Show)
 
-data ErrorKind = Arithmetic | Type | Input | VariableNotFound | Arguments deriving (Eq, Show)
+data ErrorKind = Arithmetic | Type | Input | VariableNotFound | Arguments | Internal deriving (Eq, Show)
 
 data ErrorKindOrAny = Specific ErrorKind | Any deriving (Eq, Show)
 
@@ -31,6 +31,7 @@ data Term
   | OnlyStr String
   | Bracket Term Term
   | While Term Term
+  | For String Term Term Term
   | Write Term
   | BoolLit Bool
   | TupleTerm [Term]

@@ -214,6 +214,9 @@ varDef =
 whileTerm :: Parser Token Term
 whileTerm = [While cond body | _ <- keyword "while", cond <- term, body <- term]
 
+forTerm :: Parser Token Term
+forTerm = [For var start end body | _ <- keyword "for", var <- ident, start <- term, end <- term, body <- term]
+
 tryCatch :: Parser Token Term
 tryCatch =
   [ Try tryBranch (errorType err) catchBranch
@@ -250,7 +253,7 @@ printStmt =
   ]
 
 unaryExp :: Parser Token Term
-unaryExp = oneof [ifExpr, block, funDef, minus, bitnot, preIncrement, preDecrement, num, string, bool, tuple, dictionary, tryCatch, parens, varDef, funCall, postIncrement, postDecrement, varRef, whileTerm, printStmt]
+unaryExp = oneof [ifExpr, block, funDef, minus, bitnot, preIncrement, preDecrement, num, string, bool, tuple, dictionary, tryCatch, parens, varDef, funCall, postIncrement, postDecrement, varRef, whileTerm, forTerm, printStmt]
 
 ----------- prog ----------
 
