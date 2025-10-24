@@ -11,7 +11,7 @@ data Types = TBool | TFun Types | TInt | TString | TSum Types Types | TUnit | TU
 combine :: Types -> Types -> Types
 combine TUnknown _ = TUnknown
 combine _ TUnknown = TUnknown
-combine t1 t2 | t1 == t2 = t1 --  this makes a union type, Python semantics
+combine t1 t2 | t1 == t2 = t1 -- this makes a union type, Python semantics
 combine t1 t2 = TSum t1 t2
 
 (-->) :: Bool -> Types -> Types
