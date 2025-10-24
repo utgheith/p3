@@ -168,12 +168,12 @@ reduce_ (If cond tThen tElse) = do
     (reduce cond)
     (\cond' -> If cond' tThen tElse)
     (\v -> selectValue v (return $ Continue tThen) (return $ Continue tElse))
-reduce_ (Try tTry catchableErrorKindOrAny tCatch) = do
+reduce_ (Try tTry catchableErrors tCatch) = do
   vTry <- reduce tTry
   case vTry of
-    Continue tTry' -> return $ Continue (Try tTry' catchableErrorKindOrAny tCatch)
-    Happy n -> return $ Happy n
-    Sad (resultErrorKind, _) | errorShouldBeCaught resultErrorKind catchableErrorKindOrAny -> return $ Continue tCatch
+    Continue tTry' -> return $ Continue (Try tTry' catchableErrors tCatch)
+    Happy _ -> return vTry
+    Sad (resultErrorKind, _) | errorShouldBeCaught resultErrorKind catchableErrors -> return $ Continue tCatch
     Sad _ -> return vTry
 reduce_ (While cond body) = do
   premise
@@ -185,15 +185,13 @@ reduce_ (While cond body) = do
           ( do
               res <- reduce body
               case res of
-                Continue BreakSignal -> do return $ Happy (IntVal 0)
-                Continue ContinueSignal -> do return $ Continue (While cond body)
-                Continue t -> do return $ Continue (Seq t (While cond body))
-                Happy _ -> do return $ Continue (While cond body)
-                Sad msg -> do return $ Sad msg
+                Continue BreakSignal -> return $ Happy (IntVal 0)
+                Continue ContinueSignal -> return $ Continue (While cond body)
+                Continue t -> return $ Continue (Seq t (While cond body))
+                Happy _ -> return $ Continue (While cond body)
+                Sad msg -> return $ Sad msg
           )
-          ( do
-              return $ Continue Skip
-          )
+          (return $ Happy (IntVal 0))
     )
 reduce_ (Read x) =
   premise
@@ -284,6 +282,7 @@ reduce_ (TupleTerm elements) =
 reduce_ NewDictionary =
   return $ Happy $ Dictionary M.empty
 
+-- Reduces the first argument of a arg list, then calls applyFunArgList
 reduceArgsAndApply :: (Machine m, Show m, V m ~ Value) => Term -> [Term] -> Value -> Env m
 reduceArgsAndApply tf args funVal =
   case args of
@@ -294,6 +293,7 @@ reduceArgsAndApply tf args funVal =
         (\a' -> ApplyFun tf (a' : rest))
         (applyFunArgList tf rest funVal)
 
+-- Binds one argument in the funVal closure, then reduces the other "rest" arguments
 applyFunArgList :: (Machine m, Show m, V m ~ Value) => Term -> [Term] -> Value -> Value -> Env m
 applyFunArgList tf rest funVal argVal = do
   res1 <- applyFunArg funVal argVal
@@ -304,6 +304,7 @@ applyFunArgList tf rest funVal argVal = do
     Continue t -> return (Continue t)
     Sad msg -> return (Sad msg)
 
+-- Binds a value to the first free variable of a closure, potentially evaluating the body
 applyFunArg :: (Machine m, Show m, V m ~ Value) => Value -> Value -> Env m
 applyFunArg (ClosureVal [] _ _) _ = do
   return $ Sad (Arguments, "too many arguments: function takes 0 arguments")
@@ -314,6 +315,7 @@ applyFunArg (ClosureVal (x : xs) body caps) arg = do
     else return $ Happy (ClosureVal xs body newCaps)
 applyFunArg _ _ = return $ Sad (Type, "attempt to call a non-function")
 
+-- Tries to invoke a closure once all arguments are processed
 applyFuncNoArg :: (Machine m, Show m, V m ~ Value) => Value -> Env m
 applyFuncNoArg (ClosureVal [] body caps) = evalClosureBody body caps
 applyFuncNoArg (ClosureVal (_ : _) _ _) = return $ Sad (Arguments, "missing arguments: function requires parameters")
@@ -322,25 +324,14 @@ applyFuncNoArg _ = return $ Sad (Type, "attempt to call a non-function")
 -- Bind captured args, evaluate body, restore machine state
 evalClosureBody :: (Machine m, Show m, V m ~ Value) => Term -> [(String, Value)] -> Env m
 evalClosureBody body caps = do
-  m0 <- S.get
-  let (_resPush, m1) = S.runState (pushScope []) m0
-  case bindMany caps m1 of
-    Left msg -> return $ Sad msg
-    Right m2 -> do
-      let (res, m3) = reduceFully body m2
-      let (_resPop, m4) = S.runState popScope m3 -- Restore previous scope.
-      S.put m4
-      case res of
-        Left msg -> return $ Sad (Arguments, msg)
-        Right v -> return $ Happy v
-
-bindMany :: (Machine m, V m ~ Value) => [(String, Value)] -> m -> Either Error m
-bindMany [] m = Right m
-bindMany ((k, v) : rest) m =
-  case S.runState (setVar k v) m of
-    (Sad msg, _m') -> Left msg
-    (Continue _, _m') -> Left (Arguments, "internal: setVar requested Continue")
-    (Happy _, m') -> bindMany rest m'
+  _ <- pushScope caps
+  m1 <- S.get
+  let (res, m2) = reduceFully body m1
+  S.put m2
+  _ <- popScope
+  case res of
+    Left msg -> return $ Sad (Arguments, msg)
+    Right v -> return $ Happy v
 
 reduce :: (Machine m, Show m, V m ~ Value) => Term -> Env m
 reduce t = do
