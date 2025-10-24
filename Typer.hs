@@ -27,23 +27,24 @@ typer = para go
     go (VarF _) = TUnit
     go (LetF _ (_, tType)) = tType
     go (BinaryOpsF op (_, t1Type) (_, t2Type)) =
-      case op of
-        -- TODO: how about TString + ...? TString * ...?
-        Add -> (t1Type == TInt && t2Type == TInt) --> TInt
-        Sub -> (t1Type == TInt && t2Type == TInt) --> TInt
-        Mul -> (t1Type == TInt && t2Type == TInt) --> TInt
-        Div -> (t1Type == TInt && t2Type == TInt) --> TInt
-        Mod -> (t1Type == TInt && t2Type == TInt) --> TInt
-        Lt -> (t1Type == TInt && t2Type == TInt) --> TBool
-        Gt -> (t1Type == TInt && t2Type == TInt) --> TBool
-        Lte -> (t1Type == TInt && t2Type == TInt) --> TBool
-        Gte -> (t1Type == TInt && t2Type == TInt) --> TBool
-        Eq -> (t1Type == t2Type) --> TBool
-        Neq -> (t1Type == t2Type) --> TBool
-        And -> (t1Type == TBool && t2Type == TBool) --> TBool
-        Or -> (t1Type == TBool && t2Type == TBool) --> TBool
-        Pow -> (t1Type == TInt && t2Type == TInt) --> TInt
-        Xor -> (t1Type == TInt && t2Type == TInt) --> TInt
+      let both t = t1Type == t && t2Type == t
+       in case op of
+            -- TODO: how about TString + ...? TString * ...?
+            Add -> both TInt --> TInt
+            Sub -> both TInt --> TInt
+            Mul -> both TInt --> TInt
+            Div -> both TInt --> TInt
+            Mod -> both TInt --> TInt
+            Lt -> both TInt --> TBool
+            Gt -> both TInt --> TBool
+            Lte -> both TInt --> TBool
+            Gte -> both TInt --> TBool
+            Eq -> both t1Type --> TBool
+            Neq -> both t1Type --> TBool
+            And -> both TBool --> TBool
+            Or -> both TBool --> TBool
+            Pow -> both TBool --> TInt
+            Xor -> both TInt --> TInt
     go (UnaryOpsF op (_, tType)) =
       case op of
         Not -> (tType == TBool) --> TBool
