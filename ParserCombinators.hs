@@ -1,7 +1,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
 
-module ParserCombinators (eof, oneof, opt, Parser, Result, rpt, rptSep, rptDropSep, satisfy, token, tokens, string, (<|>), alt, some, sepBy, sepBy1, between, skip, lookAhead, chainl1, chainr1, parse) where
+module ParserCombinators (eof, oneof, opt, Parser, rpt, rptSep, rptDropSep, satisfy, token, tokens, string, (<|>), alt, some, sepBy, sepBy1, between, skip, lookAhead, chainl1, chainr1, parse) where
 
 import Control.Applicative (asum, (<|>))
 import Control.Monad.Except (catchError, throwError)
