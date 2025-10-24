@@ -114,7 +114,7 @@ reduce_ (Literal n) =
   return $ Happy $ IntVal n
 reduce_ (StringLiteral s) =
   return $ Happy $ StringVal s
-reduce_ (Var x) = do
+reduce_ (Var x) =
   case x of
     OnlyStr s -> getVar s
     Bracket ref term -> return $ Continue (Retrieve (Var ref) term)
@@ -123,7 +123,7 @@ reduce_ (OnlyStr s) =
   return $ Continue $ Var (OnlyStr s)
 reduce_ (Bracket t1 t2) =
   return $ Continue $ Var (Bracket t1 t2)
-reduce_ (Retrieve t1 t2) = do
+reduce_ (Retrieve t1 t2) =
   premise
     (reduce t1)
     (`Retrieve` t2)
@@ -132,7 +132,7 @@ reduce_ (Retrieve t1 t2) = do
           (reduce t2)
           (Retrieve t1)
     )
-reduce_ (Let x t) = do
+reduce_ (Let x t) =
   case x of
     OnlyStr s ->
       premise
@@ -141,7 +141,7 @@ reduce_ (Let x t) = do
         (setVar s)
     Bracket ref term -> return $ Continue $ Let ref (Merge (Var ref) term t)
     _ -> return $ Sad (Type, "Left-hand side of Let must be reference")
-reduce_ (Merge t1 t2 t3) = do
+reduce_ (Merge t1 t2 t3) =
   premise
     (reduce t1)
     (\t1' -> Merge t1' t2 t3)
@@ -163,7 +163,7 @@ reduce_ (Seq t1 t2) = do
     Continue t' -> return $ Continue (Seq t' t2)
     Happy _ -> reduce t2 -- normal: continue with t2
     Sad msg -> return $ Sad msg
-reduce_ (If cond tThen tElse) = do
+reduce_ (If cond tThen tElse) =
   premise
     (reduce cond)
     (\cond' -> If cond' tThen tElse)
@@ -175,24 +175,23 @@ reduce_ (Try tTry catchableErrorKindOrAny tCatch) = do
     Happy n -> return $ Happy n
     Sad (resultErrorKind, _) | errorShouldBeCaught resultErrorKind catchableErrorKindOrAny -> return $ Continue tCatch
     Sad _ -> return vTry
-reduce_ (While cond body) = do
+reduce_ (While cond body) =
   premise
     (reduce cond)
     (`While` body)
-    ( \v -> do
+    ( \v ->
         selectValue
           v
           ( do
               res <- reduce body
               case res of
-                Continue BreakSignal -> do return $ Happy (IntVal 0)
-                Continue ContinueSignal -> do return $ Continue (While cond body)
-                Continue t -> do return $ Continue (Seq t (While cond body))
-                Happy _ -> do return $ Continue (While cond body)
-                Sad msg -> do return $ Sad msg
+                Continue BreakSignal -> return $ Happy (IntVal 0)
+                Continue ContinueSignal -> return $ Continue (While cond body)
+                Continue t -> return $ Continue (Seq t (While cond body))
+                Happy _ -> return $ Continue (While cond body)
+                Sad msg -> return $ Sad msg
           )
-          ( do
-              return $ Continue Skip
+          ( return $ Continue Skip
           )
     )
 reduce_ (Read x) =
@@ -200,7 +199,7 @@ reduce_ (Read x) =
     inputVal
     id
     (setVar x)
-reduce_ (Write t) = do
+reduce_ (Write t) =
   premise
     (reduce t)
     Write
@@ -305,7 +304,7 @@ applyFunArgList tf rest funVal argVal = do
     Sad msg -> return (Sad msg)
 
 applyFunArg :: (Machine m, Show m, V m ~ Value) => Value -> Value -> Env m
-applyFunArg (ClosureVal [] _ _) _ = do
+applyFunArg (ClosureVal [] _ _) _ =
   return $ Sad (Arguments, "too many arguments: function takes 0 arguments")
 applyFunArg (ClosureVal (x : xs) body caps) arg = do
   let newCaps = caps ++ [(x, arg)]
@@ -353,7 +352,7 @@ reduceFully :: (Machine m, Show m, V m ~ Value) => Term -> m -> (Either String (
 reduceFully term machine =
   case S.runState (reduce term) machine of
     (Sad (_, message), m) -> (Left message, m)
-    (Continue t, m) -> do
+    (Continue t, m) ->
       case t of
         BreakSignal -> (Left "unhandled break signal", m)
         ContinueSignal -> (Left "unhandled continue signal", m)
