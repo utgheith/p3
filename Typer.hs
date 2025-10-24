@@ -1,6 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 
-module Typer (typer) where
+module Typer (typer, Types (..)) where
 
 import Data.Functor.Foldable (para)
 import Term (BinaryOp (..), Term, TermF (..), UnaryOp (..))
