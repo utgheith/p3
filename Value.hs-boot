@@ -1,4 +1,4 @@
-module Value (Value(..)) where
+module Value (Value (..)) where
 
 import qualified Data.Map as M
 import qualified Data.Set as S
@@ -14,4 +14,5 @@ data Value
   | Set (S.Set Integer)
 
 instance Eq Value
+
 instance Show Value
