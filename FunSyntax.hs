@@ -4,7 +4,7 @@
 
 {-# HLINT ignore "Use <$>" #-}
 
-module FunSyntax (parse, prog, term, Term (Let, BinaryOps, Seq, Skip, UnaryOps, Var, While, Write, BoolLit, Literal, StringLiteral, Fun, ApplyFun, If, ForIn)) where
+module FunSyntax (parse, prog, term, Term (Let, BinaryOps, Seq, Skip, UnaryOps, Var, While, Write, BoolLit, Literal, StringLiteral, Fun, ApplyFun, If, ForIn, NewSet, SetTerm)) where
 
 import qualified Control.Monad as M
 import Control.Monad.State.Lazy (runStateT)
@@ -174,6 +174,12 @@ tuple = [TupleTerm elems | _ <- symbol "[", elems <- rptDropSep term (symbol ","
 dictionary :: Parser Token Term
 dictionary = [NewDictionary | _ <- symbol "#", _ <- symbol "[", _ <- symbol "]"]
 
+set :: Parser Token Term
+set = [SetTerm elems | _ <- symbol "#", _ <- symbol "{", elems <- rptDropSep term (symbol ","), _ <- symbol "}"]
+
+emptySet :: Parser Token Term
+emptySet = [NewSet | _ <- symbol "#", _ <- symbol "{", _ <- symbol "}"]
+
 parens :: Parser Token Term
 parens = [t | _ <- symbol "(", t <- term, _ <- symbol ")"]
 
@@ -259,7 +265,7 @@ printStmt =
   ]
 
 unaryExp :: Parser Token Term
-unaryExp = oneof [ifExpr, block, funDef, minus, bitnot, preIncrement, preDecrement, num, string, bool, tuple, dictionary, tryCatch, parens, varDef, rangeTerm, funCall, postIncrement, postDecrement, varRef, whileTerm, forInTerm, forTerm, printStmt]
+unaryExp = oneof [ifExpr, block, funDef, minus, bitnot, preIncrement, preDecrement, num, string, bool, tuple, dictionary, emptySet, set, tryCatch, parens, varDef, rangeTerm, funCall, postIncrement, postDecrement, varRef, whileTerm, forInTerm, forTerm, printStmt]
 
 ----------- prog ----------
 

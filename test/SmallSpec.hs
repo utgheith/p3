@@ -8,6 +8,7 @@ import qualified Control.Monad.State as S
 import Data.Bits (complement)
 import Data.Either (isLeft)
 import qualified Data.Map as M
+import qualified Data.Set as DS
 import Scope (Scope (..), emptyScope, getAllBindings, insertScope, lookupScope, scopeFromList)
 import Small
 import Term
@@ -171,11 +172,24 @@ instance Machine MockMachine where
     Just v -> return $ Happy v
     Nothing -> return $ Sad (VariableNotFound, "Unable to find element in dictionary")
   getBracketValue (Dictionary _) _ = return $ Sad (Type, "Unable to index into dictionary with type")
+  getBracketValue (Set s) (IntVal val) = 
+    if DS.member val s 
+      then return $ Happy (BoolVal True)
+      else return $ Happy (BoolVal False)
+  getBracketValue (Set _) _ = return $ Sad (Type, "Unable to index into set with non-integer type")
   getBracketValue (Tuple _) _ = return $ Sad (VariableNotFound, "Out of Bounds")
   getBracketValue _ _ = return $ Sad (Type, "Invalid Lookup Bad Input")
 
   setBracketValue (Dictionary current) (IntVal index) val =
     return $ Happy $ Dictionary (M.insert index val current)
+  setBracketValue (Set current) (IntVal index) (BoolVal True) =
+    return $ Happy $ Set (DS.insert index current)
+  setBracketValue (Set current) (IntVal index) (BoolVal False) =
+    return $ Happy $ Set (DS.delete index current)
+  setBracketValue (Set _) (IntVal _) _ = 
+    return $ Sad (Type, "Set values must be boolean (True to add, False to remove)")
+  setBracketValue (Set _) _ _ = 
+    return $ Sad (Type, "Set indices must be integers")
   setBracketValue (Tuple t) (IntVal index) val =
     let returnVal = loop (Tuple t) (IntVal index) val
      in case returnVal of
@@ -202,6 +216,7 @@ instance Machine MockMachine where
   selectValue (Tuple l) c t = if not (null l) then c else t
   selectValue ClosureVal {} _ _ = return $ Sad (Type, "Type error in select")
   selectValue (Dictionary _) _ _ = return $ Sad (Type, "Type error in select")
+  selectValue (Set _) _ _ = return $ Sad (Type, "Type error in select")
 
 spec :: Spec
 spec =
@@ -754,6 +769,73 @@ spec =
       let finalMachine = initialMachine {getMem = scopeFromList [("x", Dictionary (M.fromList [(3, Tuple [IntVal 0, IntVal 1, StringVal "hello"])]))]}
       reduceFully term initialMachine `shouldBe` (Right (StringVal "hello"), finalMachine)
 
+    -- Set Tests
+    it "reduces new empty set" $ do
+      let term = NewSet
+      reduceFully term initialMachine `shouldBe` (Right (Set DS.empty), initialMachine)
+
+    it "reduces set with elements" $ do
+      let term = SetTerm [Literal 1, Literal 2, Literal 3]
+      reduceFully term initialMachine `shouldBe` (Right (Set (DS.fromList [1, 2, 3])), initialMachine)
+
+    it "reduces set with duplicate elements (set removes duplicates)" $ do
+      let term = SetTerm [Literal 1, Literal 2, Literal 1, Literal 3, Literal 2]
+      reduceFully term initialMachine `shouldBe` (Right (Set (DS.fromList [1, 2, 3])), initialMachine)
+
+    it "adds element to set" $ do
+      let term = Seq (Let (OnlyStr "s") NewSet) (Let (Bracket (OnlyStr "s") (Literal 5)) (BoolLit True))
+      let finalMachine = initialMachine {getMem = scopeFromList [("s", Set (DS.fromList [5]))]}
+      reduceFully term initialMachine `shouldBe` (Right (Set (DS.fromList [5])), finalMachine)
+
+    it "adds multiple elements to set" $ do
+      let term = Seq (Let (OnlyStr "s") NewSet) (Seq (Let (Bracket (OnlyStr "s") (Literal 1)) (BoolLit True)) (Seq (Let (Bracket (OnlyStr "s") (Literal 2)) (BoolLit True)) (Let (Bracket (OnlyStr "s") (Literal 3)) (BoolLit True))))
+      let finalMachine = initialMachine {getMem = scopeFromList [("s", Set (DS.fromList [1, 2, 3]))]}
+      reduceFully term initialMachine `shouldBe` (Right (Set (DS.fromList [1, 2, 3])), finalMachine)
+
+    it "removes element from set" $ do
+      let term = Seq (Let (OnlyStr "s") (SetTerm [Literal 1, Literal 2, Literal 3])) (Let (Bracket (OnlyStr "s") (Literal 2)) (BoolLit False))
+      let finalMachine = initialMachine {getMem = scopeFromList [("s", Set (DS.fromList [1, 3]))]}
+      reduceFully term initialMachine `shouldBe` (Right (Set (DS.fromList [1, 3])), finalMachine)
+
+    it "checks set membership (element present)" $ do
+      let term = Seq (Let (OnlyStr "s") (SetTerm [Literal 1, Literal 2, Literal 3])) (Var (Bracket (OnlyStr "s") (Literal 2)))
+      let finalMachine = initialMachine {getMem = scopeFromList [("s", Set (DS.fromList [1, 2, 3]))]}
+      reduceFully term initialMachine `shouldBe` (Right (BoolVal True), finalMachine)
+
+    it "checks set membership (element not present)" $ do
+      let term = Seq (Let (OnlyStr "s") (SetTerm [Literal 1, Literal 2, Literal 3])) (Var (Bracket (OnlyStr "s") (Literal 5)))
+      let finalMachine = initialMachine {getMem = scopeFromList [("s", Set (DS.fromList [1, 2, 3]))]}
+      reduceFully term initialMachine `shouldBe` (Right (BoolVal False), finalMachine)
+
+    it "for-in loop over set" $ do
+      let term = Seq (Let (OnlyStr "s") (SetTerm [Literal 3, Literal 1, Literal 2])) (Seq (Let (OnlyStr "sum") (Literal 0)) (ForIn "x" (Var (OnlyStr "s")) (Let (OnlyStr "sum") (BinaryOps Add (Var (OnlyStr "sum")) (Var (OnlyStr "x"))))))
+      let finalMachine = initialMachine {getMem = scopeFromList [("s", Set (DS.fromList [1, 2, 3])), ("sum", IntVal 6), ("x", IntVal 3)]}
+      reduceFully term initialMachine `shouldBe` (Right (IntVal 6), finalMachine)
+
+    it "for-in loop over empty set" $ do
+      let term = Seq (Let (OnlyStr "s") NewSet) (Seq (Let (OnlyStr "count") (Literal 0)) (ForIn "x" (Var (OnlyStr "s")) (Let (OnlyStr "count") (BinaryOps Add (Var (OnlyStr "count")) (Literal 1)))))
+      let finalMachine = initialMachine {getMem = scopeFromList [("s", Set DS.empty), ("count", IntVal 0)]}
+      reduceFully term initialMachine `shouldBe` (Right (IntVal 0), finalMachine)
+
+    it "builds set from for-in loop" $ do
+      let term = Seq (Let (OnlyStr "result") NewSet) (Seq (ForIn "i" (Range (Literal 5)) (Let (Bracket (OnlyStr "result") (BinaryOps Mul (Var (OnlyStr "i")) (Literal 2))) (BoolLit True))) (Var (OnlyStr "result")))
+      let finalMachine = initialMachine {getMem = scopeFromList [("result", Set (DS.fromList [0, 2, 4, 6, 8])), ("i", IntVal 4)]}
+      reduceFully term initialMachine `shouldBe` (Right (Set (DS.fromList [0, 2, 4, 6, 8])), finalMachine)
+
+    it "set error: non-integer element" $ do
+      let term = SetTerm [Literal 1, StringLiteral "hello", Literal 3]
+      fst (reduceFully term initialMachine) `shouldSatisfy` isLeft
+
+    it "set error: non-integer index for membership check" $ do
+      let term = Seq (Let (OnlyStr "s") (SetTerm [Literal 1, Literal 2])) (Var (Bracket (OnlyStr "s") (StringLiteral "test")))
+      let finalMachine = initialMachine {getMem = scopeFromList [("s", Set (DS.fromList [1, 2]))]}
+      reduceFully term initialMachine `shouldBe` (Left "Unable to index into set with non-integer type", finalMachine)
+
+    it "set error: non-boolean value for add/remove" $ do
+      let term = Seq (Let (OnlyStr "s") NewSet) (Let (Bracket (OnlyStr "s") (Literal 1)) (Literal 5))
+      let finalMachine = initialMachine {getMem = scopeFromList [("s", Set DS.empty)]}
+      reduceFully term initialMachine `shouldBe` (Left "Set values must be boolean (True to add, False to remove)", finalMachine)
+
     -- Ternary Operator Tests
     it "reduces ternary operator with true condition" $ do
       let term = If (BoolLit True) (Literal 10) (Literal 20)
@@ -875,7 +957,7 @@ spec =
       it "errors on non-iterable value" $ do
         let term = ForIn "i" (Literal 42) (Write (Var (OnlyStr "i")))
         let (result, _) = reduceFully term initialMachine
-        result `shouldBe` Left "for-in requires iterable (tuple, string, dictionary, or [iterator, state])"
+        result `shouldBe` Left "for-in requires iterable (tuple, string, dictionary, set, or [iterator, state])"
 
       it "errors on iterator with wrong arity" $ do
         let iterator = Fun ["x", "y"] (Var (OnlyStr "x"))  -- 2 params instead of 1

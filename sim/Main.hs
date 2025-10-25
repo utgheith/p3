@@ -8,6 +8,7 @@ module Main (main) where
 import qualified Control.Monad.State as S
 import Data.Bits (complement)
 import qualified Data.Map as M
+import qualified Data.Set as DS
 import qualified Progs
 import Scope (Scope (..), emptyScope, getAllBindings, insertScope, lookupScope)
 import Small (Env, Error, Machine (..), Result (..), reduceFully)
@@ -114,6 +115,7 @@ instance Machine Simulator where
   selectValue (Tuple l) e1 e2 = if not (null l) then e1 else e2
   selectValue (ClosureVal {}) _ _ = return $ Sad (Type, "Type error in select")
   selectValue (Dictionary _) _ _ = return $ Sad (Type, "Type error in select")
+  selectValue (Set _) _ _ = return $ Sad (Type, "Type error in select")
 
   ltVal :: Value -> Value -> Env Simulator
   ltVal (IntVal v1) (IntVal v2) = return $ Happy (BoolVal (v1 < v2))
@@ -218,12 +220,25 @@ instance Machine Simulator where
     Just v -> return $ Happy v
     Nothing -> return $ Sad (VariableNotFound, "Unable to find element in dictionary")
   getBracketValue (Dictionary _) _ = return $ Sad (Type, "Unable to index into dictionary with type")
+  getBracketValue (Set s) (IntVal val) = 
+    if DS.member val s 
+      then return $ Happy (BoolVal True)
+      else return $ Happy (BoolVal False)
+  getBracketValue (Set _) _ = return $ Sad (Type, "Unable to index into set with non-integer type")
   getBracketValue (Tuple _) _ = return $ Sad (VariableNotFound, "Out of Bounds")
   getBracketValue _ _ = return $ Sad (Type, "Invalid Lookup Bad Input")
 
   setBracketValue :: Value -> Value -> Value -> Env Simulator
   setBracketValue (Dictionary current) (IntVal index) val =
     return $ Happy $ Dictionary (M.insert index val current)
+  setBracketValue (Set current) (IntVal index) (BoolVal True) =
+    return $ Happy $ Set (DS.insert index current)
+  setBracketValue (Set current) (IntVal index) (BoolVal False) =
+    return $ Happy $ Set (DS.delete index current)
+  setBracketValue (Set _) (IntVal _) _ = 
+    return $ Sad (Type, "Set values must be boolean (True to add, False to remove)")
+  setBracketValue (Set _) _ _ = 
+    return $ Sad (Type, "Set indices must be integers")
   setBracketValue (Tuple t) (IntVal index) val =
     let returnVal = loop (Tuple t) (IntVal index) val
      in case returnVal of

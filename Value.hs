@@ -11,6 +11,7 @@ module Value
 where
 
 import qualified Data.Map as M
+import qualified Data.Set as S
 import Sprintf ((%))
 import Term (Term)
 
@@ -21,6 +22,7 @@ data Value
   | Tuple [Value]
   | ClosureVal [String] Term [(String, Value)]
   | Dictionary (M.Map Integer Value)
+  | Set (S.Set Integer)
   deriving (Eq, Show)
 
 data Type
@@ -30,6 +32,7 @@ data Type
   | TupleType
   | ClosureType
   | DictionaryType
+  | SetType
   deriving (Eq)
 
 typeOf :: Value -> Type
@@ -39,6 +42,7 @@ typeOf (StringVal _) = StringType
 typeOf (Tuple _) = TupleType
 typeOf ClosureVal {} = ClosureType
 typeOf (Dictionary _) = DictionaryType
+typeOf (Set _) = SetType
 
 typeName :: Type -> String
 typeName IntType = "integer"
@@ -47,6 +51,7 @@ typeName StringType = "string"
 typeName TupleType = "tuple"
 typeName ClosureType = "function"
 typeName DictionaryType = "dictionary"
+typeName SetType = "set"
 
 typeError :: Type -> Value -> Either String t
 typeError expected actual = Left $ "Type error: expected %s, got %s" % map typeName [expected, typeOf actual]

@@ -13,6 +13,7 @@ import Control.Applicative
 import Control.Monad
 import qualified Control.Monad.State as S
 import qualified Data.Map as M
+import qualified Data.Set as DS
 import Debug.Trace (trace)
 import Term (BinaryOp (..), ErrorKind (..), ErrorKindOrAny (..), Term (..), UnaryOp (..))
 import Value (Value (..))
@@ -197,7 +198,8 @@ reduce_ = tryRules rules
         reduceApplyFun,
         reduceIncDec,
         reduceTupleTerm,
-        reduceDictionary
+        reduceDictionary,
+        reduceSet
       ]
 
 reduceLiteral :: (Machine m, Show m, V m ~ Value) => Rule m
@@ -531,6 +533,11 @@ reduceForIn t =
         | ForIn var iter body <- pure t,
           Dictionary dict <- val iter
       ],
+      -- set: convert to list of integers
+      [ Continue (ForInLoop var (map IntVal (DS.toList setVals)) body)
+        | ForIn var iter body <- pure t,
+          Set setVals <- val iter
+      ],
       -- regular tuple (not [iterator, state]): convert to ForInLoop
       [ Continue (ForInLoop var vals body)
         | ForIn var iter body <- pure t,
@@ -550,7 +557,7 @@ reduceForIn t =
           length params /= 1
       ],
       -- other value: error
-      [ Sad (Type, "for-in requires iterable (tuple, string, dictionary, or [iterator, state])")
+      [ Sad (Type, "for-in requires iterable (tuple, string, dictionary, set, or [iterator, state])")
         | ForIn _ iter _ <- pure t,
           v <- val iter,
           not (isIterableValue v)
@@ -591,6 +598,7 @@ isIterableValue (Tuple [ClosureVal _ _ _, _]) = True -- [iterator, state] patter
 isIterableValue (Tuple _) = True
 isIterableValue (StringVal _) = True -- strings are iterable
 isIterableValue (Dictionary _) = True -- dictionaries are iterable
+isIterableValue (Set _) = True -- sets are iterable
 isIterableValue _ = False
 
 -- which pattern is the iterator?
@@ -605,6 +613,7 @@ valueToTerm (BoolVal b) = BoolLit b
 valueToTerm (StringVal s) = StringLiteral s
 valueToTerm (Tuple vals) = TupleTerm (map valueToTerm vals)
 valueToTerm (Dictionary _) = NewDictionary -- simplified; loses data
+valueToTerm (Set _) = NewSet -- simplified; loses data
 valueToTerm (ClosureVal params body _) = Fun params body -- loses captures; not ideal
 
 -- call custom iterator with state, returns [value, newState]
@@ -1000,6 +1009,57 @@ reduceDictionary t =
   asum
     [ [r | NewDictionary <- pure t, r <- envR (return $ Happy $ Dictionary M.empty)]
     ]
+
+reduceSet :: (Machine m, Show m, V m ~ Value) => Rule m
+reduceSet t =
+  asum
+    [ -- empty set
+      [ r
+        | NewSet <- pure t,
+          r <- envR (return $ Happy $ Set DS.empty)
+      ],
+      -- non-empty set: step first element
+      [ Continue (SetTerm (elm' : elms))
+        | SetTerm (elm : elms) <- pure t,
+          elm' <- step elm
+      ],
+      -- first element is a value: step rest of set
+      [ Continue (SetTerm (elm : elms'))
+        | SetTerm (elm : elms) <- pure t,
+          _ <- val elm,
+          SetTerm elms' <- step (SetTerm elms)
+      ],
+      -- all elements are values: construct set value (must be integers)
+      [ r
+        | SetTerm elms <- pure t,
+          vs <- mapM val elms,
+          r <- envR (constructSetValues vs)
+      ],
+      -- fault in first element: propagate
+      [ e
+        | SetTerm (elm : _) <- pure t,
+          e <- fault elm
+      ],
+      -- fault in rest of set: propagate
+      [ e
+        | SetTerm (_ : elms) <- pure t,
+          _ <- val (head elms),
+          e <- fault (SetTerm elms)
+      ],
+      -- empty set literal: return empty set value
+      [ r
+        | SetTerm [] <- pure t,
+          r <- envR (return $ Happy $ Set DS.empty)
+      ]
+    ]
+
+constructSetValues :: (Machine m, V m ~ Value) => [Value] -> Env m
+constructSetValues vs = do
+  let extractInt (IntVal n) = Right n
+      extractInt _ = Left "Set elements must be integers"
+  case mapM extractInt vs of
+    Right ints -> return $ Happy $ Set (DS.fromList ints)
+    Left msg -> return $ Sad (Type, msg)
 
 reduce :: (Machine m, Show m, V m ~ Value) => Rule m
 reduce t = do

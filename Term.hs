@@ -39,6 +39,8 @@ data Term
   | BoolLit Bool
   | TupleTerm [Term]
   | NewDictionary
+  | NewSet
+  | SetTerm [Term]
   | Retrieve Term Term
   | Merge Term Term Term -- current value, index, value
   | Fun [String] Term

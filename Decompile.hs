@@ -50,6 +50,10 @@ decompile = cata go
       sprintf "TupleTerm [%s]" [intercalate ", " terms]
     go NewDictionaryF =
       "NewDictionary"
+    go NewSetF =
+      "NewSet"
+    go (SetTermF terms) =
+      sprintf "SetTerm [%s]" [intercalate ", " terms]
     go (RetrieveF dict index) =
       sprintf "Retrieve (%s) (%s)" [dict, index]
     go (MergeF current index value) =

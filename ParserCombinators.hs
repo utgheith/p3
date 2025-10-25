@@ -89,16 +89,10 @@ oneof :: [Parser t a] -> Parser t a
 oneof = asum
 
 opt :: Parser t a -> Parser t (Maybe a)
-opt p =
-  catchError
-    (Just <$> p)
-    (const $ return Nothing)
+opt p = (Just <$> p) <|> return Nothing
 
 rpt :: Parser t a -> Parser t [a]
-rpt p =
-  catchError
-    (some p)
-    (const $ return [])
+rpt p = some p <|> return []
 
 type RepeatResult a b = Maybe (a, [(b, a)])
 
@@ -107,17 +101,10 @@ dropSep Nothing = []
 dropSep (Just (x, xbs)) = x : map snd xbs
 
 rptSep :: Parser t a -> Parser t b -> Parser t (RepeatResult a b)
-rptSep p sep =
-  catchError
-    ( do
-        x <- p
-        xs <- rpt $ do
-          s <- sep
-          v <- p
-          return (s, v)
-        return $ Just (x, xs)
-    )
-    (const $ return Nothing)
+rptSep p sep = opt $ do
+  x <- p
+  xs <- rpt $ (,) <$> sep <*> p
+  return (x, xs)
 
 rptDropSep :: Parser t a -> Parser t b -> Parser t [a]
 rptDropSep p sep = dropSep <$> rptSep p sep
@@ -158,36 +145,17 @@ lookAhead p = do
 
 -- Left-associative chaining: parses "1 + 2 + 3" as "(1 + 2) + 3"
 chainl1 :: Parser t a -> Parser t (a -> a -> a) -> Parser t a
-chainl1 p op = do
-  x <- p
-  rest x
+chainl1 p op = p >>= rest
   where
-    rest x =
-      ( do
-          f <- op
-          y <- p
-          rest (f x y)
-      )
-        <|> return x
+    rest x = ((\f y -> f x y) <$> op <*> p >>= rest) <|> return x
 
 -- Right-associative chaining: parses "1 ^ 2 ^ 3" as "1 ^ (2 ^ 3)"
 chainr1 :: Parser t a -> Parser t (a -> a -> a) -> Parser t a
-chainr1 p op = do
-  x <- p
-  ( do
-      f <- op
-      y <- chainr1 p op
-      return (f x y)
-    )
-    <|> return x
+chainr1 p op = p >>= \x -> ((\f y -> f x y) <$> op <*> chainr1 p op) <|> return x
 
 -- Match a specific sequence of tokens
 tokens :: (Show t, Eq t) => [t] -> Parser t [t]
-tokens [] = return []
-tokens (t : ts) = do
-  _ <- token t
-  _ <- tokens ts
-  return (t : ts)
+tokens = mapM token
 
 -- Convenient alias for parsing strings
 string :: String -> Parser Char String
