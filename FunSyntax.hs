@@ -95,7 +95,7 @@ precedence :: [S.Set String]
 precedence = map S.fromList [["||"], ["^"], ["&&"], ["==", "!="], ["<", ">", "<=", ">="], ["+", "-"], ["*", "/", "%"], ["**"]]
 
 binaryExp :: [S.Set String] -> Parser Token Term
-binaryExp [] = unaryExp
+binaryExp [] = methodCall
 binaryExp (ops : rest) = do
   -- lhs
   lhs <- binaryExp rest
@@ -127,6 +127,20 @@ stringToBinaryOp "||" = Or
 stringToBinaryOp "**" = Pow
 stringToBinaryOp "^" = Xor
 stringToBinaryOp _ = error "Unknown binary operator"
+
+------------------- method calls -----------------------
+
+methodCall :: Parser Token Term
+methodCall =
+  [ ApplyFun (Var (OnlyStr name)) (caller : args)
+    | caller <- varRef <|> parens,
+      _ <- symbol ".",
+      name <- ident,
+      _ <- symbol "(",
+      args <- rptDropSep term (symbol ","),
+      _ <- symbol ")"
+  ]
+    <|> unaryExp
 
 ------------------- unary operators  -------------------
 

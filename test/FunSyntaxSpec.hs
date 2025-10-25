@@ -120,6 +120,12 @@ spec = do
       it "parses function calls with arguments" $
         parseString "f(x, y)" `shouldBe` Right (ApplyFun (Var (OnlyStr "f")) [Var (OnlyStr "x"), Var (OnlyStr "y")], [])
 
+      it "parses method calls" $
+        parseString "m.invoke(x, y)" `shouldBe` Right (ApplyFun (Var (OnlyStr "invoke")) $ map (Var . OnlyStr) ["m", "x", "y"], [])
+
+      it "parses method calls on complex expressions" $
+        parseString "(1 + 2).invoke(3, 4)" `shouldBe` Right (ApplyFun (Var (OnlyStr "invoke")) [BinaryOps Add (Literal 1) (Literal 2), Literal 3, Literal 4], [])
+
     describe "tuples" $ do
       it "parses tuple creation" $
         parseString "x = [1, 2, 3]" `shouldBe` Right (Let (OnlyStr "x") (TupleTerm [Literal 1, Literal 2, Literal 3]), [])
@@ -149,6 +155,10 @@ spec = do
 
       it "parses try-catch arguments" $
         parseString "try x catch Arguments 1" `shouldBe` Right (Try (Var (OnlyStr "x")) (Specific Arguments) (Literal 1), [])
+
+    describe "statement separators" $
+      it "separates statements" $
+        parseString "1 + 2; if 3 4 else 5; " `shouldBe` Right (Seq (BinaryOps Add (Literal 1) (Literal 2)) (If (Literal 3) (Literal 4) (Literal 5)), [])
 
     describe "error cases" $
       it "fails on invalid syntax" $ do
