@@ -4,7 +4,7 @@
 
 {-# HLINT ignore "Use <$>" #-}
 
-module FunSyntax (parse, prog, term, Term (Let, BinaryOps, Seq, Skip, UnaryOps, Var, While, Write, BoolLit, Literal, StringLiteral, Fun, ApplyFun, If)) where
+module FunSyntax (parse, prog, term, Term (Let, BinaryOps, Seq, Skip, UnaryOps, Var, While, Write, BoolLit, Literal, StringLiteral, Fun, ApplyFun, If, ForIn, NewSet, SetTerm)) where
 
 import qualified Control.Monad as M
 import Control.Monad.State.Lazy (runStateT)
@@ -189,6 +189,12 @@ tuple = [TupleTerm elems | _ <- symbol "[", elems <- rptDropSep term (symbol ","
 dictionary :: Parser Token Term
 dictionary = [NewDictionary | _ <- symbol "#", _ <- symbol "[", _ <- symbol "]"]
 
+set :: Parser Token Term
+set = [SetTerm elems | _ <- symbol "#", _ <- symbol "{", elems <- rptDropSep term (symbol ","), _ <- symbol "}"]
+
+emptySet :: Parser Token Term
+emptySet = [NewSet | _ <- symbol "#", _ <- symbol "{", _ <- symbol "}"]
+
 parens :: Parser Token Term
 parens = [t | _ <- symbol "(", t <- term, _ <- symbol ")"]
 
@@ -232,6 +238,12 @@ whileTerm = [While cond body | _ <- keyword "while", cond <- term, body <- term]
 forTerm :: Parser Token Term
 forTerm = [For var start end body | _ <- keyword "for", var <- ident, start <- term, end <- term, body <- term]
 
+forInTerm :: Parser Token Term
+forInTerm = [ForIn var iterable body | _ <- keyword "for", var <- ident, _ <- keyword "in", iterable <- term, body <- term]
+
+rangeTerm :: Parser Token Term
+rangeTerm = [Range n | _ <- keyword "range", _ <- symbol "(", n <- term, _ <- symbol ")"]
+
 tryCatch :: Parser Token Term
 tryCatch =
   [ Try tryBranch (errorType err) catchBranch
@@ -268,7 +280,7 @@ printStmt =
   ]
 
 unaryExp :: Parser Token Term
-unaryExp = oneof [ifExpr, block, funDef, minus, bitnot, preIncrement, preDecrement, num, string, bool, tuple, dictionary, tryCatch, parens, varDef, funCall, postIncrement, postDecrement, varRef, whileTerm, forTerm, printStmt]
+unaryExp = oneof [ifExpr, block, funDef, minus, bitnot, preIncrement, preDecrement, num, string, bool, tuple, dictionary, emptySet, set, tryCatch, parens, varDef, rangeTerm, funCall, postIncrement, postDecrement, varRef, whileTerm, forInTerm, forTerm, printStmt]
 
 ----------- prog ----------
 

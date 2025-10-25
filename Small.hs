@@ -13,6 +13,7 @@ import Control.Applicative
 import Control.Monad
 import qualified Control.Monad.State as S
 import qualified Data.Map as M
+import qualified Data.Set as DS
 import Debug.Trace (trace)
 import Term (BinaryOp (..), ErrorKind (..), ErrorKindOrAny (..), Term (..), UnaryOp (..))
 import Value (Value (..))
@@ -184,6 +185,9 @@ reduce_ = tryRules rules
         reduceTry,
         reduceWhile,
         reduceFor,
+        reduceForIn,
+        reduceForInLoop,
+        reduceRange,
         reduceRead,
         reduceWrite,
         reduceSkip,
@@ -194,7 +198,8 @@ reduce_ = tryRules rules
         reduceApplyFun,
         reduceIncDec,
         reduceTupleTerm,
-        reduceDictionary
+        reduceDictionary,
+        reduceSet
       ]
 
 reduceLiteral :: (Machine m, Show m, V m ~ Value) => Rule m
@@ -362,7 +367,7 @@ reduceMerge t =
 reduceSeq :: (Machine m, Show m, V m ~ Value) => Rule m
 reduceSeq t =
   asum
-    [ -- step t1 (signal-aware when t2 is a While)
+    [ -- step t1 (signal-aware when t2 is a While, ForIn, or ForInLoop)
       [ res
         | Seq t1 t2 <- pure t,
           t1' <- step t1,
@@ -370,6 +375,15 @@ reduceSeq t =
                 -- left side signalled while we're sequencing into a loop on the right:
                 (BreakSignal, While _ _) -> Happy (IntVal 0) -- break: exit loop
                 (ContinueSignal, While c b) -> Continue (While c b) -- continue: next iter
+                (BreakSignal, ForIn _ _ _) -> Happy (IntVal 0) -- break: exit loop
+                (ContinueSignal, ForIn v iter b) -> Continue (ForIn v iter b) -- continue: next iter
+                (BreakSignal, ForInLoop _ _ _) -> Happy (IntVal 0) -- break: exit loop
+                (ContinueSignal, ForInLoop v vs b) -> Continue (ForInLoop v vs b) -- continue: next iter
+                -- also handle Seq body (ForIn/ForInLoop ...) pattern from multi-element iteration
+                (BreakSignal, Seq _ (ForIn _ _ _)) -> Happy (IntVal 0)
+                (ContinueSignal, Seq _ (ForIn v iter b)) -> Continue (ForIn v iter b)
+                (BreakSignal, Seq _ (ForInLoop _ _ _)) -> Happy (IntVal 0)
+                (ContinueSignal, Seq _ (ForInLoop v vs b)) -> Continue (ForInLoop v vs b)
                 -- otherwise: propagate signals normally
                 (BreakSignal, _) -> Continue BreakSignal
                 (ContinueSignal, _) -> Continue ContinueSignal
@@ -501,6 +515,167 @@ reduceFor t =
       ]
     ]
 
+reduceForIn :: (Machine m, Show m, V m ~ Value) => Rule m
+reduceForIn t =
+  asum
+    [ -- iterator step
+      [ Continue (ForIn var iter' body)
+        | ForIn var iter body <- pure t,
+          iter' <- step iter
+      ],
+      -- string: convert to tuple of single-character strings
+      [ Continue (ForInLoop var (map (StringVal . (: [])) str) body)
+        | ForIn var iter body <- pure t,
+          StringVal str <- val iter
+      ],
+      -- dictionary: convert to tuple of keys which are integers
+      [ Continue (ForInLoop var (map IntVal (M.keys dict)) body)
+        | ForIn var iter body <- pure t,
+          Dictionary dict <- val iter
+      ],
+      -- set: convert to list of integers
+      [ Continue (ForInLoop var (map IntVal (DS.toList setVals)) body)
+        | ForIn var iter body <- pure t,
+          Set setVals <- val iter
+      ],
+      -- regular tuple (not [iterator, state]): convert to ForInLoop
+      [ Continue (ForInLoop var vals body)
+        | ForIn var iter body <- pure t,
+          Tuple vals <- val iter,
+          not (isIteratorTuple vals)
+      ],
+      -- custom iterator: [function with 1 param, initialState]
+      [ r
+        | ForIn var iter body <- pure t,
+          Tuple [iterFunc@(ClosureVal [_] _ _), initialState] <- val iter,
+          r <- envR (callCustomIterator var iterFunc initialState body)
+      ],
+      -- iterator with wrong arity: error
+      [ Sad (Type, "iterator must take exactly 1 parameter")
+        | ForIn _ iter _ <- pure t,
+          Tuple [ClosureVal params _ _, _] <- val iter,
+          length params /= 1
+      ],
+      -- other value: error
+      [ Sad (Type, "for-in requires iterable (tuple, string, dictionary, set, or [iterator, state])")
+        | ForIn _ iter _ <- pure t,
+          v <- val iter,
+          not (isIterableValue v)
+      ],
+      -- propagate error
+      [ e
+        | ForIn _ iter _ <- pure t,
+          e <- fault iter
+      ]
+    ]
+
+reduceForInLoop :: (Machine m, Show m, V m ~ Value) => Rule m
+reduceForInLoop t =
+  asum
+    [ -- empty list: done
+      [ Happy (IntVal 0)
+        | ForInLoop _ [] _ <- pure t
+      ],
+      -- single element: bind and execute body (returns body result)
+      [ r
+        | ForInLoop var [v] body <- pure t,
+          r <- envR $ do
+            _ <- setVar var v
+            return $ Continue body
+      ],
+      -- multiple elements: bind first, execute body, then continue with rest
+      [ r
+        | ForInLoop var (v : vs@(_ : _)) body <- pure t,
+          r <- envR $ do
+            _ <- setVar var v
+            return $ Continue (Seq body (ForInLoop var vs body))
+      ]
+    ]
+
+-- is the value iterable?
+isIterableValue :: Value -> Bool
+isIterableValue (Tuple [ClosureVal _ _ _, _]) = True -- [iterator, state] pattern
+isIterableValue (Tuple _) = True
+isIterableValue (StringVal _) = True -- strings are iterable
+isIterableValue (Dictionary _) = True -- dictionaries are iterable
+isIterableValue (Set _) = True -- sets are iterable
+isIterableValue _ = False
+
+-- which pattern is the iterator?
+isIteratorTuple :: [Value] -> Bool
+isIteratorTuple [ClosureVal _ _ _, _] = True
+isIteratorTuple _ = False
+
+-- Helper: convert Value back to Term for binding
+valueToTerm :: Value -> Term
+valueToTerm (IntVal n) = Literal n
+valueToTerm (BoolVal b) = BoolLit b
+valueToTerm (StringVal s) = StringLiteral s
+valueToTerm (Tuple vals) = TupleTerm (map valueToTerm vals)
+valueToTerm (Dictionary _) = NewDictionary -- simplified; loses data
+valueToTerm (Set _) = NewSet -- simplified; loses data
+valueToTerm (ClosureVal params body _) = Fun params body -- loses captures; not ideal
+
+-- call custom iterator with state, returns [value, newState]
+callCustomIterator :: (Machine m, Show m, V m ~ Value) => String -> Value -> Value -> Term -> Env m
+callCustomIterator var iterFunc state body = do
+  -- cCall iterator(state)
+  result <- applyFunArg iterFunc state
+  case result of
+    -- StopIteration → done (empty iterator)
+    Continue StopIteration -> return (Happy (IntVal 0))
+    -- bind and check if this is the last iteration
+    Happy (Tuple [value, newState]) -> do
+      _ <- setVar var value
+      -- call iterator(newState) to see if there's a next value
+      nextResult <- applyFunArg iterFunc newState
+      case nextResult of
+        -- call returns StopIteration → this is the last iteration
+        Continue StopIteration -> return $ Continue body
+        -- continue the loop
+        Happy (Tuple _) -> return $ Continue (Seq body (ForIn var (TupleTerm [valueToTerm iterFunc, valueToTerm newState]) body))
+        -- wrong format
+        Happy _ -> return $ Sad (Type, "iterator must return [value, state] or StopIteration")
+        -- error
+        Sad err -> return $ Sad err
+        Continue _ -> return $ Sad (Internal, "iterator returned Continue signal")
+
+    -- wrong return format
+    Happy (Tuple _) -> return $ Sad (Type, "iterator must return [value, state] tuple with 2 elements")
+    Happy _ -> return $ Sad (Type, "iterator must return [value, state] or StopIteration")
+    -- propagate errors
+    Sad err -> return $ Sad err
+    Continue _ -> return $ Sad (Internal, "iterator returned Continue signal")
+
+reduceRange :: (Machine m, Show m, V m ~ Value) => Rule m
+reduceRange t =
+  asum
+    [ -- step the argument
+      [ Continue (Range n')
+        | Range n <- pure t,
+          n' <- step n
+      ],
+      -- create lazy tuple for range(n): [0, 1, 2, ..., n-1]
+      [ Happy (Tuple (map IntVal [0 .. limit - 1]))
+        | Range n <- pure t,
+          IntVal limit <- val n
+      ],
+      -- non-integer argument: error
+      [ Sad (Type, "range requires an integer argument")
+        | Range n <- pure t,
+          v <- val n,
+          notInt v
+      ],
+      -- propagate error
+      [ e
+        | Range n <- pure t,
+          e <- fault n
+      ]
+    ]
+  where
+    notInt (IntVal _) = False
+    notInt _ = True
+
 reduceRead :: (Machine m, Show m, V m ~ Value) => Rule m
 reduceRead t =
   asum
@@ -615,7 +790,8 @@ reduceBreakContinue :: (Machine m, Show m, V m ~ Value) => Rule m
 reduceBreakContinue t =
   asum
     [ [Continue BreakSignal | BreakSignal <- pure t],
-      [Continue ContinueSignal | ContinueSignal <- pure t]
+      [Continue ContinueSignal | ContinueSignal <- pure t],
+      [Continue StopIteration | StopIteration <- pure t]
     ]
 
 reduceIncDec :: (Machine m, Show m, V m ~ Value) => Rule m
@@ -757,12 +933,29 @@ evalClosureBody body caps = do
   case bindMany caps m1 of
     Left msg -> return $ Sad msg
     Right m2 -> do
-      let (res, m3) = reduceFully body m2
+      let (res, m3) = reduceFullyAllowingSignals body m2
       let (_resPop, m4) = S.runState popScope m3 -- Restore previous scope.
       S.put m4
       case res of
         Left msg -> return $ Sad (Arguments, msg)
-        Right v -> return $ Happy v
+        Right (Left sig) -> return $ Continue sig -- Signal (e.g., StopIteration)
+        Right (Right v) -> return $ Happy v
+
+-- Like reduceFully, but allows StopIteration to be returned as a valid signal
+reduceFullyAllowingSignals :: (Machine m, Show m, V m ~ Value) => Term -> m -> (Either String (Either Term (V m)), m)
+reduceFullyAllowingSignals term0 m0 = go m0 term0
+  where
+    go st t =
+      case S.runStateT (runRed (reduce t)) st of
+        Nothing -> (Left ("stuck term: " ++ show t), st)
+        Just (Happy v, st') -> (Right (Right v), st')
+        Just (Sad (_, msg), st') -> (Left msg, st')
+        Just (Continue t', st') ->
+          case t' of
+            BreakSignal -> (Left "unhandled break signal", st')
+            ContinueSignal -> (Left "unhandled continue signal", st')
+            StopIteration -> (Right (Left StopIteration), st') -- Allow StopIteration
+            _ -> go st' t'
 
 bindMany :: (Machine m, V m ~ Value) => [(String, Value)] -> m -> Either Error m
 bindMany [] m = Right m
@@ -815,6 +1008,57 @@ reduceDictionary t =
     [ [r | NewDictionary <- pure t, r <- envR (return $ Happy $ Dictionary M.empty)]
     ]
 
+reduceSet :: (Machine m, Show m, V m ~ Value) => Rule m
+reduceSet t =
+  asum
+    [ -- empty set
+      [ r
+        | NewSet <- pure t,
+          r <- envR (return $ Happy $ Set DS.empty)
+      ],
+      -- non-empty set: step first element
+      [ Continue (SetTerm (elm' : elms))
+        | SetTerm (elm : elms) <- pure t,
+          elm' <- step elm
+      ],
+      -- first element is a value: step rest of set
+      [ Continue (SetTerm (elm : elms'))
+        | SetTerm (elm : elms) <- pure t,
+          _ <- val elm,
+          SetTerm elms' <- step (SetTerm elms)
+      ],
+      -- all elements are values: construct set value (must be integers)
+      [ r
+        | SetTerm elms <- pure t,
+          vs <- mapM val elms,
+          r <- envR (constructSetValues vs)
+      ],
+      -- fault in first element: propagate
+      [ e
+        | SetTerm (elm : _) <- pure t,
+          e <- fault elm
+      ],
+      -- fault in rest of set: propagate
+      [ e
+        | SetTerm (_ : elms) <- pure t,
+          _ <- val (head elms),
+          e <- fault (SetTerm elms)
+      ],
+      -- empty set literal: return empty set value
+      [ r
+        | SetTerm [] <- pure t,
+          r <- envR (return $ Happy $ Set DS.empty)
+      ]
+    ]
+
+constructSetValues :: (Machine m, V m ~ Value) => [Value] -> Env m
+constructSetValues vs = do
+  let extractInt (IntVal n) = Right n
+      extractInt _ = Left "Set elements must be integers"
+  case mapM extractInt vs of
+    Right ints -> return $ Happy $ Set (DS.fromList ints)
+    Left msg -> return $ Sad (Type, msg)
+
 reduce :: (Machine m, Show m, V m ~ Value) => Rule m
 reduce t = do
   e <- S.get
@@ -836,4 +1080,5 @@ reduceFully term0 m0 = go m0 term0
           case t' of
             BreakSignal -> (Left "unhandled break signal", st')
             ContinueSignal -> (Left "unhandled continue signal", st')
+            StopIteration -> (Left "unhandled stop iteration", st')
             _ -> go st' t'
