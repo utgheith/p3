@@ -1,13 +1,13 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
 
-module ParserCombinators (eof, oneof, opt, Parser, Result, rpt, rptSep, rptDropSep, satisfy, token, tokens, string, (<|>), alt, some, sepBy, sepBy1, between, skip, lookAhead, chainl1, chainr1, parse) where
+module ParserCombinators (eof, oneof, opt, Parser, rpt, rptSep, rptDropSep, satisfy, token, tokens, string, (<|>), alt, some, sepBy, sepBy1, between, skip, lookAhead, chainl1, chainr1, parse) where
 
-import Control.Applicative (Alternative (empty, (<|>)), asum)
+import Control.Applicative (asum, (<|>))
 import Control.Monad.Except (catchError, throwError)
 import Control.Monad.State.Lazy (StateT, get, put, runStateT)
 import qualified Data.Functor
-import qualified GHC.Base
+import Result (Result (..))
 import Sprintf ((%), (<<))
 
 -- Parse combinators:
@@ -32,13 +32,9 @@ import Sprintf ((%), (<<))
 --       use of 'catchError' to implement choice and optionality.
 --
 
------------ Result -----------
-
-type Result = Either String
-
 ----------- Parser -----------
 
-type Parser t = StateT [t] Result
+type Parser t = StateT [t] (Result String)
 
 -- Succeed if there are no more tokens, fail otherwise
 eof :: (Show t) => Parser t ()
@@ -67,16 +63,6 @@ token :: (Show t, Eq t) => t -> Parser t t
 token t = assert
   ("expected %s, found %%s" % t << [])
   $ \t' -> if t == t' then Just t else Nothing
-
--- this defines the following instance
-instance Alternative Result where
-  empty = Left "no rule matched"
-  (Right a) <|> _ = Right a -- precedence to left alternative
-  _ <|> (Right a) = Right a
-  _ <|> _ = empty
-
--- need this to infer instance of Alternative for Parser t
-instance GHC.Base.MonadPlus Result
 
 -- Alternative operator that preserves both types
 alt :: Parser t a -> Parser t b -> Parser t (Either a b)
@@ -162,7 +148,7 @@ string :: String -> Parser Char String
 string = tokens
 
 -- Run parser and ensure EOF
-parse :: (Show t) => Parser t a -> [t] -> Result a
+parse :: (Show t) => Parser t a -> [t] -> Result String a
 parse p ts = do
   (result, _) <- runStateT (p <* eof) ts
   return result
