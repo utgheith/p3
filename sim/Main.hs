@@ -220,8 +220,8 @@ instance Machine Simulator where
     Just v -> return $ Happy v
     Nothing -> return $ Sad (VariableNotFound, "Unable to find element in dictionary")
   getBracketValue (Dictionary _) _ = return $ Sad (Type, "Unable to index into dictionary with type")
-  getBracketValue (Set s) (IntVal val) = 
-    if DS.member val s 
+  getBracketValue (Set s) (IntVal val) =
+    if DS.member val s
       then return $ Happy (BoolVal True)
       else return $ Happy (BoolVal False)
   getBracketValue (Set _) _ = return $ Sad (Type, "Unable to index into set with non-integer type")
@@ -235,9 +235,9 @@ instance Machine Simulator where
     return $ Happy $ Set (DS.insert index current)
   setBracketValue (Set current) (IntVal index) (BoolVal False) =
     return $ Happy $ Set (DS.delete index current)
-  setBracketValue (Set _) (IntVal _) _ = 
+  setBracketValue (Set _) (IntVal _) _ =
     return $ Sad (Type, "Set values must be boolean (True to add, False to remove)")
-  setBracketValue (Set _) _ _ = 
+  setBracketValue (Set _) _ _ =
     return $ Sad (Type, "Set indices must be integers")
   setBracketValue (Tuple t) (IntVal index) val =
     let returnVal = loop (Tuple t) (IntVal index) val

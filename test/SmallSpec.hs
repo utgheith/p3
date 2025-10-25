@@ -172,8 +172,8 @@ instance Machine MockMachine where
     Just v -> return $ Happy v
     Nothing -> return $ Sad (VariableNotFound, "Unable to find element in dictionary")
   getBracketValue (Dictionary _) _ = return $ Sad (Type, "Unable to index into dictionary with type")
-  getBracketValue (Set s) (IntVal val) = 
-    if DS.member val s 
+  getBracketValue (Set s) (IntVal val) =
+    if DS.member val s
       then return $ Happy (BoolVal True)
       else return $ Happy (BoolVal False)
   getBracketValue (Set _) _ = return $ Sad (Type, "Unable to index into set with non-integer type")
@@ -186,9 +186,9 @@ instance Machine MockMachine where
     return $ Happy $ Set (DS.insert index current)
   setBracketValue (Set current) (IntVal index) (BoolVal False) =
     return $ Happy $ Set (DS.delete index current)
-  setBracketValue (Set _) (IntVal _) _ = 
+  setBracketValue (Set _) (IntVal _) _ =
     return $ Sad (Type, "Set values must be boolean (True to add, False to remove)")
-  setBracketValue (Set _) _ _ = 
+  setBracketValue (Set _) _ _ =
     return $ Sad (Type, "Set indices must be integers")
   setBracketValue (Tuple t) (IntVal index) val =
     let returnVal = loop (Tuple t) (IntVal index) val
@@ -960,7 +960,7 @@ spec =
         result `shouldBe` Left "for-in requires iterable (tuple, string, dictionary, set, or [iterator, state])"
 
       it "errors on iterator with wrong arity" $ do
-        let iterator = Fun ["x", "y"] (Var (OnlyStr "x"))  -- 2 params instead of 1
+        let iterator = Fun ["x", "y"] (Var (OnlyStr "x")) -- 2 params instead of 1
         let term = ForIn "i" (TupleTerm [iterator, Literal 0]) (Write (Var (OnlyStr "i")))
         let (result, _) = reduceFully term initialMachine
         result `shouldBe` Left "iterator must take exactly 1 parameter"
@@ -1054,7 +1054,6 @@ spec =
         let (result, machine) = reduceFully term initialMachine
         result `shouldBe` Right (IntVal 0) -- break returns 0
         getMem machine `shouldSatisfy` \scope -> lookupScope "sum" scope == Just (IntVal 3) -- 0+1+2
-
       it "range with continue" $ do
         let term =
               Seq
@@ -1096,7 +1095,7 @@ spec =
             loop =
               ForIn
                 "i"
-                (TupleTerm [iterator, Literal 0])  -- [iterator, initialState]
+                (TupleTerm [iterator, Literal 0]) -- [iterator, initialState]
                 (Let (OnlyStr "sum") (BinaryOps Add (Var (OnlyStr "sum")) (Var (OnlyStr "i"))))
             term = Seq (Let (OnlyStr "sum") (Literal 0)) loop
         -- Iterator yields 1, 2, 3, then StopIteration
@@ -1144,7 +1143,6 @@ spec =
         let (result, machine) = reduceFully term initialMachine
         result `shouldBe` Right (IntVal 0) -- break returns 0
         getMem machine `shouldSatisfy` \scope -> lookupScope "count" scope == Just (IntVal 2) -- counted 'h' and 'e'
-
     describe "dictionary iteration" $ do
       it "iterates over dictionary keys" $ do
         let setupDict =
@@ -1178,5 +1176,3 @@ spec =
         let (result, machine) = reduceFully term initialMachine
         result `shouldBe` Right (IntVal 0)
         getMem machine `shouldSatisfy` \scope -> lookupScope "count" scope == Just (IntVal 0)
-
-

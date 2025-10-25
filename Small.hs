@@ -524,7 +524,7 @@ reduceForIn t =
           iter' <- step iter
       ],
       -- string: convert to tuple of single-character strings
-      [ Continue (ForInLoop var (map (StringVal . (:[])) str) body)
+      [ Continue (ForInLoop var (map (StringVal . (: [])) str) body)
         | ForIn var iter body <- pure t,
           StringVal str <- val iter
       ],
@@ -619,12 +619,11 @@ valueToTerm (ClosureVal params body _) = Fun params body -- loses captures; not 
 -- call custom iterator with state, returns [value, newState]
 callCustomIterator :: (Machine m, Show m, V m ~ Value) => String -> Value -> Value -> Term -> Env m
 callCustomIterator var iterFunc state body = do
-  --cCall iterator(state)
+  -- cCall iterator(state)
   result <- applyFunArg iterFunc state
   case result of
     -- StopIteration → done (empty iterator)
     Continue StopIteration -> return (Happy (IntVal 0))
-    
     -- bind and check if this is the last iteration
     Happy (Tuple [value, newState]) -> do
       _ <- setVar var value
@@ -640,11 +639,10 @@ callCustomIterator var iterFunc state body = do
         -- error
         Sad err -> return $ Sad err
         Continue _ -> return $ Sad (Internal, "iterator returned Continue signal")
-    
+
     -- wrong return format
     Happy (Tuple _) -> return $ Sad (Type, "iterator must return [value, state] tuple with 2 elements")
     Happy _ -> return $ Sad (Type, "iterator must return [value, state] or StopIteration")
-    
     -- propagate errors
     Sad err -> return $ Sad err
     Continue _ -> return $ Sad (Internal, "iterator returned Continue signal")
@@ -940,7 +938,7 @@ evalClosureBody body caps = do
       S.put m4
       case res of
         Left msg -> return $ Sad (Arguments, msg)
-        Right (Left sig) -> return $ Continue sig  -- Signal (e.g., StopIteration)
+        Right (Left sig) -> return $ Continue sig -- Signal (e.g., StopIteration)
         Right (Right v) -> return $ Happy v
 
 -- Like reduceFully, but allows StopIteration to be returned as a valid signal
@@ -956,7 +954,7 @@ reduceFullyAllowingSignals term0 m0 = go m0 term0
           case t' of
             BreakSignal -> (Left "unhandled break signal", st')
             ContinueSignal -> (Left "unhandled continue signal", st')
-            StopIteration -> (Right (Left StopIteration), st')  -- Allow StopIteration
+            StopIteration -> (Right (Left StopIteration), st') -- Allow StopIteration
             _ -> go st' t'
 
 bindMany :: (Machine m, V m ~ Value) => [(String, Value)] -> m -> Either Error m
