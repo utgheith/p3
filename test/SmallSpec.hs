@@ -6,6 +6,7 @@ module SmallSpec (spec) where
 
 import qualified Control.Monad.State as S
 import Data.Bits (complement)
+import Data.Either (isLeft)
 import qualified Data.Map as M
 import Scope (Scope (..), emptyScope, getAllBindings, insertScope, lookupScope, scopeFromList)
 import Small
@@ -838,3 +839,262 @@ spec =
       let term = Seq (Let (OnlyStr "x") (TupleTerm [Literal 10, StringLiteral "hello", BoolLit True])) (Var (Bracket (OnlyStr "x") (BinaryOps Div (Literal 2) (Literal 0))))
       let finalMachine = initialMachine {getMem = scopeFromList [("x", Tuple [IntVal 10, StringVal "hello", BoolVal True])]}
       reduceFully term initialMachine `shouldBe` (Left "Cannot divide by 0", finalMachine)
+
+    -- ForIn Loop Tests
+    describe "ForIn loops" $ do
+      it "iterates over tuple elements" $ do
+        let term =
+              Seq
+                (Let (OnlyStr "sum") (Literal 0))
+                ( ForIn
+                    "i"
+                    (TupleTerm [Literal 1, Literal 2, Literal 3])
+                    (Let (OnlyStr "sum") (BinaryOps Add (Var (OnlyStr "sum")) (Var (OnlyStr "i"))))
+                )
+        let finalMachine = initialMachine {getMem = scopeFromList [("sum", IntVal 6), ("i", IntVal 3)]}
+        let (result, machine) = reduceFully term initialMachine
+        result `shouldBe` Right (IntVal 6)
+        getMem machine `shouldBe` getMem finalMachine
+
+      it "handles empty tuple" $ do
+        let term = ForIn "i" (TupleTerm []) (Write (Var (OnlyStr "i")))
+        reduceFully term initialMachine `shouldBe` (Right (IntVal 0), initialMachine)
+
+      it "iterates over nested tuples" $ do
+        let term =
+              Seq
+                (Let (OnlyStr "result") (Literal 0))
+                ( ForIn
+                    "t"
+                    (TupleTerm [TupleTerm [Literal 1, Literal 2], TupleTerm [Literal 3, Literal 4]])
+                    (Let (OnlyStr "result") (BinaryOps Add (Var (OnlyStr "result")) (Literal 1)))
+                )
+        let (result, _) = reduceFully term initialMachine
+        result `shouldBe` Right (IntVal 2)
+
+      it "errors on non-iterable value" $ do
+        let term = ForIn "i" (Literal 42) (Write (Var (OnlyStr "i")))
+        let (result, _) = reduceFully term initialMachine
+        result `shouldBe` Left "for-in requires iterable (tuple, string, dictionary, or [iterator, state])"
+
+      it "errors on iterator with wrong arity" $ do
+        let iterator = Fun ["x", "y"] (Var (OnlyStr "x"))  -- 2 params instead of 1
+        let term = ForIn "i" (TupleTerm [iterator, Literal 0]) (Write (Var (OnlyStr "i")))
+        let (result, _) = reduceFully term initialMachine
+        result `shouldBe` Left "iterator must take exactly 1 parameter"
+
+      it "supports break in for-in loop" $ do
+        let term =
+              Seq
+                (Let (OnlyStr "sum") (Literal 0))
+                ( ForIn
+                    "i"
+                    (TupleTerm [Literal 1, Literal 2, Literal 3, Literal 4])
+                    ( Seq
+                        (If (BinaryOps Eq (Var (OnlyStr "i")) (Literal 3)) BreakSignal Skip)
+                        (Let (OnlyStr "sum") (BinaryOps Add (Var (OnlyStr "sum")) (Var (OnlyStr "i"))))
+                    )
+                )
+        let finalMachine = initialMachine {getMem = scopeFromList [("sum", IntVal 3), ("i", IntVal 3)]}
+        let (result, machine) = reduceFully term initialMachine
+        result `shouldBe` Right (IntVal 0) -- break returns 0
+        getMem machine `shouldBe` getMem finalMachine
+
+      it "supports continue in for-in loop" $ do
+        let term =
+              Seq
+                (Let (OnlyStr "sum") (Literal 0))
+                ( ForIn
+                    "i"
+                    (TupleTerm [Literal 1, Literal 2, Literal 3, Literal 4])
+                    ( Seq
+                        (If (BinaryOps Eq (Var (OnlyStr "i")) (Literal 2)) ContinueSignal Skip)
+                        (Let (OnlyStr "sum") (BinaryOps Add (Var (OnlyStr "sum")) (Var (OnlyStr "i"))))
+                    )
+                )
+        let finalMachine = initialMachine {getMem = scopeFromList [("sum", IntVal 8), ("i", IntVal 4)]} -- 1+3+4
+        let (result, machine) = reduceFully term initialMachine
+        result `shouldBe` Right (IntVal 8)
+        getMem machine `shouldBe` getMem finalMachine
+
+      it "handles single element tuple" $ do
+        let term = ForIn "x" (TupleTerm [Literal 42]) (Write (Var (OnlyStr "x")))
+        let (result, machine) = reduceFully term initialMachine
+        result `shouldBe` Right (IntVal 42)
+        getMem machine `shouldBe` scopeFromList [("x", IntVal 42)]
+
+      it "handles tuple with mixed types" $ do
+        let term = ForIn "x" (TupleTerm [Literal 1, BoolLit True, StringLiteral "hi"]) Skip
+        let (result, _) = reduceFully term initialMachine
+        result `shouldBe` Right (IntVal 0)
+
+      it "supports nested for-in loops" $ do
+        let outer = ForIn "i" (TupleTerm [Literal 1, Literal 2]) innerLoop
+            innerLoop = ForIn "j" (TupleTerm [Literal 10, Literal 20]) (Let (OnlyStr "count") (BinaryOps Add (Var (OnlyStr "count")) (Literal 1)))
+            term = Seq (Let (OnlyStr "count") (Literal 0)) outer
+        let (result, machine) = reduceFully term initialMachine
+        result `shouldBe` Right (IntVal 4)
+        getMem machine `shouldBe` scopeFromList [("count", IntVal 4), ("i", IntVal 2), ("j", IntVal 20)]
+
+      it "propagates error from iterable expression" $ do
+        let term = ForIn "i" (BinaryOps Div (Literal 1) (Literal 0)) (Write (Var (OnlyStr "i")))
+        let (result, _) = reduceFully term initialMachine
+        result `shouldSatisfy` isLeft
+
+    describe "range built-in" $ do
+      it "range(0) produces empty iteration" $ do
+        let term = Seq (Let (OnlyStr "count") (Literal 0)) (ForIn "i" (Range (Literal 0)) (Let (OnlyStr "count") (BinaryOps Add (Var (OnlyStr "count")) (Literal 1))))
+        let (result, machine) = reduceFully term initialMachine
+        result `shouldBe` Right (IntVal 0)
+        getMem machine `shouldBe` scopeFromList [("count", IntVal 0)]
+
+      it "range(1) yields single value 0" $ do
+        let term = Seq (Let (OnlyStr "sum") (Literal 0)) (ForIn "i" (Range (Literal 1)) (Let (OnlyStr "sum") (BinaryOps Add (Var (OnlyStr "sum")) (Var (OnlyStr "i")))))
+        let (result, machine) = reduceFully term initialMachine
+        result `shouldBe` Right (IntVal 0) -- sum = 0
+        getMem machine `shouldSatisfy` \scope -> lookupScope "sum" scope == Just (IntVal 0) && lookupScope "i" scope == Just (IntVal 0)
+
+      it "range(5) yields 0 through 4" $ do
+        let term = Seq (Let (OnlyStr "sum") (Literal 0)) (ForIn "i" (Range (Literal 5)) (Let (OnlyStr "sum") (BinaryOps Add (Var (OnlyStr "sum")) (Var (OnlyStr "i")))))
+        let (result, machine) = reduceFully term initialMachine
+        result `shouldBe` Right (IntVal 10) -- 0+1+2+3+4 = 10
+        getMem machine `shouldSatisfy` \scope -> lookupScope "sum" scope == Just (IntVal 10)
+
+      it "range with break" $ do
+        let term =
+              Seq
+                (Let (OnlyStr "sum") (Literal 0))
+                ( ForIn
+                    "i"
+                    (Range (Literal 10))
+                    (Seq (If (BinaryOps Eq (Var (OnlyStr "i")) (Literal 3)) BreakSignal Skip) (Let (OnlyStr "sum") (BinaryOps Add (Var (OnlyStr "sum")) (Var (OnlyStr "i")))))
+                )
+        let (result, machine) = reduceFully term initialMachine
+        result `shouldBe` Right (IntVal 0) -- break returns 0
+        getMem machine `shouldSatisfy` \scope -> lookupScope "sum" scope == Just (IntVal 3) -- 0+1+2
+
+      it "range with continue" $ do
+        let term =
+              Seq
+                (Let (OnlyStr "sum") (Literal 0))
+                ( ForIn
+                    "i"
+                    (Range (Literal 5))
+                    (Seq (If (BinaryOps Eq (Var (OnlyStr "i")) (Literal 2)) ContinueSignal Skip) (Let (OnlyStr "sum") (BinaryOps Add (Var (OnlyStr "sum")) (Var (OnlyStr "i")))))
+                )
+        let (result, machine) = reduceFully term initialMachine
+        result `shouldBe` Right (IntVal 8) -- 0+1+3+4 = 8
+        getMem machine `shouldSatisfy` \scope -> lookupScope "sum" scope == Just (IntVal 8)
+
+      it "range with non-integer errors" $ do
+        let term = ForIn "i" (Range (StringLiteral "hello")) (Write (Var (OnlyStr "i")))
+        let (result, _) = reduceFully term initialMachine
+        result `shouldBe` Left "range requires an integer argument"
+
+      it "nested range loops" $ do
+        let term =
+              Seq
+                (Let (OnlyStr "sum") (Literal 0))
+                (ForIn "i" (Range (Literal 3)) (ForIn "j" (Range (Literal 2)) (Let (OnlyStr "sum") (BinaryOps Add (Var (OnlyStr "sum")) (Literal 1)))))
+        let (result, machine) = reduceFully term initialMachine
+        result `shouldBe` Right (IntVal 6) -- 3 * 2 = 6 iterations
+        getMem machine `shouldSatisfy` \scope -> lookupScope "sum" scope == Just (IntVal 6)
+
+      it "iterates using custom iterator protocol with [iterator, state]" $ do
+        -- Iterator that counts from initialState+1 up to 3
+        -- iterator(n) returns [n+1, n+1] if n+1 <= 3, else StopIteration
+        let iterator =
+              Fun
+                ["n"]
+                ( If
+                    (BinaryOps Gt (BinaryOps Add (Var (OnlyStr "n")) (Literal 1)) (Literal 3))
+                    StopIteration
+                    (TupleTerm [BinaryOps Add (Var (OnlyStr "n")) (Literal 1), BinaryOps Add (Var (OnlyStr "n")) (Literal 1)])
+                )
+            loop =
+              ForIn
+                "i"
+                (TupleTerm [iterator, Literal 0])  -- [iterator, initialState]
+                (Let (OnlyStr "sum") (BinaryOps Add (Var (OnlyStr "sum")) (Var (OnlyStr "i"))))
+            term = Seq (Let (OnlyStr "sum") (Literal 0)) loop
+        -- Iterator yields 1, 2, 3, then StopIteration
+        let (result, machine) = reduceFully term initialMachine
+        result `shouldBe` Right (IntVal 6) -- 1 + 2 + 3 = 6
+        getMem machine `shouldSatisfy` \scope -> lookupScope "sum" scope == Just (IntVal 6)
+
+    describe "string iteration" $ do
+      it "iterates over characters in a string" $ do
+        let term =
+              Seq
+                (Let (OnlyStr "count") (Literal 0))
+                (ForIn "c" (StringLiteral "abc") (Let (OnlyStr "count") (BinaryOps Add (Var (OnlyStr "count")) (Literal 1))))
+        let (result, machine) = reduceFully term initialMachine
+        result `shouldBe` Right (IntVal 3)
+        getMem machine `shouldSatisfy` \scope -> lookupScope "count" scope == Just (IntVal 3) && lookupScope "c" scope == Just (StringVal "c")
+
+      it "handles empty string" $ do
+        let term =
+              Seq
+                (Let (OnlyStr "count") (Literal 0))
+                (ForIn "c" (StringLiteral "") (Let (OnlyStr "count") (BinaryOps Add (Var (OnlyStr "count")) (Literal 1))))
+        let (result, machine) = reduceFully term initialMachine
+        result `shouldBe` Right (IntVal 0)
+        getMem machine `shouldSatisfy` \scope -> lookupScope "count" scope == Just (IntVal 0)
+
+      it "handles single character string" $ do
+        let term = ForIn "c" (StringLiteral "x") (Write (Var (OnlyStr "c")))
+        let (result, machine) = reduceFully term initialMachine
+        result `shouldBe` Right (StringVal "x")
+        getMem machine `shouldBe` scopeFromList [("c", StringVal "x")]
+
+      it "supports break in string iteration" $ do
+        let term =
+              Seq
+                (Let (OnlyStr "count") (Literal 0))
+                ( ForIn
+                    "c"
+                    (StringLiteral "hello")
+                    ( Seq
+                        (If (BinaryOps Eq (Var (OnlyStr "c")) (StringLiteral "l")) BreakSignal Skip)
+                        (Let (OnlyStr "count") (BinaryOps Add (Var (OnlyStr "count")) (Literal 1)))
+                    )
+                )
+        let (result, machine) = reduceFully term initialMachine
+        result `shouldBe` Right (IntVal 0) -- break returns 0
+        getMem machine `shouldSatisfy` \scope -> lookupScope "count" scope == Just (IntVal 2) -- counted 'h' and 'e'
+
+    describe "dictionary iteration" $ do
+      it "iterates over dictionary keys" $ do
+        let setupDict =
+              Seq
+                (Let (OnlyStr "d") NewDictionary)
+                ( Seq
+                    (Let (Bracket (OnlyStr "d") (Literal 1)) (Literal 10))
+                    ( Seq
+                        (Let (Bracket (OnlyStr "d") (Literal 2)) (Literal 20))
+                        (Let (Bracket (OnlyStr "d") (Literal 3)) (Literal 30))
+                    )
+                )
+            loop =
+              ForIn
+                "key"
+                (Var (OnlyStr "d"))
+                (Let (OnlyStr "count") (BinaryOps Add (Var (OnlyStr "count")) (Literal 1)))
+            term = Seq setupDict (Seq (Let (OnlyStr "count") (Literal 0)) loop)
+        let (result, machine) = reduceFully term initialMachine
+        result `shouldBe` Right (IntVal 3)
+        getMem machine `shouldSatisfy` \scope -> lookupScope "count" scope == Just (IntVal 3)
+
+      it "handles empty dictionary" $ do
+        let term =
+              Seq
+                (Let (OnlyStr "d") NewDictionary)
+                ( Seq
+                    (Let (OnlyStr "count") (Literal 0))
+                    (ForIn "key" (Var (OnlyStr "d")) (Let (OnlyStr "count") (BinaryOps Add (Var (OnlyStr "count")) (Literal 1))))
+                )
+        let (result, machine) = reduceFully term initialMachine
+        result `shouldBe` Right (IntVal 0)
+        getMem machine `shouldSatisfy` \scope -> lookupScope "count" scope == Just (IntVal 0)
+
+

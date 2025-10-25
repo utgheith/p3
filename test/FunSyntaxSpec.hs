@@ -110,6 +110,21 @@ spec = do
       it "parses while loops" $
         parseString "while (x > 0) { x = x - 1 }" `shouldBe` Right (While (BinaryOps Gt (Var (OnlyStr "x")) (Literal 0)) (Let (OnlyStr "x") (BinaryOps Sub (Var (OnlyStr "x")) (Literal 1))), [])
 
+    describe "for-in loops" $ do
+      it "parses for-in with tuple" $
+        parseString "for i in [1,2,3] print i" `shouldBe` Right (ForIn "i" (TupleTerm [Literal 1, Literal 2, Literal 3]) (Write (Var (OnlyStr "i"))), [])
+
+      it "parses for-in with variable" $
+        parseString "for x in items { x }" `shouldBe` Right (ForIn "x" (Var (OnlyStr "items")) (Var (OnlyStr "x")), [])
+
+      it "parses for-in with range built-in" $
+        parseString "for i in range(5) print i"
+          `shouldBe` Right (ForIn "i" (Range (Literal 5)) (Write (Var (OnlyStr "i"))), [])
+
+      it "parses for-in with block body" $
+        parseString "for x in list { var y = x print y }"
+          `shouldBe` Right (ForIn "x" (Var (OnlyStr "list")) (Seq (Let (OnlyStr "y") (Var (OnlyStr "x"))) (Write (Var (OnlyStr "y")))), [])
+
     describe "functions" $ do
       it "parses function definitions" $
         parseString "fun f() { print 42 }" `shouldBe` Right (Let (OnlyStr "f") (Fun [] (Write (Literal 42))), [])

@@ -5,6 +5,7 @@
 module Term (Term (..), TermF (..), BinaryOp (..), UnaryOp (..), ErrorKind (..), ErrorKindOrAny (..)) where
 
 import Data.Functor.Foldable.TH (makeBaseFunctor)
+import {-# SOURCE #-} Value (Value)
 
 data BinaryOp = Add | Sub | Mul | Div | Mod | Lt | Gt | Lte | Gte | Eq | Neq | And | Or | Pow | Xor
   deriving (Eq, Show)
@@ -32,6 +33,8 @@ data Term
   | Bracket Term Term
   | While Term Term
   | For String Term Term Term
+  | ForIn String Term Term
+  | ForInLoop String [Value] Term
   | Write Term
   | BoolLit Bool
   | TupleTerm [Term]
@@ -46,6 +49,8 @@ data Term
   | PostDecrement String
   | BreakSignal
   | ContinueSignal
+  | Range Term
+  | StopIteration -- used as a termination signal in for-in loops
   deriving (Eq, Show)
 
 makeBaseFunctor ''Term

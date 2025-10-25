@@ -55,11 +55,14 @@ keywords =
       "if",
       "else",
       "while",
+      "for",
+      "in",
       "print",
       "try",
       "catch",
       "true",
-      "false" -- force boolean literals to be tokens in the parser
+      "false", -- force boolean literals to be tokens in the parser
+      "range"
     ]
 
 -- a lexer combinator, i suppose

@@ -4,6 +4,7 @@ import Data.Functor.Foldable (cata)
 import Data.List (intercalate)
 import Sprintf (sprintf)
 import Term (Term, TermF (..))
+import Value ()
 
 decompile :: Term -> String
 decompile = cata go
@@ -37,6 +38,10 @@ decompile = cata go
       sprintf "While (%s) (%s)" [cond, body]
     go (ForF var start end body) =
       sprintf "For %s (%s) (%s) (%s)" [var, start, end, body]
+    go (ForInF var iterable body) =
+      sprintf "ForIn %s (%s) (%s)" [var, iterable, body]
+    go (ForInLoopF var vals body) =
+      sprintf "ForInLoop %s <%s> (%s)" [var, show vals, body]
     go (WriteF t) =
       sprintf "Write (%s)" [t]
     go (BoolLitF b) =
@@ -65,5 +70,9 @@ decompile = cata go
       "BreakSignal"
     go ContinueSignalF =
       "ContinueSignal"
+    go (RangeF n) =
+      sprintf "Range (%s)" [n]
+    go StopIterationF =
+      "StopIteration"
     go (LetF r t) =
       sprintf "Let (%s) (%s)" [r, t]
