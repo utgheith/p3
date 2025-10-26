@@ -5,98 +5,23 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 
-module Small (reduceFully, Machine (..), Result (..), Error, Env) where
+module Small (reduceFully) where
 
 -- import Data.Either
 
-import Control.Applicative
-import Control.Monad
+import Control.Applicative (Alternative, asum)
+import Control.Monad (MonadPlus)
 import qualified Control.Monad.State as S
 import qualified Data.Map as M
 import Debug.Trace (trace)
+import Machine (Env, Error, Machine (..), Result (..))
 import Term (BinaryOp (..), ErrorKind (..), ErrorKindOrAny (..), Term (..), UnaryOp (..))
 import Value (Value (..))
-
------ The Machine type class -----
-
--- The micro-ops that a machine must support
--- Allow an implementation to define its own semantics
-
-class Machine m where
-  type V m -- The value type for this machine
-  -- Uses associated an associated type family for the value type
-  -- This requires the TypeFamilies extension
-  -- The way you read the type signature is:
-  --    for any type m that is an instance of Machine, there is an associated type (V m)
-
-  -- Get and set variables
-  getVar :: String -> Env m
-  setVar :: String -> V m -> Env m
-
-  -- Lexical scoping
-  getScope :: m -> [(String, Value)] -- Variable bindings only.
-  pushScope :: [(String, Value)] -> Env m
-  popScope :: Env m
-
-  -- I/O
-  inputVal :: Env m
-  outputVal :: V m -> Env m
-
-  -- Arithmetic and control
-  addVal :: V m -> V m -> Env m
-  subVal :: V m -> V m -> Env m
-  mulVal :: V m -> V m -> Env m
-  divVal :: V m -> V m -> Env m
-  modVal :: V m -> V m -> Env m
-  powVal :: V m -> V m -> Env m
-  negVal :: V m -> Env m
-
-  -- Comparison operations (operate on integers, return booleans)
-  ltVal :: V m -> V m -> Env m
-  gtVal :: V m -> V m -> Env m
-  lteVal :: V m -> V m -> Env m
-  gteVal :: V m -> V m -> Env m
-  eqVal :: V m -> V m -> Env m
-  neqVal :: V m -> V m -> Env m
-
-  -- Logical operations (operate on booleans)
-  andVal :: V m -> V m -> Env m
-  orVal :: V m -> V m -> Env m
-  xorVal :: V m -> V m -> Env m
-  notVal :: V m -> Env m
-  bitNotVal :: V m -> Env m
-
-  -- Increment/Decrement operations (modify variables)
-  preIncrementVal :: String -> Env m -- ++x: increment then return new value
-  preDecrementVal :: String -> Env m -- --x: decrement then return new value
-  postIncrementVal :: String -> Env m -- x++: return old value then increment
-  postDecrementVal :: String -> Env m -- x--: return old value then decrement
-
-  -- Access/Manage Bracket Values
-  getBracketValue :: V m -> V m -> Env m
-  setBracketValue :: V m -> V m -> V m -> Env m
-
-  -- Control flow - selectValue uses boolean semantics
-  selectValue :: V m -> Env m -> Env m -> Env m
-
--- abstract semantics that glue micro-ops together
-
-type Error = (ErrorKind, String)
 
 -- Helper for try-catch statement
 errorShouldBeCaught :: ErrorKind -> ErrorKindOrAny -> Bool
 errorShouldBeCaught _ Any = True
 errorShouldBeCaught resultErrorKind (Specific catchableErrorKind) = resultErrorKind == catchableErrorKind
-
------- Small-step reduction ------
-
-data Result a
-  = Happy a -- produced an answer
-  | Continue Term -- need to keep going
-  | Sad Error -- error
-  deriving (Eq, Show)
-
-type Env m = S.State m (Result (V m))
 
 -- Polymorphic reduction monad: carries state + rule-applicability (Maybe)
 newtype Reduction m a = Reduction {runRed :: S.StateT m Maybe a}

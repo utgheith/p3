@@ -8,9 +8,10 @@ module Main (main) where
 import qualified Control.Monad.State as S
 import Data.Bits (complement)
 import qualified Data.Map as M
+import Machine (Env, Error, Machine (..), Result (..))
 import qualified Progs
 import Scope (Scope (..), emptyScope, getAllBindings, insertScope, lookupScope)
-import Small (Env, Error, Machine (..), Result (..), reduceFully)
+import Small (reduceFully)
 import Term (ErrorKind (..), Term (..))
 import Value (Value (..))
 
