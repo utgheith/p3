@@ -168,7 +168,7 @@ varRef = Var <$> ident
 
 -- cons(t1, t2) -> ConsTerm t1 t2
 consTerm :: Parser Token Term
-consTerm = [ ConsTerm t1 t2 | _ <- keyword "cons", _ <- symbol "(", t1 <- term, _ <- symbol ",", t2 <- term, _ <- symbol ")" ]
+consTerm = [ConsTerm t1 t2 | _ <- keyword "cons", _ <- symbol "(", t1 <- term, _ <- symbol ",", t2 <- term, _ <- symbol ")"]
 
 block :: Parser Token Term
 block = do
