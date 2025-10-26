@@ -533,29 +533,38 @@ spec = do
       reduceFully term initialMachine `shouldBe` (Right (ListVal []), initialMachine)
 
     it "constructs a list with cons" $ do
-      let term = BinaryOps Cons (Literal 1) Nil
+      let term = ConsTerm (Literal 1) Nil
       reduceFully term initialMachine `shouldBe` (Right (ListVal [IntVal 1]), initialMachine)
 
     it "constructs a two-element list with cons" $ do
-      let term = BinaryOps Cons (Literal 1) (BinaryOps Cons (Literal 2) Nil)
+      let term = ConsTerm (Literal 1) (ConsTerm (Literal 2) Nil)
       reduceFully term initialMachine `shouldBe` (Right (ListVal [IntVal 1, IntVal 2]), initialMachine)
 
+    it "constructs a list with ConsTerm" $ do
+      let term = ConsTerm (Literal 1) Nil
+      reduceFully term initialMachine `shouldBe` (Right (ListVal [IntVal 1]), initialMachine)
+
+    it "errors when ConsTerm rhs is not a list" $ do
+      let term = ConsTerm (Literal 1) (Literal 2)
+      let (result, _) = reduceFully term initialMachine
+      result `shouldBe` Left "Type error: Cons expects a list as its second argument"
+
     it "head returns the first element of a nonempty list" $ do
-      let term = UnaryOps Head (BinaryOps Cons (Literal 1) (BinaryOps Cons (Literal 2) Nil))
+      let term = UnaryOps Head (ConsTerm (Literal 1) (ConsTerm (Literal 2) Nil))
       reduceFully term initialMachine `shouldBe` (Right (IntVal 1), initialMachine)
 
     it "tail returns a nonempty list without the first element" $ do
-      let term = UnaryOps Tail (BinaryOps Cons (Literal 1) (BinaryOps Cons (Literal 2) Nil))
+      let term = UnaryOps Tail (ConsTerm (Literal 1) (ConsTerm (Literal 2) Nil))
       reduceFully term initialMachine `shouldBe` (Right (ListVal [IntVal 2]), initialMachine)
 
     it "isnil returns True for empty list and False otherwise" $ do
       reduceFully (UnaryOps IsNil Nil) initialMachine `shouldBe` (Right (BoolVal True), initialMachine)
-      reduceFully (UnaryOps IsNil (BinaryOps Cons (Literal 1) Nil)) initialMachine `shouldBe` (Right (BoolVal False), initialMachine)
+      reduceFully (UnaryOps IsNil (ConsTerm (Literal 1) Nil)) initialMachine `shouldBe` (Right (BoolVal False), initialMachine)
 
     it "length works for lists, strings, integers and booleans" $ do
       -- lists
       reduceFully (UnaryOps Length Nil) initialMachine `shouldBe` (Right (IntVal 0), initialMachine)
-      reduceFully (UnaryOps Length (BinaryOps Cons (Literal 1) (BinaryOps Cons (Literal 2) Nil))) initialMachine `shouldBe` (Right (IntVal 2), initialMachine)
+      reduceFully (UnaryOps Length (ConsTerm (Literal 1) (ConsTerm (Literal 2) Nil))) initialMachine `shouldBe` (Right (IntVal 2), initialMachine)
       -- strings
       reduceFully (UnaryOps Length (StringLiteral "hello")) initialMachine `shouldBe` (Right (IntVal 5), initialMachine)
       -- integers
@@ -568,10 +577,10 @@ spec = do
       reduceFully (UnaryOps Length (BoolLit False)) initialMachine `shouldBe` (Right (IntVal 1), initialMachine)
 
     it "compares lists for equality and inequality; lists are only equal if they have the same length and are equal elementwise" $ do
-      let l1 = BinaryOps Cons (Literal 1) (BinaryOps Cons (Literal 2) Nil)
-      let l2 = BinaryOps Cons (Literal 1) (BinaryOps Cons (Literal 2) Nil)
-      let l3 = BinaryOps Cons (Literal 2) (BinaryOps Cons (Literal 1) Nil)
-      let l4 = BinaryOps Cons (Literal 1) (BinaryOps Cons (Literal 2) (BinaryOps Cons (Literal 3) Nil))
+      let l1 = ConsTerm (Literal 1) (ConsTerm (Literal 2) Nil)
+      let l2 = ConsTerm (Literal 1) (ConsTerm (Literal 2) Nil)
+      let l3 = ConsTerm (Literal 2) (ConsTerm (Literal 1) Nil)
+      let l4 = ConsTerm (Literal 1) (ConsTerm (Literal 2) (ConsTerm (Literal 3) Nil))
       reduceFully (BinaryOps Eq l1 l2) initialMachine `shouldBe` (Right (BoolVal True), initialMachine)
       reduceFully (BinaryOps Eq l1 l3) initialMachine `shouldBe` (Right (BoolVal False), initialMachine)
       reduceFully (BinaryOps Neq l1 l3) initialMachine `shouldBe` (Right (BoolVal True), initialMachine)

@@ -27,6 +27,8 @@ keywords =
       "print",
       "try",
       "catch",
+      "cons",
+      "Nil",
       "true",
       "false" -- force boolean literals to be tokens in the parser
     ]

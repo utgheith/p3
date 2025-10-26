@@ -174,10 +174,19 @@ reduce_ (BinaryOps op t1 t2) =
     applyBinaryOp Neq = neqVal
     applyBinaryOp And = andVal
     applyBinaryOp Or = orVal
-    applyBinaryOp Cons = \v1 v2 ->
-      case v2 of
-        ListVal xs -> return $ Happy $ ListVal (v1 : xs)
-        _ -> return $ Sad $ "Type error: Cons operator expects a list as its second argument"
+reduce_ (ConsTerm t1 t2) =
+  premise
+    (reduce t1)
+    (\t1' -> ConsTerm t1' t2)
+    ( \v1 ->
+        premise
+          (reduce t2)
+          (\_t2' -> ConsTerm (Literal $ fromRight (-1) (valueToInt v1)) t2)
+          ( \v2 -> case v2 of
+              ListVal xs -> return $ Happy $ ListVal (v1 : xs)
+              _ -> return $ Sad $ "Type error: Cons expects a list as its second argument"
+          )
+    )
 reduce_ (BoolLit b) =
   return $ Happy $ BoolVal b
 reduce_ (UnaryOps op t) =

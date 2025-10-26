@@ -1,6 +1,6 @@
 module Term (Term (..), BinaryOp (..), UnaryOp (..)) where
 
-data BinaryOp = Add | Sub | Mul | Div | Mod | Lt | Gt | Lte | Gte | Eq | Neq | And | Or | Cons
+data BinaryOp = Add | Sub | Mul | Div | Mod | Lt | Gt | Lte | Gte | Eq | Neq | And | Or
   deriving (Eq, Show)
 
 data UnaryOp = Neg | Not | Head | Tail | IsNil | Length
@@ -21,6 +21,7 @@ data Term
   | Write Term
   | BoolLit Bool
   | Nil
+  | ConsTerm Term Term
   | TupleTerm [Term]
   | NewDictionary
   | AccessBracket Term Term

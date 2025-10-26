@@ -139,7 +139,7 @@ bool = do
 nilTerm :: Parser Token Term
 nilTerm = do
   _ <- satisfy $ \case
-    Ident name | name == "Nil" -> Just ()
+    Keyword "Nil" -> Just ()
     _ -> Nothing
   return Nil
 
@@ -165,6 +165,10 @@ funDef = do
 
 varRef :: Parser Token Term
 varRef = Var <$> ident
+
+-- cons(t1, t2) -> ConsTerm t1 t2
+consTerm :: Parser Token Term
+consTerm = [ ConsTerm t1 t2 | _ <- keyword "cons", _ <- symbol "(", t1 <- term, _ <- symbol ",", t2 <- term, _ <- symbol ")" ]
 
 block :: Parser Token Term
 block = do
@@ -233,7 +237,7 @@ printStmt = do
   return $ Write expr
 
 unaryExp :: Parser Token Term
-unaryExp = oneof [assign, ifExpr, block, funDef, minus, num, string, bool, tuple, tupleSet, tupleAccess, parens, varDef, funCall, nilTerm, varRef, whileTerm, printStmt]
+unaryExp = oneof [assign, ifExpr, block, funDef, minus, num, string, bool, tuple, tupleSet, tupleAccess, parens, varDef, consTerm, funCall, nilTerm, varRef, whileTerm, printStmt]
 
 ----------- prog ----------
 
