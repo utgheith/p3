@@ -4,16 +4,17 @@
 
 {-# HLINT ignore "Use <$>" #-}
 
-module FunSyntax (parse, prog, term, Term (Let, BinaryOps, Seq, Skip, UnaryOps, Var, While, Write, BoolLit, Literal, StringLiteral, Fun, ApplyFun, If)) where
+module FunSyntax (parse, prog, term, Term (..)) where
 
 import qualified Control.Monad as M
 import Control.Monad.State.Lazy (runStateT)
 import Data.Maybe (fromMaybe)
 import qualified Data.Set as S
 import FunLexer (Token (Ident, Keyword, Num, StringLiteralLexed, Symbol), lexer)
-import ParserCombinators (Parser, oneof, opt, rpt, rptDropSep, satisfy, token, (<|>))
+import ParserCombinators (Parser, between, oneof, opt, rpt, rptDropSep, satisfy, token, (<|>))
 import Result (Result (..))
 import Term (BinaryOp (..), ErrorKind (..), ErrorKindOrAny (..), Term (..), UnaryOp (..))
+import TypeSignature (TypeSignature (..), TypedName)
 
 -- succeed if the next token is the given symbol
 symbol :: String -> Parser Token ()
@@ -32,6 +33,35 @@ ident :: Parser Token String
 ident = satisfy $ \case
   Ident name -> Just name
   _ -> Nothing
+
+typeSignature :: Parser Token TypeSignature
+typeSignature =
+  oneof
+    [ [TInt | _ <- keyword "int"],
+      [TBool | _ <- keyword "bool"],
+      [TString | _ <- keyword "string"],
+      [TUnit | _ <- keyword "unit"],
+      [ TFun paramTypes retType
+        | _ <- keyword "fun",
+          paramTypes <- between (symbol "(") (symbol ")") (rptDropSep typeSignature (symbol ",")),
+          retType <- typeSignature
+      ],
+      [TDictionary valType | valType <- between (symbol "[") (symbol "]") typeSignature],
+      [TTuple types | types <- between (symbol "(") (symbol ")") (rptDropSep typeSignature (symbol ","))]
+    ]
+
+optTypeSignature :: Parser Token TypeSignature
+optTypeSignature = do
+  col <- opt (symbol ":")
+  case col of
+    Just _ -> return TUnknown -- Placeholder for actual type parsing
+    Nothing -> typeSignature
+
+typedIdent :: Parser Token TypedName
+typedIdent = do
+  name <- ident
+  tSig <- optTypeSignature
+  return (name, tSig)
 
 -- symbol
 checkSymbol :: (String -> Bool) -> Parser Token String
@@ -77,7 +107,7 @@ refassign =
 reference :: Parser Token Term
 reference = do
   -- very similar to chainl1
-  x <- OnlyStr <$> ident
+  x <- OnlyStr <$> typedIdent
   rest x
   where
     rest x =
@@ -136,7 +166,7 @@ methodCall =
   [ ApplyFun (Var (OnlyStr name)) (caller : args)
     | caller <- varRef <|> parens,
       _ <- symbol ".",
-      name <- ident,
+      name <- typedIdent,
       _ <- symbol "(",
       args <- rptDropSep term (symbol ","),
       _ <- symbol ")"
@@ -153,16 +183,16 @@ bitnot :: Parser Token Term
 bitnot = [UnaryOps BitNot e | _ <- symbol "~", e <- unaryExp]
 
 preIncrement :: Parser Token Term
-preIncrement = [PreIncrement var | _ <- symbol "++", var <- ident]
+preIncrement = [PreIncrement var | _ <- symbol "++", var <- typedIdent]
 
 preDecrement :: Parser Token Term
-preDecrement = [PreDecrement var | _ <- symbol "--", var <- ident]
+preDecrement = [PreDecrement var | _ <- symbol "--", var <- typedIdent]
 
 postIncrement :: Parser Token Term
-postIncrement = [PostIncrement var | var <- ident, _ <- symbol "++"]
+postIncrement = [PostIncrement var | var <- typedIdent, _ <- symbol "++"]
 
 postDecrement :: Parser Token Term
-postDecrement = [PostDecrement var | var <- ident, _ <- symbol "--"]
+postDecrement = [PostDecrement var | var <- typedIdent, _ <- symbol "--"]
 
 num :: Parser Token Term
 num =
@@ -196,9 +226,9 @@ funDef :: Parser Token Term
 funDef =
   [ Let (OnlyStr name) (Fun params body)
     | _ <- keyword "fun",
-      name <- ident,
+      name <- typedIdent,
       _ <- symbol "(",
-      params <- rptDropSep ident (symbol ","),
+      params <- rptDropSep typedIdent (symbol ","),
       _ <- symbol ")",
       body <- term
   ]
@@ -222,7 +252,7 @@ varDef :: Parser Token Term
 varDef =
   [ Let (OnlyStr name) (fromMaybe (Literal 0) expr)
     | _ <- keyword "var",
-      name <- ident,
+      name <- typedIdent,
       expr <- opt $ symbol "=" >> term
   ]
 
@@ -230,7 +260,7 @@ whileTerm :: Parser Token Term
 whileTerm = [While cond body | _ <- keyword "while", cond <- term, body <- term]
 
 forTerm :: Parser Token Term
-forTerm = [For var start end body | _ <- keyword "for", var <- ident, start <- term, end <- term, body <- term]
+forTerm = [For var start end body | _ <- keyword "for", var <- typedIdent, start <- term, end <- term, body <- term]
 
 tryCatch :: Parser Token Term
 tryCatch =
@@ -254,7 +284,7 @@ tryCatch =
 funCall :: Parser Token Term
 funCall =
   [ ApplyFun (Var (OnlyStr name)) args
-    | name <- ident,
+    | name <- typedIdent,
       _ <- symbol "(",
       args <- rptDropSep term (symbol ","),
       _ <- symbol ")"

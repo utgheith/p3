@@ -13,6 +13,7 @@ import qualified Progs
 import Scope (Scope (..), emptyScope, getAllBindings, insertScope, lookupScope)
 import Small (reduceFully)
 import Term (ErrorKind (..), Term (..))
+import TypeSignature (TypeSignature (..), TypedName)
 import Value (Value (..))
 
 data Simulator = Simulator Scope [Value] [Value] deriving (Eq, Show)
@@ -168,8 +169,8 @@ instance Machine Simulator where
   bitNotVal (IntVal v) = return $ Happy (IntVal (complement v))
   bitNotVal _ = return $ Sad (Type, "Type error in ~")
 
-  preIncrementVal :: String -> Env Simulator
-  preIncrementVal x = do
+  preIncrementVal :: TypedName -> Env Simulator
+  preIncrementVal (x, _) = do
     (Simulator m inp out) <- S.get
     case lookupScope x m of
       Just (IntVal v) -> do
@@ -179,8 +180,8 @@ instance Machine Simulator where
         return $ Happy newVal
       Just _ -> return $ Sad (Type, "Type error: can only increment integers")
       Nothing -> return $ Sad (VariableNotFound, "Variable " ++ x ++ " not found")
-  preDecrementVal :: String -> Env Simulator
-  preDecrementVal x = do
+  preDecrementVal :: TypedName -> Env Simulator
+  preDecrementVal (x, _) = do
     (Simulator m inp out) <- S.get
     case lookupScope x m of
       Just (IntVal v) -> do
@@ -190,8 +191,8 @@ instance Machine Simulator where
         return $ Happy newVal
       Just _ -> return $ Sad (Type, "Type error: can only decrement integers")
       Nothing -> return $ Sad (VariableNotFound, "Variable " ++ x ++ " not found")
-  postIncrementVal :: String -> Env Simulator
-  postIncrementVal x = do
+  postIncrementVal :: TypedName -> Env Simulator
+  postIncrementVal (x, _) = do
     (Simulator m inp out) <- S.get
     case lookupScope x m of
       Just (IntVal v) -> do
@@ -201,8 +202,8 @@ instance Machine Simulator where
         return $ Happy (IntVal v) -- Return old value
       Just _ -> return $ Sad (Type, "Type error: can only increment integers")
       Nothing -> return $ Sad (VariableNotFound, "Variable " ++ x ++ " not found")
-  postDecrementVal :: String -> Env Simulator
-  postDecrementVal x = do
+  postDecrementVal :: TypedName -> Env Simulator
+  postDecrementVal (x, _) = do
     (Simulator m inp out) <- S.get
     case lookupScope x m of
       Just (IntVal v) -> do
@@ -243,6 +244,15 @@ instance Machine Simulator where
       loop _ _ _ = error "unreachable hopefully"
   setBracketValue _ _ _ = return $ Sad (Type, "Had a Type Error")
 
+vx :: Term
+vx = OnlyStr ("x", TUnknown)
+
+vy :: Term
+vy = OnlyStr ("y", TUnknown)
+
+vz :: Term
+vz = OnlyStr ("z", TUnknown)
+
 infixl 1 ~
 
 (~) :: Term -> Term -> Term
@@ -255,9 +265,9 @@ infixl 9 <=>
 
 prog :: Term
 prog =
-  OnlyStr "x" <=> Literal 10
-    ~ OnlyStr "y" <=> Literal 29
-    ~ OnlyStr "z" <=> Literal 3
+  vx <=> Literal 10
+    ~ vy <=> Literal 29
+    ~ vz <=> Literal 3
 
 main :: IO ()
 main = do

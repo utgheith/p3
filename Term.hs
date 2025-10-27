@@ -5,6 +5,7 @@
 module Term (Term (..), TermF (..), BinaryOp (..), UnaryOp (..), ErrorKind (..), ErrorKindOrAny (..)) where
 
 import Data.Functor.Foldable.TH (makeBaseFunctor)
+import TypeSignature (TypedName)
 
 data BinaryOp = Add | Sub | Mul | Div | Mod | Lt | Gt | Lte | Gte | Eq | Neq | And | Or | Pow | Xor
   deriving (Eq, Show)
@@ -22,28 +23,28 @@ data Term
   | Let Term Term
   | Literal Integer
   | StringLiteral String
-  | Read String
+  | Read TypedName
   | Seq Term Term
   | Skip
   | BinaryOps BinaryOp Term Term
   | UnaryOps UnaryOp Term
   | Var Term
-  | OnlyStr String
+  | OnlyStr TypedName
   | Bracket Term Term
   | While Term Term
-  | For String Term Term Term
+  | For TypedName Term Term Term
   | Write Term
   | BoolLit Bool
   | TupleTerm [Term]
   | NewDictionary
   | Retrieve Term Term
   | Merge Term Term Term -- current value, index, value
-  | Fun [String] Term
+  | Fun [TypedName] Term
   | ApplyFun Term [Term]
-  | PreIncrement String
-  | PreDecrement String
-  | PostIncrement String
-  | PostDecrement String
+  | PreIncrement TypedName
+  | PreDecrement TypedName
+  | PostIncrement TypedName
+  | PostDecrement TypedName
   | BreakSignal
   | ContinueSignal
   deriving (Eq, Show)

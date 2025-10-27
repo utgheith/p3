@@ -4,6 +4,7 @@ module Machine (Machine (..), Env, Error, Result (..)) where
 
 import qualified Control.Monad.State as S
 import Term (ErrorKind (..), Term (..))
+import TypeSignature (TypedName)
 import Value (Value (..))
 
 ----- The Machine type class -----
@@ -66,10 +67,10 @@ class Machine m where
   bitNotVal :: V m -> Env m
 
   -- Increment/Decrement operations (modify variables)
-  preIncrementVal :: String -> Env m -- ++x: increment then return new value
-  preDecrementVal :: String -> Env m -- --x: decrement then return new value
-  postIncrementVal :: String -> Env m -- x++: return old value then increment
-  postDecrementVal :: String -> Env m -- x--: return old value then decrement
+  preIncrementVal :: TypedName -> Env m -- ++x: increment then return new value
+  preDecrementVal :: TypedName -> Env m -- --x: decrement then return new value
+  postIncrementVal :: TypedName -> Env m -- x++: return old value then increment
+  postDecrementVal :: TypedName -> Env m -- x--: return old value then decrement
 
   -- Access/Manage Bracket Values
   getBracketValue :: V m -> V m -> Env m

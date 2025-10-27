@@ -18,7 +18,7 @@ decompile = cata go
     go (StringLiteralF s) =
       show s
     go (ReadF s) =
-      sprintf "Read %s" [s]
+      sprintf "Read %s" [show s]
     go (SeqF t1 t2) =
       sprintf "(%s) ; (%s)" [t1, t2]
     go SkipF =
@@ -30,13 +30,13 @@ decompile = cata go
     go (VarF r) =
       sprintf "Var %s" [r]
     go (OnlyStrF s) =
-      sprintf "OnlyStr %s" [s]
+      sprintf "OnlyStr %s" [show s]
     go (BracketF t1 t2) =
       sprintf "Bracket (%s) (%s)" [t1, t2]
     go (WhileF cond body) =
       sprintf "While (%s) (%s)" [cond, body]
     go (ForF var start end body) =
-      sprintf "For %s (%s) (%s) (%s)" [var, start, end, body]
+      sprintf "For %s (%s) (%s) (%s)" [show var, start, end, body]
     go (WriteF t) =
       sprintf "Write (%s)" [t]
     go (BoolLitF b) =
@@ -50,17 +50,17 @@ decompile = cata go
     go (MergeF current index value) =
       sprintf "Merge (%s) (%s) (%s)" [current, index, value]
     go (FunF args body) =
-      sprintf "Fun [%s] (%s)" [intercalate ", " args, body]
+      sprintf "Fun [%s] (%s)" [intercalate ", " (show <$> args), body]
     go (ApplyFunF fun args) =
       sprintf "ApplyFun (%s) [%s]" [fun, intercalate ", " args]
     go (PreIncrementF varName) =
-      sprintf "PreIncrement %s" [varName]
+      sprintf "PreIncrement %s" [show varName]
     go (PreDecrementF varName) =
-      sprintf "PreDecrement %s" [varName]
+      sprintf "PreDecrement %s" [show varName]
     go (PostIncrementF varName) =
-      sprintf "PostIncrement %s" [varName]
+      sprintf "PostIncrement %s" [show varName]
     go (PostDecrementF varName) =
-      sprintf "PostDecrement %s" [varName]
+      sprintf "PostDecrement %s" [show varName]
     go BreakSignalF =
       "BreakSignal"
     go ContinueSignalF =
