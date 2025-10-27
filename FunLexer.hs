@@ -46,7 +46,8 @@ symbols =
       "%",
       "!=",
       ".",
-      ";"
+      ";",
+      ":"
     ]
 
 keywords :: S.Set String

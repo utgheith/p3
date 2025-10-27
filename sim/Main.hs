@@ -8,11 +8,13 @@ module Main (main) where
 import qualified Control.Monad.State as S
 import Data.Bits (complement)
 import qualified Data.Map as M
+import FunSyntax (parse, prog)
 import Machine (Env, Error, Machine (..), Result (..))
-import qualified Progs
+import Result (Result (..))
 import Scope (Scope (..), emptyScope, getAllBindings, insertScope, lookupScope)
 import Small (reduceFully)
-import Term (ErrorKind (..), Term (..))
+import Term (ErrorKind (..))
+import TypeSignature (TypedName)
 import Value (Value (..))
 
 data Simulator = Simulator Scope [Value] [Value] deriving (Eq, Show)
@@ -168,8 +170,8 @@ instance Machine Simulator where
   bitNotVal (IntVal v) = return $ Happy (IntVal (complement v))
   bitNotVal _ = return $ Sad (Type, "Type error in ~")
 
-  preIncrementVal :: String -> Env Simulator
-  preIncrementVal x = do
+  preIncrementVal :: TypedName -> Env Simulator
+  preIncrementVal (x, _) = do
     (Simulator m inp out) <- S.get
     case lookupScope x m of
       Just (IntVal v) -> do
@@ -179,8 +181,8 @@ instance Machine Simulator where
         return $ Happy newVal
       Just _ -> return $ Sad (Type, "Type error: can only increment integers")
       Nothing -> return $ Sad (VariableNotFound, "Variable " ++ x ++ " not found")
-  preDecrementVal :: String -> Env Simulator
-  preDecrementVal x = do
+  preDecrementVal :: TypedName -> Env Simulator
+  preDecrementVal (x, _) = do
     (Simulator m inp out) <- S.get
     case lookupScope x m of
       Just (IntVal v) -> do
@@ -190,8 +192,8 @@ instance Machine Simulator where
         return $ Happy newVal
       Just _ -> return $ Sad (Type, "Type error: can only decrement integers")
       Nothing -> return $ Sad (VariableNotFound, "Variable " ++ x ++ " not found")
-  postIncrementVal :: String -> Env Simulator
-  postIncrementVal x = do
+  postIncrementVal :: TypedName -> Env Simulator
+  postIncrementVal (x, _) = do
     (Simulator m inp out) <- S.get
     case lookupScope x m of
       Just (IntVal v) -> do
@@ -201,8 +203,8 @@ instance Machine Simulator where
         return $ Happy (IntVal v) -- Return old value
       Just _ -> return $ Sad (Type, "Type error: can only increment integers")
       Nothing -> return $ Sad (VariableNotFound, "Variable " ++ x ++ " not found")
-  postDecrementVal :: String -> Env Simulator
-  postDecrementVal x = do
+  postDecrementVal :: TypedName -> Env Simulator
+  postDecrementVal (x, _) = do
     (Simulator m inp out) <- S.get
     case lookupScope x m of
       Just (IntVal v) -> do
@@ -243,30 +245,12 @@ instance Machine Simulator where
       loop _ _ _ = error "unreachable hopefully"
   setBracketValue _ _ _ = return $ Sad (Type, "Had a Type Error")
 
-infixl 1 ~
-
-(~) :: Term -> Term -> Term
-(~) = Seq
-
-infixl 9 <=>
-
-(<=>) :: Term -> Term -> Term
-(<=>) = Let
-
-prog :: Term
-prog =
-  OnlyStr "x" <=> Literal 10
-    ~ OnlyStr "y" <=> Literal 29
-    ~ OnlyStr "z" <=> Literal 3
-
 main :: IO ()
 main = do
-  let out = reduceFully prog (Simulator emptyScope [] [])
+  code <- getContents
+  let out = case parse code prog of
+        Ok (t, []) -> reduceFully t (Simulator emptyScope [] [])
+        Ok (_, ts) -> error $ "Unconsumed tokens: " ++ show ts
+        Err e -> error $ "Parse error: " ++ show e
+
   print out
-  putStrLn "-----------------------------"
-  let out2 = reduceFully Progs.prog (Simulator emptyScope [] [])
-  print out2
-  putStrLn "-----------------------------"
-  putStrLn "Testing booleans and comparisons:"
-  let out3 = reduceFully Progs.prog3 (Simulator emptyScope [] [])
-  print out3

@@ -156,7 +156,7 @@ reduceVar t =
   asum
     [ -- plain variable lookup
       [ r
-        | Var (OnlyStr s) <- pure t,
+        | Var (OnlyStr (s, _)) <- pure t,
           r <- envR (getVar s)
       ],
       -- bracket form desugars to a Retrieve step
@@ -216,7 +216,7 @@ reduceLet t =
       ],
       -- LHS is a plain variable: perform setVar
       [ r
-        | Let (OnlyStr s) rhs <- pure t,
+        | Let (OnlyStr (s, _)) rhs <- pure t,
           v <- val rhs,
           r <- envR (setVar s v)
       ],
@@ -431,7 +431,7 @@ reduceRead t =
   asum
     [ -- Read operation
       [ r
-        | Read s <- pure t,
+        | Read (s, _) <- pure t,
           Happy input <- envR inputVal, -- Can inputVal fail?
           r <- envR (setVar s input)
       ]
@@ -662,7 +662,7 @@ applyFunArgList tf rest funVal argVal = do
 applyFunArg :: (Machine m, Show m, V m ~ Value) => Value -> Value -> Env m
 applyFunArg (ClosureVal [] _ _) _ = do
   return $ Sad (Arguments, "too many arguments: function takes 0 arguments")
-applyFunArg (ClosureVal (x : xs) body caps) arg = do
+applyFunArg (ClosureVal ((x, _) : xs) body caps) arg = do
   let newCaps = caps ++ [(x, arg)]
   if null xs
     then evalClosureBody body newCaps

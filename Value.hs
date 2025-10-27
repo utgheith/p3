@@ -13,13 +13,14 @@ where
 import qualified Data.Map as M
 import Sprintf ((%))
 import Term (Term)
+import TypeSignature (TypedName)
 
 data Value
   = IntVal Integer
   | BoolVal Bool
   | StringVal String
   | Tuple [Value]
-  | ClosureVal [String] Term [(String, Value)]
+  | ClosureVal [TypedName] Term [(String, Value)]
   | Dictionary (M.Map Integer Value)
   deriving (Eq, Show)
 
