@@ -13,7 +13,7 @@ import Control.Applicative (Alternative, asum)
 import Control.Monad (MonadPlus)
 import qualified Control.Monad.State as S
 import qualified Data.Map as M
-import Debug.Trace (trace)
+-- import Debug.Trace (trace)
 import Machine (Env, Error, Machine (..), Result (..))
 import Term (BinaryOp (..), ErrorKind (..), ErrorKindOrAny (..), Term (..), UnaryOp (..))
 import Value (Value (..))
@@ -741,11 +741,11 @@ reduceDictionary t =
     ]
 
 reduce :: (Machine m, Show m, V m ~ Value) => Rule m
-reduce t = do
-  e <- S.get
-  trace ("Simulating: " ++ show t) () `seq`
-    trace ("     Machine: " ++ show e) () `seq`
-      reduce_ t
+reduce = reduce_ -- do
+-- e <- S.get
+-- trace ("Simulating: " ++ show t) () `seq`
+--   trace ("     Machine: " ++ show e) () `seq`
+--    reduce_ t
 
 reduceFully :: (Machine m, Show m, V m ~ Value) => Term -> m -> (Either String (V m), m)
 reduceFully term0 m0 = go m0 term0

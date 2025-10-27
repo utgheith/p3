@@ -28,9 +28,9 @@ decompile = cata go
     go (UnaryOpsF op t) =
       sprintf "%s(%s)" [show op, t]
     go (VarF r) =
-      sprintf "Var %s" [r]
-    go (OnlyStrF s) =
-      sprintf "OnlyStr %s" [show s]
+      sprintf "%s" [r]
+    go (OnlyStrF (name, _)) =
+      sprintf "%s" [name]
     go (BracketF t1 t2) =
       sprintf "Bracket (%s) (%s)" [t1, t2]
     go (WhileF cond body) =
@@ -66,4 +66,4 @@ decompile = cata go
     go ContinueSignalF =
       "ContinueSignal"
     go (LetF r t) =
-      sprintf "Let (%s) (%s)" [r, t]
+      sprintf "%s = %s;" [r, t]
