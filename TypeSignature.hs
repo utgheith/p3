@@ -7,6 +7,7 @@ data TypeSignature
   | TString
   | TTuple [TypeSignature]
   | TFun [TypeSignature] TypeSignature
+  | TSum [TypeSignature]
   | TDictionary TypeSignature
   | TUnknown
   deriving (Eq, Show)

@@ -1,24 +1,23 @@
 {-# LANGUAGE DataKinds #-}
 
-module Typer (typer, Types (..)) where
+module Typer (typer) where
 
 import Data.Functor.Foldable (para)
 import Term (BinaryOp (..), Term, TermF (..), UnaryOp (..))
-
-data Types = TBool | TFun Types | TInt | TString | TSum Types Types | TUnit | TUnknown deriving (Eq, Show)
+import TypeSignature (TypeSignature (..))
 
 -- Union type vs. Sum type
-combine :: Types -> Types -> Types
+combine :: TypeSignature -> TypeSignature -> TypeSignature
 combine TUnknown _ = TUnknown
 combine _ TUnknown = TUnknown
 combine t1 t2 | t1 == t2 = t1 -- this makes a union type, Python semantics
-combine t1 t2 = TSum t1 t2
+combine t1 t2 = TSum [t1, t2]
 
-(-->) :: Bool -> Types -> Types
+(-->) :: Bool -> TypeSignature -> TypeSignature
 (-->) True t = t
 (-->) False _ = TUnknown
 
-typer :: Term -> Types
+typer :: Term -> TypeSignature
 typer = para go
   where
     go (LiteralF _) = TInt
@@ -79,9 +78,9 @@ typer = para go
     go (ReadF _) =
       TInt
     -- TODO: handle arg count and types
-    go (FunF _ (_, bodyType)) =
-      TFun bodyType
-    go (ApplyFunF (_, TFun retType) _) = retType
+    go (FunF args (_, bodyType)) =
+      TFun (snd <$> args) bodyType
+    go (ApplyFunF (_, TFun _ retType) _) = retType
     go (ApplyFunF _ _) = TUnknown
     -- TODO: complete other cases
     go _ =

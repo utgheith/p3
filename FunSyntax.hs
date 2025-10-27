@@ -54,8 +54,8 @@ optTypeSignature :: Parser Token TypeSignature
 optTypeSignature = do
   col <- opt (symbol ":")
   case col of
-    Just _ -> return TUnknown -- Placeholder for actual type parsing
-    Nothing -> typeSignature
+    Just _ -> typeSignature
+    Nothing -> return TUnknown
 
 typedIdent :: Parser Token TypedName
 typedIdent = do

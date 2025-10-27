@@ -8,12 +8,13 @@ module Main (main) where
 import qualified Control.Monad.State as S
 import Data.Bits (complement)
 import qualified Data.Map as M
+import FunSyntax (parse, prog)
 import Machine (Env, Error, Machine (..), Result (..))
-import qualified Progs
+import Result (Result (..))
 import Scope (Scope (..), emptyScope, getAllBindings, insertScope, lookupScope)
 import Small (reduceFully)
-import Term (ErrorKind (..), Term (..))
-import TypeSignature (TypeSignature (..), TypedName)
+import Term (ErrorKind (..))
+import TypeSignature (TypedName)
 import Value (Value (..))
 
 data Simulator = Simulator Scope [Value] [Value] deriving (Eq, Show)
@@ -244,39 +245,12 @@ instance Machine Simulator where
       loop _ _ _ = error "unreachable hopefully"
   setBracketValue _ _ _ = return $ Sad (Type, "Had a Type Error")
 
-vx :: Term
-vx = OnlyStr ("x", TUnknown)
-
-vy :: Term
-vy = OnlyStr ("y", TUnknown)
-
-vz :: Term
-vz = OnlyStr ("z", TUnknown)
-
-infixl 1 ~
-
-(~) :: Term -> Term -> Term
-(~) = Seq
-
-infixl 9 <=>
-
-(<=>) :: Term -> Term -> Term
-(<=>) = Let
-
-prog :: Term
-prog =
-  vx <=> Literal 10
-    ~ vy <=> Literal 29
-    ~ vz <=> Literal 3
-
 main :: IO ()
 main = do
-  let out = reduceFully prog (Simulator emptyScope [] [])
+  code <- getContents
+  let out = case parse code prog of
+        Ok (t, []) -> reduceFully t (Simulator emptyScope [] [])
+        Ok (_, ts) -> error $ "Unconsumed tokens: " ++ show ts
+        Err e -> error $ "Parse error: " ++ show e
+
   print out
-  putStrLn "-----------------------------"
-  let out2 = reduceFully Progs.prog (Simulator emptyScope [] [])
-  print out2
-  putStrLn "-----------------------------"
-  putStrLn "Testing booleans and comparisons:"
-  let out3 = reduceFully Progs.prog3 (Simulator emptyScope [] [])
-  print out3
