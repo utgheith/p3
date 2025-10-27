@@ -7,6 +7,7 @@ module SmallSpec (spec) where
 import qualified Control.Monad.State as S
 import Data.Bits (complement)
 import qualified Data.Map as M
+import Machine (Error, Machine (..), Result (..))
 import Scope (Scope (..), emptyScope, getAllBindings, insertScope, lookupScope, scopeFromList)
 import Small
 import Term
