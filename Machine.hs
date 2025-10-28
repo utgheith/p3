@@ -5,7 +5,7 @@ module Machine (Machine (..), Env, Error, Result (..)) where
 import qualified Control.Monad.State as S
 import Term (ErrorKind (..), Term (..))
 import TypeSignature (TypedName)
-import Value (Value (..))
+import Value (Scope, Value (..))
 
 ----- The Machine type class -----
 
@@ -34,9 +34,10 @@ class Machine m where
   setVar :: String -> V m -> Env m
 
   -- Lexical scoping
-  getScope :: m -> [(String, Value)] -- Variable bindings only.
+  getScope :: m -> Scope -- Get the current scope
   pushScope :: [(String, Value)] -> Env m
   popScope :: Env m
+  setScope :: Scope -> Env m -- Replace the current scope entirely
 
   -- I/O
   inputVal :: Env m

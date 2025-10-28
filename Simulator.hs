@@ -9,11 +9,10 @@ import qualified Control.Monad.State as S
 import Data.Bits (complement)
 import qualified Data.Map as M
 import Machine (Env, Error, Machine (..), Result (..))
-import Scope (Scope (..), emptyScope, getAllBindings, insertScope, lookupScope)
 import Small (reduceFully)
 import Term (ErrorKind (..), Term)
 import TypeSignature (TypedName)
-import Value (Value (..))
+import Value (Scope (..), Value (..), emptyScope, insertScope, lookupScope)
 
 data Simulator = Simulator Scope [Value] [Value] deriving (Eq, Show)
 
@@ -33,8 +32,8 @@ instance Machine Simulator where
     S.put (Simulator m' inp out)
     return $ Happy val
 
-  getScope :: Simulator -> [(String, Value)]
-  getScope (Simulator m _ _) = getAllBindings m
+  getScope :: Simulator -> Scope
+  getScope (Simulator m _ _) = m
 
   pushScope :: [(String, Value)] -> Env Simulator
   pushScope vars = do
@@ -52,6 +51,11 @@ instance Machine Simulator where
     S.put (Simulator parent inp out)
     return $ Happy (IntVal 0)
 
+  setScope :: Scope -> Env Simulator
+  setScope newScope = do
+    (Simulator _ inp out) <- S.get
+    S.put (Simulator newScope inp out)
+    return $ Happy (IntVal 0)
   inputVal :: Env Simulator
   inputVal = do
     (Simulator m inp out) <- S.get
