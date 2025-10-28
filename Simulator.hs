@@ -3,7 +3,7 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TypeFamilies #-}
 
-module Simulator (run, Simulator(..)) where
+module Simulator (run, Simulator (..)) where
 
 import qualified Control.Monad.State as S
 import Data.Bits (complement)
