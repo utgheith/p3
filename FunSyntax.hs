@@ -312,10 +312,10 @@ funCall =
       _ <- symbol ")"
   ]
 
-printStmt :: Parser Token Term
-printStmt =
+writeStmt :: Parser Token Term
+writeStmt =
   [ Write expr
-    | _ <- keyword "print",
+    | _ <- keyword "write",
       expr <- term
   ]
 
@@ -323,7 +323,7 @@ assertStmt :: Parser Token Term
 assertStmt = [Assert expr | _ <- keyword "assert", expr <- term]
 
 unaryExp :: Parser Token Term
-unaryExp = oneof [assertStmt, ifExpr, block, funDef, minus, bitnot, preIncrement, preDecrement, num, string, bool, tuple, dictionary, tryCatch, parens, varDef, funCall, postIncrement, postDecrement, varRef, whileTerm, forTerm, printStmt]
+unaryExp = oneof [assertStmt, ifExpr, block, funDef, minus, bitnot, preIncrement, preDecrement, num, string, bool, tuple, dictionary, tryCatch, parens, varDef, funCall, postIncrement, postDecrement, varRef, whileTerm, forTerm, writeStmt]
 
 ----------- prog ----------
 

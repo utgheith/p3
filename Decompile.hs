@@ -41,7 +41,7 @@ decompile = cata go
     go (ReadF (v, _)) =
       sprintf "read (%s)" [v]
     go (SeqF t1 t2) =
-      sprintf "(%s) ; (%s)" [t1, t2]
+      sprintf "%s ; %s" [t1, t2]
     go SkipF =
       "skip"
     go (BinaryOpsF op t1 t2) =

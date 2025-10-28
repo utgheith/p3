@@ -1,3 +1,5 @@
+*.debug
+*.out
 test.stderr
 /dist-newstyle/
 *.cabal

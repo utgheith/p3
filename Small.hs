@@ -68,6 +68,7 @@ reduce_ = tryRules rules
   where
     rules =
       [ -- rules go here
+        reduceAssert,
         reduceLiteral,
         reduceVar,
         reduceRetrieve,
@@ -90,6 +91,31 @@ reduce_ = tryRules rules
         reduceTupleTerm,
         reduceDictionary
       ]
+
+reduceAssert :: (Machine m, Show m, V m ~ Value) => Rule m
+reduceAssert t =
+  asum
+    [ -- step the expression
+      [ Continue (Assert expr')
+        | Assert expr <- pure t,
+          expr' <- step expr
+      ],
+      -- expression is a value: check it
+      [ Happy (BoolVal True)
+        | Assert expr <- pure t,
+          (BoolVal True) <- val expr
+      ],
+      -- expression is a value: assertion failed
+      [ Sad (Assertion, "Assertion failed")
+        | Assert expr <- pure t,
+          (BoolVal False) <- val expr
+      ],
+      -- expression faults: propagate
+      [ e
+        | Assert expr <- pure t,
+          e <- fault expr
+      ]
+    ]
 
 reduceLiteral :: (Machine m, Show m, V m ~ Value) => Rule m
 reduceLiteral t =

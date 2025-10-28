@@ -129,7 +129,7 @@ spec = do
 
     describe "functions" $ do
       it "parses function definitions" $
-        parseString "fun f() { print 42 }" `shouldBe` Ok (Let (onlyStr "f") (Fun [] (Write (Literal 42))), [])
+        parseString "fun f() { write 42 }" `shouldBe` Ok (Let (onlyStr "f") (Fun [] (Write (Literal 42))), [])
 
       it "parses function calls" $
         parseString "f()" `shouldBe` Ok (ApplyFun (Var (onlyStr "f")) [], [])
@@ -186,7 +186,7 @@ spec = do
 
   describe "Integration tests" $ do
     it "parses a complete program" $ do
-      let program = "x = 10\n y = x + 5\n print y"
+      let program = "x = 10\n y = x + 5\n write y"
       let result = parseString program
       case result of
         Err err -> fail $ "Parse error: " ++ err
@@ -217,9 +217,9 @@ spec = do
                 "}",
                 "y = f(x)",
                 "if (y > 15) {",
-                "    print y",
+                "    write y",
                 "} else {",
-                "    print 0",
+                "    write 0",
                 "}"
               ]
       let result = parseString complexProgram
