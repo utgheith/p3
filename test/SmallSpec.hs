@@ -210,6 +210,12 @@ instance Machine MockMachine where
   selectValue ClosureVal {} _ _ = return $ Sad (Type, "Type error in select")
   selectValue (Dictionary _) _ _ = return $ Sad (Type, "Type error in select")
 
+checkFailure :: (Either String Value, MockMachine) -> MockMachine -> IO ()
+checkFailure (Left _, fm) machine = do
+  fm `shouldBe` machine
+checkFailure (Right _, _) _ =
+  expectationFailure "Expected failure but got success"
+
 spec :: Spec
 spec =
   describe "reduceFully" $ do
@@ -248,8 +254,8 @@ spec =
 
     it "reduces a while loop" $ do
       let term = Seq (Let (onlyStr "x") (Literal 3)) (While (Var (onlyStr "x")) (Let (onlyStr "x") (BinaryOps Sub (Var (onlyStr "x")) (Literal 1))) Nothing Nothing)
-      let finalMachine = initialMachine {getMem = scopeFromList [("x", IntVal 0)]}
-      reduceFully term initialMachine `shouldBe` (Right (IntVal 0), finalMachine)
+      let finalMachine = initialMachine {getMem = scopeFromList [("x", IntVal 3)]}
+      checkFailure (reduceFully term initialMachine) finalMachine
 
     it "reduces read and write" $ do
       let term = Seq (Read $ typedName "x") (Write (Var (onlyStr "x")))
@@ -358,7 +364,7 @@ spec =
               (Let (onlyStr "x") (Literal 5))
               ( Seq
                   ( While
-                      (Var (onlyStr "x"))
+                      (BinaryOps Gt (Var (onlyStr "x")) (Literal 0))
                       ( Seq
                           (If (BinaryOps Eq (Var (onlyStr "x")) (Literal 3)) BreakSignal Skip)
                           (Let (onlyStr "x") (BinaryOps Sub (Var (onlyStr "x")) (Literal 1)))
@@ -379,7 +385,7 @@ spec =
                   (Let (onlyStr "y") (Literal 0))
                   ( Seq
                       ( While
-                          (Var (onlyStr "x"))
+                          (BinaryOps Gt (Var (onlyStr "x")) (Literal 0))
                           ( Seq
                               (Let (onlyStr "x") (BinaryOps Sub (Var (onlyStr "x")) (Literal 1)))
                               ( Seq
@@ -405,7 +411,7 @@ spec =
                   (Let (onlyStr "y") (Literal 0))
                   ( Seq
                       ( While
-                          (Var (onlyStr "x"))
+                          (BinaryOps Gt (Var (onlyStr "x")) (Literal 0))
                           ( Seq
                               (Let (onlyStr "x") (BinaryOps Sub (Var (onlyStr "x")) (Literal 1)))
                               ( Seq
@@ -454,7 +460,7 @@ spec =
               ( Seq
                   (Let (onlyStr "y") (Literal 0))
                   ( While
-                      (Var (onlyStr "x"))
+                      (BinaryOps Gt (Var (onlyStr "x")) (Literal 0))
                       ( If
                           (BinaryOps Eq (Var (onlyStr "x")) (Literal 3))
                           BreakSignal
@@ -478,12 +484,12 @@ spec =
               ( Seq
                   (Let (onlyStr "y") (Literal 0))
                   ( While
-                      (Var (onlyStr "x"))
+                      (BinaryOps Gt (Var (onlyStr "x")) (Literal 0))
                       ( Seq
                           (Let (onlyStr "z") (Literal 2))
                           ( Seq
                               ( While
-                                  (Var (onlyStr "z"))
+                                  (BinaryOps Gt (Var (onlyStr "z")) (Literal 0))
                                   ( If
                                       (BinaryOps Eq (Var (onlyStr "z")) (Literal 1))
                                       BreakSignal
@@ -513,12 +519,12 @@ spec =
               ( Seq
                   (Let (onlyStr "y") (Literal 0))
                   ( While
-                      (Var (onlyStr "x"))
+                      (BinaryOps Gt (Var (onlyStr "x")) (Literal 0))
                       ( Seq
                           (Let (onlyStr "z") (Literal 3))
                           ( Seq
                               ( While
-                                  (Var (onlyStr "z"))
+                                  (BinaryOps Gt (Var (onlyStr "z")) (Literal 0))
                                   ( Seq
                                       (Let (onlyStr "z") (BinaryOps Sub (Var (onlyStr "z")) (Literal 1)))
                                       ( Seq
@@ -798,11 +804,11 @@ spec =
 
     it "reduces ternary operator with string condition (non-empty)" $ do
       let term = If (StringLiteral "hello") (Literal 100) (Literal 200)
-      reduceFully term initialMachine `shouldBe` (Right (IntVal 100), initialMachine)
+      checkFailure (reduceFully term initialMachine) initialMachine
 
     it "reduces ternary operator with string condition (empty)" $ do
       let term = If (StringLiteral "") (Literal 100) (Literal 200)
-      reduceFully term initialMachine `shouldBe` (Right (IntVal 200), initialMachine)
+      checkFailure (reduceFully term initialMachine) initialMachine
 
     it "reduces ternary operator with comparison condition" $ do
       let term = If (BinaryOps Gt (Literal 10) (Literal 5)) (StringLiteral "greater") (StringLiteral "not greater")

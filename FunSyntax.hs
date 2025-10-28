@@ -4,7 +4,7 @@
 
 {-# HLINT ignore "Use <$>" #-}
 
-module FunSyntax (parse, prog, term, Term (..)) where
+module FunSyntax (parse, prog, term) where
 
 import qualified Control.Monad as M
 import Control.Monad.State.Lazy (runStateT)

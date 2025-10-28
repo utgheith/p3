@@ -57,37 +57,6 @@ envR :: Env m -> Reduction m (Result (V m))
 envR e = Reduction $ S.StateT $ \s ->
   let (r, s') = S.runState e s in Just (r, s')
 
--- pick between branches using your fixed selectValue, but stay in Reduction
-selectR ::
-  (Machine m, V m ~ Value) =>
-  V m ->
-  Term ->
-  Term ->
-  Reduction m (Result (V m))
-selectR cond tThen tElse =
-  envR
-    ( selectValue
-        cond
-        (return (Continue tThen)) -- :: Env m
-        (return (Continue tElse)) -- :: Env m
-    )
-
-getTruthinessR ::
-  (Machine m, V m ~ Value) =>
-  V m ->
-  Reduction m Bool
-getTruthinessR cond = do
-  r <-
-    envR
-      ( selectValue
-          cond
-          (return (Happy (BoolVal True)))
-          (return (Happy (BoolVal False)))
-      )
-  case r of
-    Happy (BoolVal b) -> pure b
-    _ -> error "getTruthinessR: selectValue did not return BoolVal"
-
 -- A small-step rule returns a Step
 type Rule m = Term -> Reduction m (Result (V m))
 
@@ -138,11 +107,21 @@ reduceIf t =
         | If cond tThen tElse <- pure t,
           cond' <- step cond
       ],
-      -- condition is a value: choose branch via selectValue
-      [ r
+      -- condition is true: choose then branch
+      [ Continue tThen
+        | If cond tThen _ <- pure t,
+          (BoolVal True) <- val cond
+      ],
+      -- condition is false: choose else branch
+      [ Continue tElse
+        | If cond _ tElse <- pure t,
+          (BoolVal False) <- val cond
+      ],
+      -- implicit conversion to boolean: non-zero is true
+      [ Continue (If cond' tThen tElse)
         | If cond tThen tElse <- pure t,
-          v <- val cond,
-          r <- selectR v tThen tElse
+          IntVal n <- val cond,
+          let cond' = BoolLit (n /= 0)
       ],
       -- condition faults: propagate
       [ e
@@ -352,16 +331,12 @@ reduceWhile t =
       -- condition is a value and is false
       [ Continue Skip
         | While cond _ _ _ <- pure t,
-          condVal <- val cond,
-          truthiness <- getTruthinessR condVal,
-          not truthiness
+          (BoolVal False) <- val cond
       ],
       -- condition is a value and is true but body steps
       [ res
         | While cond body m i <- pure t,
-          condVal <- val cond,
-          truthiness <- getTruthinessR condVal,
-          truthiness,
+          (BoolVal True) <- val cond,
           body' <- step body,
           let res = case body' of
                 BreakSignal -> Happy (IntVal 0)
@@ -371,9 +346,7 @@ reduceWhile t =
       -- condition is a value and it is true but body is value
       [ Continue (While cond body m i)
         | While cond body m i <- pure t,
-          condVal <- val cond,
-          truthiness <- getTruthinessR condVal,
-          truthiness,
+          (BoolVal True) <- val cond,
           _ <- val body
       ],
       -- fault in condition: propagate
@@ -384,9 +357,7 @@ reduceWhile t =
       -- fault in body: propagate
       [ e
         | While cond body _ _ <- pure t,
-          condVal <- val cond,
-          truthiness <- getTruthinessR condVal,
-          truthiness,
+          (BoolVal True) <- val cond,
           e <- fault body
       ]
     ]
