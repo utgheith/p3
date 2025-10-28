@@ -117,7 +117,15 @@ spec = do
         parseString "if (x > 0) { y = 1 } else { y = 0 }" `shouldBe` Ok (If (BinaryOps Gt (Var (onlyStr "x")) (Literal 0)) (Let (onlyStr "y") (Literal 1)) (Let (onlyStr "y") (Literal 0)), [])
 
       it "parses while loops" $
-        parseString "while (x > 0) { x = x - 1 }" `shouldBe` Ok (While (BinaryOps Gt (Var (onlyStr "x")) (Literal 0)) (Let (onlyStr "x") (BinaryOps Sub (Var (onlyStr "x")) (Literal 1))), [])
+        parseString "while (x > 0) { x = x - 1 }"
+          `shouldBe` Ok
+            ( While
+                (BinaryOps Gt (Var (onlyStr "x")) (Literal 0))
+                (Let (onlyStr "x") (BinaryOps Sub (Var (onlyStr "x")) (Literal 1)))
+                Nothing
+                Nothing,
+              []
+            )
 
     describe "functions" $ do
       it "parses function definitions" $

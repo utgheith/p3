@@ -3,14 +3,10 @@ module EndToEndSpec (spec) where
 import Decompile (decompile)
 import FunSyntax (parse, prog)
 import Result (Result (..))
+import System.Directory (listDirectory)
+import System.FilePath (takeExtension, (</>))
 import Term (Term (..))
 import Test.Hspec
-
-fileNames :: [String]
-fileNames =
-  [ "test_files/t1.fun",
-    "test_files/t2.fun"
-  ]
 
 compile :: String -> Term
 compile code = case parse code prog of
@@ -18,16 +14,21 @@ compile code = case parse code prog of
   Ok (_, left) -> error $ "Parsing incomplete, leftover tokens: " ++ show left
   Err err -> error $ "Parsing failed with: " ++ err
 
+dir :: String
+dir = "test_files/"
+
 spec :: Spec
 spec = do
   describe "End to end tests" $ do
-    mapM_ (it "parses successfully" . oneFile) fileNames
+    entries <- runIO $ listDirectory "test_files"
+    let fileNames = [entry | entry <- entries, takeExtension entry == ".fun"]
+    mapM_ (\fileName -> it fileName (oneFile fileName)) fileNames
   where
     oneFile fileName = do
-      code <- readFile fileName
+      code <- readFile $ dir </> fileName
       let ast = compile code
       let code' = decompile ast
-      putStrLn code'
+      _ <- putStrLn code'
       let ast' = compile code'
       ast' `shouldBe` ast
       let code'' = decompile ast'

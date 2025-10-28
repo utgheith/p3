@@ -256,11 +256,33 @@ varDef =
       expr <- opt $ symbol "=" >> term
   ]
 
+metric :: Parser Token Term
+metric = [t | _ <- keyword "metric", t <- term]
+
+invariant :: Parser Token Term
+invariant = [t | _ <- keyword "invariant", t <- term]
+
 whileTerm :: Parser Token Term
-whileTerm = [While cond body | _ <- keyword "while", cond <- term, body <- term]
+whileTerm =
+  [ While cond body m i
+    | _ <- keyword "while",
+      cond <- term,
+      m <- opt metric,
+      i <- opt invariant,
+      body <- term
+  ]
 
 forTerm :: Parser Token Term
-forTerm = [For var start end body | _ <- keyword "for", var <- typedIdent, start <- term, end <- term, body <- term]
+forTerm =
+  [ For var start end body m i
+    | _ <- keyword "for",
+      var <- typedIdent,
+      start <- term,
+      end <- term,
+      m <- opt metric,
+      i <- opt invariant,
+      body <- term
+  ]
 
 tryCatch :: Parser Token Term
 tryCatch =
@@ -297,8 +319,11 @@ printStmt =
       expr <- term
   ]
 
+assertStmt :: Parser Token Term
+assertStmt = [Assert expr | _ <- keyword "assert", expr <- term]
+
 unaryExp :: Parser Token Term
-unaryExp = oneof [ifExpr, block, funDef, minus, bitnot, preIncrement, preDecrement, num, string, bool, tuple, dictionary, tryCatch, parens, varDef, funCall, postIncrement, postDecrement, varRef, whileTerm, forTerm, printStmt]
+unaryExp = oneof [assertStmt, ifExpr, block, funDef, minus, bitnot, preIncrement, preDecrement, num, string, bool, tuple, dictionary, tryCatch, parens, varDef, funCall, postIncrement, postDecrement, varRef, whileTerm, forTerm, printStmt]
 
 ----------- prog ----------
 

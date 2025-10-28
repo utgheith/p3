@@ -27,6 +27,8 @@ prog =
       ( Write (Var x)
           ~ x <=> BinaryOps Sub (Var x) (Literal 1)
       )
+      Nothing
+      Nothing
 
 prog2 :: Term
 prog2 = Write (Var x) ~ Write (Literal 42)
@@ -48,3 +50,5 @@ prog3 =
       ( Write (Var y)
           ~ y <=> BinaryOps Sub (Var y) (Literal 1)
       )
+      Nothing
+      Nothing

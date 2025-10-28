@@ -293,8 +293,8 @@ reduceSeq t =
           t1' <- step t1,
           let res = case (t1', t2) of
                 -- left side signalled while we're sequencing into a loop on the right:
-                (BreakSignal, While _ _) -> Happy (IntVal 0) -- break: exit loop
-                (ContinueSignal, While c b) -> Continue (While c b) -- continue: next iter
+                (BreakSignal, While {}) -> Happy (IntVal 0) -- break: exit loop
+                (ContinueSignal, While c b m i) -> Continue (While c b m i) -- continue: next iter
                 -- otherwise: propagate signals normally
                 (BreakSignal, _) -> Continue BreakSignal
                 (ContinueSignal, _) -> Continue ContinueSignal
@@ -345,32 +345,32 @@ reduceWhile :: (Machine m, Show m, V m ~ Value) => Rule m
 reduceWhile t =
   asum
     [ -- step condition
-      [ Continue (While cond' body)
-        | While cond body <- pure t,
+      [ Continue (While cond' body m i)
+        | While cond body m i <- pure t,
           cond' <- step cond
       ],
       -- condition is a value and is false
       [ Continue Skip
-        | While cond _ <- pure t,
+        | While cond _ _ _ <- pure t,
           condVal <- val cond,
           truthiness <- getTruthinessR condVal,
           not truthiness
       ],
       -- condition is a value and is true but body steps
       [ res
-        | While cond body <- pure t,
+        | While cond body m i <- pure t,
           condVal <- val cond,
           truthiness <- getTruthinessR condVal,
           truthiness,
           body' <- step body,
           let res = case body' of
                 BreakSignal -> Happy (IntVal 0)
-                ContinueSignal -> Continue (While cond body)
-                b -> Continue (Seq b (While cond body))
+                ContinueSignal -> Continue (While cond body m i)
+                b -> Continue (Seq b (While cond body m i))
       ],
       -- condition is a value and it is true but body is value
-      [ Continue (While cond body)
-        | While cond body <- pure t,
+      [ Continue (While cond body m i)
+        | While cond body m i <- pure t,
           condVal <- val cond,
           truthiness <- getTruthinessR condVal,
           truthiness,
@@ -378,12 +378,12 @@ reduceWhile t =
       ],
       -- fault in condition: propagate
       [ e
-        | While cond _ <- pure t,
+        | While cond _ _ _ <- pure t,
           e <- fault cond
       ],
       -- fault in body: propagate
       [ e
-        | While cond body <- pure t,
+        | While cond body _ _ <- pure t,
           condVal <- val cond,
           truthiness <- getTruthinessR condVal,
           truthiness,
@@ -395,19 +395,19 @@ reduceFor :: (Machine m, Show m, V m ~ Value) => Rule m
 reduceFor t =
   asum
     [ -- step start
-      [ Continue (For var start' end body)
-        | For var start end body <- pure t,
+      [ Continue (For var start' end body m i)
+        | For var start end body m i <- pure t,
           start' <- step start
       ],
       -- start is a value: step end
-      [ Continue (For var start end' body)
-        | For var start end body <- pure t,
+      [ Continue (For var start end' body m i)
+        | For var start end body m i <- pure t,
           _ <- val start,
           end' <- step end
       ],
       -- both start and end are values: desugar to Let + While
-      [ Continue (Seq (Let (OnlyStr var) start) (While cond body'))
-        | For var start end body <- pure t,
+      [ Continue (Seq (Let (OnlyStr var) start) (While cond body' m i))
+        | For var start end body m i <- pure t,
           _ <- val start,
           IntVal iEnd <- val end,
           let cond = BinaryOps Lt (Var (OnlyStr var)) (Literal iEnd),
@@ -415,12 +415,12 @@ reduceFor t =
       ],
       -- fault in start: propagate
       [ e
-        | For _ start _ _ <- pure t,
+        | For _ start _ _ _ _ <- pure t,
           e <- fault start
       ],
       -- fault in end: propagate
       [ e
-        | For _ start end _ <- pure t,
+        | For _ start end _ _ _ <- pure t,
           _ <- val start,
           e <- fault end
       ]

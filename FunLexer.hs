@@ -53,7 +53,10 @@ symbols =
 keywords :: S.Set String
 keywords =
   S.fromList
-    [ "fun",
+    [ "metric",
+      "invariant",
+      "assert",
+      "fun",
       "var",
       "if",
       "else",

@@ -54,7 +54,7 @@ typer = para go
       (condType == TBool) --> combine thenType elseType
     go (WriteF (_, tType)) =
       tType
-    go (WhileF (_, condType) (_, bodyType)) =
+    go (WhileF (_, condType) (_, bodyType) _ _) =
       (condType == TBool) --> combine TUnit bodyType
     -- TODO: lookup in typing context
     go (OnlyStrF _) =

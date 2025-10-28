@@ -31,8 +31,8 @@ data Term
   | Var Term
   | OnlyStr TypedName
   | Bracket Term Term
-  | While Term Term
-  | For TypedName Term Term Term
+  | While Term Term (Maybe Term) (Maybe Term)
+  | For TypedName Term Term Term (Maybe Term) (Maybe Term)
   | Write Term
   | BoolLit Bool
   | TupleTerm [Term]
@@ -47,6 +47,7 @@ data Term
   | PostDecrement TypedName
   | BreakSignal
   | ContinueSignal
+  | Assert Term
   deriving (Eq, Show)
 
 makeBaseFunctor ''Term

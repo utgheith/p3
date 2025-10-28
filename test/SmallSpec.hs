@@ -247,7 +247,7 @@ spec =
       reduceFully term initialMachine `shouldBe` (Right (IntVal 20), initialMachine)
 
     it "reduces a while loop" $ do
-      let term = Seq (Let (onlyStr "x") (Literal 3)) (While (Var (onlyStr "x")) (Let (onlyStr "x") (BinaryOps Sub (Var (onlyStr "x")) (Literal 1))))
+      let term = Seq (Let (onlyStr "x") (Literal 3)) (While (Var (onlyStr "x")) (Let (onlyStr "x") (BinaryOps Sub (Var (onlyStr "x")) (Literal 1))) Nothing Nothing)
       let finalMachine = initialMachine {getMem = scopeFromList [("x", IntVal 0)]}
       reduceFully term initialMachine `shouldBe` (Right (IntVal 0), finalMachine)
 
@@ -344,6 +344,8 @@ spec =
                           (BinaryOps Lt (Var (onlyStr "x")) (Literal 10))
                       )
                       (Let (onlyStr "x") (BinaryOps Add (Var (onlyStr "x")) (Literal 1)))
+                      Nothing
+                      Nothing
                   )
                   (Var (onlyStr "x"))
               )
@@ -361,6 +363,8 @@ spec =
                           (If (BinaryOps Eq (Var (onlyStr "x")) (Literal 3)) BreakSignal Skip)
                           (Let (onlyStr "x") (BinaryOps Sub (Var (onlyStr "x")) (Literal 1)))
                       )
+                      Nothing
+                      Nothing
                   )
                   (Var (onlyStr "x"))
               )
@@ -383,6 +387,8 @@ spec =
                                   (Let (onlyStr "y") (BinaryOps Add (Var (onlyStr "y")) (Var (onlyStr "x"))))
                               )
                           )
+                          Nothing
+                          Nothing
                       )
                       (Var (onlyStr "y"))
                   )
@@ -407,6 +413,8 @@ spec =
                                   (Let (onlyStr "y") (BinaryOps Add (Var (onlyStr "y")) (Var (onlyStr "x"))))
                               )
                           )
+                          Nothing
+                          Nothing
                       )
                       (Var (onlyStr "y"))
                   )
@@ -455,6 +463,8 @@ spec =
                               (Let (onlyStr "x") (BinaryOps Sub (Var (onlyStr "x")) (Literal 1)))
                           )
                       )
+                      Nothing
+                      Nothing
                   )
               )
 
@@ -482,10 +492,14 @@ spec =
                                           (Let (onlyStr "z") (BinaryOps Sub (Var (onlyStr "z")) (Literal 1)))
                                       )
                                   )
+                                  Nothing
+                                  Nothing
                               )
                               (Let (onlyStr "x") (BinaryOps Sub (Var (onlyStr "x")) (Literal 1)))
                           )
                       )
+                      Nothing
+                      Nothing
                   )
               )
 
@@ -512,10 +526,14 @@ spec =
                                           (If (BinaryOps Eq (Var (onlyStr "z")) (Literal 2)) ContinueSignal Skip)
                                       )
                                   )
+                                  Nothing
+                                  Nothing
                               )
                               (Let (onlyStr "x") (BinaryOps Sub (Var (onlyStr "x")) (Literal 1)))
                           )
                       )
+                      Nothing
+                      Nothing
                   )
               )
 

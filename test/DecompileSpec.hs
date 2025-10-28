@@ -19,14 +19,14 @@ spec = do
 
     it "decompiles an if expression" $ do
       let input = "if (true) (1) else (2)"
-      let expected = "If (True) (1) (2)"
+      let expected = "if (true) {1} else {2}"
       case evalStateT (term <* eof) (lexer input) of
         Ok term' -> decompile term' `shouldBe` expected
         Err e -> expectationFailure $ "Parsing failed with: " ++ e
 
     it "decompiles a try-catch expression" $ do
       let input = "try (1) catch Any (2)"
-      let expected = "Try (1) (Any) (2)"
+      let expected = "try {1} catch (Any) {2}"
       case evalStateT (term <* eof) (lexer input) of
         Ok term' -> decompile term' `shouldBe` expected
         Err e -> expectationFailure $ "Parsing failed with: " ++ e
