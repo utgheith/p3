@@ -8,12 +8,11 @@ import qualified Control.Monad.State as S
 import Data.Bits (complement)
 import qualified Data.Map as M
 import Machine (Error, Machine (..), Result (..))
-import Scope (Scope (..), emptyScope, getAllBindings, insertScope, lookupScope, scopeFromList)
 import Small
 import Term
 import Test.Hspec
 import TypeSignature (TypeSignature (..), TypedName)
-import Value (Value (..))
+import Value (Scope (..), Value (..), emptyScope, insertScope, lookupScope, scopeFromList)
 
 typedName :: String -> TypedName
 typedName name = (name, TUnknown)
@@ -38,7 +37,7 @@ instance Machine MockMachine where
     S.put (m {getMem = insertScope x v (getMem m)})
     return $ Happy v
 
-  getScope m = getAllBindings (getMem m)
+  getScope = getMem
 
   pushScope vars = do
     m <- S.get
@@ -50,6 +49,11 @@ instance Machine MockMachine where
     case getMem m of
       Scope _ (Just parent) -> S.put (m {getMem = parent})
       Scope _ Nothing -> S.put (m {getMem = emptyScope}) -- Reset to empty scope.
+    return $ Happy (IntVal 0)
+
+  setScope newScope = do
+    m <- S.get
+    S.put (m {getMem = newScope})
     return $ Happy (IntVal 0)
 
   inputVal = do
@@ -617,7 +621,7 @@ spec =
       let f0 = Fun [typedName "x"] (Literal 12)
       let f1 = Fun [typedName "y"] f0
       let term = ApplyFun f1 [Literal 5]
-      reduceFully term initialMachine `shouldBe` (Right (ClosureVal [typedName "x"] (Literal 12) [("y", IntVal 5)]), initialMachine)
+      reduceFully term initialMachine `shouldBe` (Right (ClosureVal [typedName "x"] (Literal 12) (scopeFromList [("y", IntVal 5)])), initialMachine)
 
     it "creates local variables in functions" $ do
       let f = Fun [typedName "y"] (Let (onlyStr "x") (Var (onlyStr "y"))) -- Should not affect outside x.
@@ -653,7 +657,7 @@ spec =
       let setupTerm = Seq (Let (onlyStr "outside") (Literal 1)) (Let (onlyStr "f") f0) -- Function f created here.
       let f1 = Fun [typedName "y"] (Seq (Let (onlyStr "outside") (Literal 99)) (ApplyFun (Var (onlyStr "f")) [Literal 0])) -- 99 should not be captured.
       let term = Seq setupTerm (ApplyFun f1 [Literal 0])
-      let closureVal = ClosureVal [typedName "x"] (Var (onlyStr "outside")) [("outside", IntVal 1)] -- Captured 1 from outside.
+      let closureVal = ClosureVal [typedName "x"] (Var (onlyStr "outside")) (scopeFromList [("outside", IntVal 1)]) -- Captured 1 from outside.
       let machine = initialMachine {getMem = scopeFromList [("outside", IntVal 1), ("f", closureVal)]}
       reduceFully term initialMachine `shouldBe` (Right (IntVal 1), machine)
 
@@ -673,7 +677,7 @@ spec =
     it "errors on undefined variable in function scope" $ do
       let f1 = Fun [] (Seq (Let (onlyStr "y") (Literal 3)) (ApplyFun (Var (onlyStr "f")) []))
       let term = Seq (Let (onlyStr "f") (Fun [] (Write (Var (onlyStr "y"))))) (ApplyFun f1 []) -- f defined outside of f1.
-      let machine = initialMachine {getMem = scopeFromList [("f", ClosureVal [] (Write (Var (onlyStr "y"))) [])]}
+      let machine = initialMachine {getMem = scopeFromList [("f", ClosureVal [] (Write (Var (onlyStr "y"))) emptyScope)]}
       reduceFully term initialMachine `shouldBe` (Left "variable not found", machine) -- Does not capture y = 3.
 
     -- Comparison Operations Tests

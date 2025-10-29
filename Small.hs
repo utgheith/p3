@@ -14,9 +14,9 @@ import Control.Monad (MonadPlus)
 import qualified Control.Monad.State as S
 import qualified Data.Map as M
 -- import Debug.Trace (trace)
-import Machine (Env, Error, Machine (..), Result (..))
+import Machine (Env, Machine (..), Result (..))
 import Term (BinaryOp (..), ErrorKind (..), ErrorKindOrAny (..), Term (..), UnaryOp (..))
-import Value (Value (..))
+import Value (Scope (..), Value (..), insertScope)
 
 -- Helper for try-catch statement
 errorShouldBeCaught :: ErrorKind -> ErrorKindOrAny -> Bool
@@ -659,11 +659,12 @@ applyFunArgList tf rest funVal argVal = do
 applyFunArg :: (Machine m, Show m, V m ~ Value) => Value -> Value -> Env m
 applyFunArg (ClosureVal [] _ _) _ = do
   return $ Sad (Arguments, "too many arguments: function takes 0 arguments")
-applyFunArg (ClosureVal ((x, _) : xs) body caps) arg = do
-  let newCaps = caps ++ [(x, arg)]
+applyFunArg (ClosureVal ((x, _) : xs) body capturedScope) arg = do
+  -- Add the argument binding to the captured scope
+  let newScope = insertScope x arg capturedScope
   if null xs
-    then evalClosureBody body newCaps
-    else return $ Happy (ClosureVal xs body newCaps)
+    then evalClosureBody body newScope
+    else return $ Happy (ClosureVal xs body newScope)
 applyFunArg _ _ = return $ Sad (Type, "attempt to call a non-function")
 
 applyFuncNoArg :: (Machine m, Show m, V m ~ Value) => Value -> Env m
@@ -671,28 +672,20 @@ applyFuncNoArg (ClosureVal [] body caps) = evalClosureBody body caps
 applyFuncNoArg (ClosureVal (_ : _) _ _) = return $ Sad (Arguments, "missing arguments: function requires parameters")
 applyFuncNoArg _ = return $ Sad (Type, "attempt to call a non-function")
 
--- Bind captured args, evaluate body, restore machine state
-evalClosureBody :: (Machine m, Show m, V m ~ Value) => Term -> [(String, Value)] -> Env m
-evalClosureBody body caps = do
-  m0 <- S.get
-  let (_resPush, m1) = S.runState (pushScope []) m0
-  case bindMany caps m1 of
-    Left msg -> return $ Sad msg
-    Right m2 -> do
-      let (res, m3) = reduceFully body m2
-      let (_resPop, m4) = S.runState popScope m3 -- Restore previous scope.
-      S.put m4
-      case res of
-        Left msg -> return $ Sad (Arguments, msg)
-        Right v -> return $ Happy v
-
-bindMany :: (Machine m, V m ~ Value) => [(String, Value)] -> m -> Either Error m
-bindMany [] m = Right m
-bindMany ((k, v) : rest) m =
-  case S.runState (setVar k v) m of
-    (Sad msg, _m') -> Left msg
-    (Continue _, _m') -> Left (Arguments, "internal: setVar requested Continue")
-    (Happy _, m') -> bindMany rest m'
+-- Restore captured scope, evaluate body, restore original scope
+evalClosureBody :: (Machine m, Show m, V m ~ Value) => Term -> Scope -> Env m
+evalClosureBody body capturedScope = do
+  origMachine <- S.get
+  -- Set the machine's scope to the captured scope
+  _ <- setScope capturedScope
+  -- Evaluate the body in the captured environment
+  currentMachine <- S.get
+  let (res, _finalMachine) = reduceFully body currentMachine
+  -- Restore original machine state
+  S.put origMachine
+  case res of
+    Left msg -> return $ Sad (Arguments, msg)
+    Right v -> return $ Happy v
 
 reduceTupleTerm :: (Machine m, Show m, V m ~ Value) => Rule m
 reduceTupleTerm t =
