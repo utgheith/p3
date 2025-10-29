@@ -4,6 +4,7 @@ import Data.Functor.Foldable (cata)
 import Data.List (intercalate)
 import Sprintf (sprintf)
 import Term (BinaryOp (..), Term, TermF (..))
+import TypeSignature (TypeSignature (..))
 
 disp :: String -> Maybe String -> String
 disp _ Nothing = ""
@@ -25,6 +26,26 @@ dispBinaryOp Eq = "=="
 dispBinaryOp Neq = "!="
 dispBinaryOp Pow = "**"
 dispBinaryOp Xor = "^"
+
+dispTypeSig :: TypeSignature -> String
+dispTypeSig TUnit = "unit"
+dispTypeSig TInt = "int"
+dispTypeSig TBool = "bool"
+dispTypeSig TString = "str"
+dispTypeSig (TTuple types) = "(" ++ intercalate ", " (map dispTypeSig types) ++ ")"
+dispTypeSig (TFun paramTypes retType) =
+  "fun(" ++ intercalate ", " (map dispTypeSig paramTypes) ++ ") -> " ++ dispTypeSig retType
+dispTypeSig (TSum types) = intercalate " | " (map dispTypeSig types)
+dispTypeSig (TDictionary valType) = "[" ++ dispTypeSig valType ++ "]"
+dispTypeSig TUnknown = "auto"
+dispTypeSig (Poly name) = name
+
+dispOptTypeSig :: TypeSignature -> String
+dispOptTypeSig TUnknown = ""
+dispOptTypeSig tSig = ": " ++ dispTypeSig tSig
+
+dispArg :: (String, TypeSignature) -> String
+dispArg (name, tSig) = sprintf "%s%s" [name, dispOptTypeSig tSig]
 
 decompile :: Term -> String
 decompile = cata go
@@ -50,8 +71,8 @@ decompile = cata go
       sprintf "%s(%s)" [show op, t]
     go (VarF r) =
       r
-    go (OnlyStrF (name, _)) =
-      sprintf "%s" [name]
+    go (OnlyStrF (name, tSig)) =
+      sprintf "%s%s" [name, dispOptTypeSig tSig]
     go (BracketF t1 t2) =
       sprintf "%s(%s)" [t1, t2]
     go (WhileF cond body metric invariant) =
@@ -71,7 +92,7 @@ decompile = cata go
     go (MergeF current index value) =
       sprintf "Merge (%s) (%s) (%s)" [current, index, value]
     go (FunF args body) =
-      sprintf "Fun [%s] (%s)" [intercalate ", " (show <$> args), body]
+      sprintf "fun (%s) {%s}" [intercalate ", " (dispArg <$> args), body]
     go (ApplyFunF fun args) =
       sprintf "ApplyFun (%s) [%s]" [fun, intercalate ", " args]
     go (PreIncrementF (varName, _)) =

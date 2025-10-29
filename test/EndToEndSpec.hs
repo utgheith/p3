@@ -5,6 +5,7 @@ import Decompile (decompile)
 import FunSyntax (parse, prog)
 import Result (Result (..))
 import Simulator (Simulator (..), run)
+import Sprintf (sprintf)
 import System.Directory (listDirectory)
 import System.FilePath (replaceExtension, takeExtension, (</>))
 import Term (Term (..))
@@ -40,20 +41,30 @@ spec = do
     let fileNames = [entry | entry <- entries, takeExtension entry == ".fun"]
     mapM_ (\fileName -> it fileName (oneFile fileName)) fileNames
   where
-    oneFile fileName = do
-      code <- readFile $ dir </> fileName
-      let ast = compile code
-      let code' = decompile ast
-      _ <- putStrLn code'
-      let ast' = compile code'
-      ast' `shouldBe` ast
-      let code'' = decompile ast'
-      code'' `shouldBe` code'
-      let out = run ast []
+    oneFile fileName =
       let outFile = replaceExtension fileName ".out"
-      let debugFile = replaceExtension fileName ".debug"
-      let okFile = dir </> replaceExtension fileName ".ok"
-      writeFile debugFile (show out)
-      writeFile outFile (display out)
-      expectedOut <- readFile okFile
-      display out `shouldBe` expectedOut
+          debugFile = replaceExtension fileName ".debug"
+          okFile = dir </> replaceExtension fileName ".ok"
+          debug :: String -> String -> IO ()
+          debug s x = do
+            appendFile debugFile $ sprintf "\n:::::::: %s ::::::::\n" [s]
+            appendFile debugFile x
+       in do
+            writeFile debugFile ""
+            code <- readFile $ dir </> fileName
+            debug "code" code
+            let ast = compile code
+            debug "ast" (show ast)
+            let code' = decompile ast
+            debug "code'" code'
+            let ast' = compile code'
+            debug "ast'" (show ast')
+            ast' `shouldBe` ast
+            let code'' = decompile ast'
+            debug "code''" code''
+            code'' `shouldBe` code'
+            let out = run ast []
+            debug "out" (show out)
+            writeFile outFile (display out)
+            expectedOut <- readFile okFile
+            display out `shouldBe` expectedOut

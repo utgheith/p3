@@ -37,17 +37,21 @@ ident = satisfy $ \case
 typeSignature :: Parser Token TypeSignature
 typeSignature =
   oneof
-    [ [TInt | _ <- keyword "int"],
+    [ [TUnknown | _ <- keyword "auto"],
+      [TInt | _ <- keyword "int"],
       [TBool | _ <- keyword "bool"],
       [TString | _ <- keyword "string"],
       [TUnit | _ <- keyword "unit"],
       [ TFun paramTypes retType
         | _ <- keyword "fun",
           paramTypes <- between (symbol "(") (symbol ")") (rptDropSep typeSignature (symbol ",")),
+          _ <- symbol "->",
           retType <- typeSignature
       ],
+      [Poly name | name <- ident],
       [TDictionary valType | valType <- between (symbol "[") (symbol "]") typeSignature],
-      [TTuple types | types <- between (symbol "(") (symbol ")") (rptDropSep typeSignature (symbol ","))]
+      [TTuple types | types <- between (symbol "(") (symbol ")") (rptDropSep typeSignature (symbol ","))],
+      [TSum types | types <- rptDropSep typeSignature (symbol "|")]
     ]
 
 optTypeSignature :: Parser Token TypeSignature
@@ -224,14 +228,26 @@ parens = [t | _ <- symbol "(", t <- term, _ <- symbol ")"]
 
 funDef :: Parser Token Term
 funDef =
-  [ Let (OnlyStr name) (Fun params body)
+  -- a named function
+
+  [ Let (OnlyStr (name, TFun (snd <$> params) TUnknown)) (Fun params body)
     | _ <- keyword "fun",
-      name <- typedIdent,
+      name <- ident,
       _ <- symbol "(",
       params <- rptDropSep typedIdent (symbol ","),
       _ <- symbol ")",
       body <- term
   ]
+    <|>
+    -- an anonymous function
+
+    [ Fun params body
+      | _ <- keyword "fun",
+        _ <- symbol "(",
+        params <- rptDropSep typedIdent (symbol ","),
+        _ <- symbol ")",
+        body <- term
+    ]
 
 varRef :: Parser Token Term
 varRef = Var <$> reference

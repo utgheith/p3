@@ -10,6 +10,7 @@ data TypeSignature
   | TSum [TypeSignature]
   | TDictionary TypeSignature
   | TUnknown
+  | Poly String
   deriving (Eq, Show)
 
 type TypedName = (String, TypeSignature)

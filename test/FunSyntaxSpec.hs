@@ -129,7 +129,7 @@ spec = do
 
     describe "functions" $ do
       it "parses function definitions" $
-        parseString "fun f() { write 42 }" `shouldBe` Ok (Let (onlyStr "f") (Fun [] (Write (Literal 42))), [])
+        parseString "fun f() { write 42 }" `shouldBe` Ok (Let (OnlyStr ("f", TFun [] TUnknown)) (Fun [] (Write (Literal 42))), [])
 
       it "parses function calls" $
         parseString "f()" `shouldBe` Ok (ApplyFun (Var (onlyStr "f")) [], [])

@@ -47,13 +47,19 @@ symbols =
       "!=",
       ".",
       ";",
-      ":"
+      ":",
+      "->"
     ]
 
 keywords :: S.Set String
 keywords =
   S.fromList
-    [ "metric",
+    [ "auto",
+      "int",
+      "bool",
+      "str",
+      "unit",
+      "metric",
       "invariant",
       "assert",
       "fun",
@@ -67,7 +73,8 @@ keywords =
       "try",
       "catch",
       "true",
-      "false" -- force boolean literals to be tokens in the parser
+      "false", -- force boolean literals to be tokens in the parser
+      "unknown"
     ]
 
 -- a lexer combinator, i suppose
