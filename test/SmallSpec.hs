@@ -210,6 +210,7 @@ instance Machine MockMachine where
   selectValue (BoolVal False) _ t = t
   selectValue (IntVal n) c t = if n /= 0 then c else t
   selectValue (StringVal s) c t = if not (null s) then c else t
+  selectValue UnitVal _ t = t -- unit is falsy
   selectValue (Tuple l) c t = if not (null l) then c else t
   selectValue ClosureVal {} _ _ = return $ Sad (Type, "Type error in select")
   selectValue (Dictionary _) _ _ = return $ Sad (Type, "Type error in select")
@@ -297,7 +298,7 @@ spec =
 
     it "reduces skip" $ do
       let term = Skip
-      reduceFully term initialMachine `shouldBe` (Right (IntVal 0), initialMachine)
+      reduceFully term initialMachine `shouldBe` (Right UnitVal, initialMachine)
 
     it "returns a Sad result for a type error" $ do
       let term = BinaryOps Sub (Literal 10) (StringLiteral "hello")
@@ -479,7 +480,7 @@ spec =
               )
 
       let finalMachine = initialMachine {getMem = scopeFromList [("x", IntVal 3), ("y", IntVal 9)]}
-      reduceFully term initialMachine `shouldBe` (Right (IntVal 0), finalMachine)
+      reduceFully term initialMachine `shouldBe` (Right UnitVal, finalMachine)
 
     it "inner loop break exits only the inner loop" $ do
       let term =
@@ -514,7 +515,7 @@ spec =
               )
 
       let finalMachine = initialMachine {getMem = scopeFromList [("x", IntVal 0), ("y", IntVal 6), ("z", IntVal 1)]}
-      reduceFully term initialMachine `shouldBe` (Right (IntVal 0), finalMachine)
+      reduceFully term initialMachine `shouldBe` (Right UnitVal, finalMachine)
 
     it "inner loop continue skips to next iteration" $ do
       let term =
@@ -548,7 +549,7 @@ spec =
               )
 
       let finalMachine = initialMachine {getMem = scopeFromList [("x", IntVal 0), ("y", IntVal 9), ("z", IntVal 0)]}
-      reduceFully term initialMachine `shouldBe` (Right (IntVal 0), finalMachine)
+      reduceFully term initialMachine `shouldBe` (Right UnitVal, finalMachine)
 
     it "reduces combination of arithmetic and logical operations" $ do
       let term =

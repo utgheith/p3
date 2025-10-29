@@ -53,6 +53,7 @@ data Value
   = IntVal Integer
   | BoolVal Bool
   | StringVal String
+  | UnitVal
   | Tuple [Value]
   | ClosureVal [TypedName] Term Scope
   | Dictionary (M.Map Integer Value)
@@ -62,6 +63,7 @@ data Type
   = IntType
   | BoolType
   | StringType
+  | UnitType
   | TupleType
   | ClosureType
   | DictionaryType
@@ -71,6 +73,7 @@ typeOf :: Value -> Type
 typeOf (IntVal _) = IntType
 typeOf (BoolVal _) = BoolType
 typeOf (StringVal _) = StringType
+typeOf UnitVal = UnitType
 typeOf (Tuple _) = TupleType
 typeOf ClosureVal {} = ClosureType
 typeOf (Dictionary _) = DictionaryType
@@ -79,6 +82,7 @@ typeName :: Type -> String
 typeName IntType = "integer"
 typeName BoolType = "boolean"
 typeName StringType = "string"
+typeName UnitType = "unit"
 typeName TupleType = "tuple"
 typeName ClosureType = "function"
 typeName DictionaryType = "dictionary"
