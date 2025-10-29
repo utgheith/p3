@@ -458,6 +458,31 @@ spec =
       let (result, _) = reduceFully term initialMachine
       result `shouldBe` Left "continue used outside of loop"
 
+    it "for loop index does not leak outside the loop" $ do
+      let term =
+            Seq
+              (For (typedName "i") (Literal 0) (Literal 3) Skip Nothing Nothing)
+              (Var (onlyStr "i"))
+
+      let (result, _) = reduceFully term initialMachine
+      result `shouldBe` Left "variable not found"
+
+    it "for loop restores any shadowed variable after completion" $ do
+      let term =
+            Seq
+              ( For
+                  (typedName "i")
+                  (Literal 0)
+                  (Literal 2)
+                  (Let (onlyStr "i") (Literal 42))
+                  Nothing
+                  Nothing
+              )
+              (Var (onlyStr "i"))
+
+      let machine = initialMachine {getMem = scopeFromList [("i", IntVal 7)]}
+      reduceFully term machine `shouldBe` (Right (IntVal 7), machine)
+
     it "break inside an if statement exits the while loop" $ do
       let term =
             Seq

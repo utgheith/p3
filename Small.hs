@@ -73,6 +73,8 @@ reduce_ = tryRules rules
         reduceTry,
         reduceWhile,
         reduceWhileBody,
+        reduceScoped,
+        reduceScopedBody,
         reduceFor,
         reduceRead,
         reduceWrite,
@@ -347,8 +349,7 @@ reduceWhile t =
         return (Continue (WhileBody cond body body m i)),
       do
         While cond _ _ _ <- pure t
-        e <- fault cond
-        return e
+        fault cond
     ]
 
 reduceWhileBody :: (Machine m, Show m, V m ~ Value) => Rule m
@@ -363,6 +364,62 @@ reduceWhileBody t =
           LoopBreak -> return (Happy UnitVal)
           LoopContinue -> return (Continue (While cond original m i))
           Sad e -> return (Sad e)
+    ]
+
+reduceScoped :: (Machine m, Show m, V m ~ Value) => Rule m
+reduceScoped t =
+  asum
+    [ do
+        Scoped body <- pure t
+        res <- envR (pushScope [])
+        case res of
+          Happy _ -> return (Continue (ScopedBody body))
+          Sad e -> return (Sad e)
+          LoopBreak -> return LoopBreak
+          LoopContinue -> return LoopContinue
+          Continue term -> return (Continue term)
+    ]
+
+reduceScopedBody :: (Machine m, Show m, V m ~ Value) => Rule m
+reduceScopedBody t =
+  asum
+    [ do
+        ScopedBody body <- pure t
+        res <- reduce body
+        case res of
+          Continue body' -> return (Continue (ScopedBody body'))
+          Happy v -> do
+            popRes <- envR popScope
+            case popRes of
+              Happy _ -> return (Happy v)
+              Sad e -> return (Sad e)
+              LoopBreak -> return LoopBreak
+              LoopContinue -> return LoopContinue
+              Continue term -> return (Continue term)
+          LoopBreak -> do
+            popRes <- envR popScope
+            case popRes of
+              Happy _ -> return LoopBreak
+              Sad e -> return (Sad e)
+              LoopBreak -> return LoopBreak
+              LoopContinue -> return LoopContinue
+              Continue term -> return (Continue term)
+          LoopContinue -> do
+            popRes <- envR popScope
+            case popRes of
+              Happy _ -> return LoopContinue
+              Sad e -> return (Sad e)
+              LoopBreak -> return LoopBreak
+              LoopContinue -> return LoopContinue
+              Continue term -> return (Continue term)
+          Sad e -> do
+            popRes <- envR popScope
+            case popRes of
+              Happy _ -> return (Sad e)
+              Sad e' -> return (Sad e')
+              LoopBreak -> return LoopBreak
+              LoopContinue -> return LoopContinue
+              Continue term -> return (Continue term)
     ]
 
 reduceFor :: (Machine m, Show m, V m ~ Value) => Rule m
@@ -380,7 +437,7 @@ reduceFor t =
           end' <- step end
       ],
       -- both start and end are values: desugar to Let + While
-      [ Continue (Seq (Let (OnlyStr var) start) (While cond body' m i))
+      [ Continue (Scoped (Seq (Let (OnlyStr var) start) (While cond body' m i)))
         | For var start end body m i <- pure t,
           _ <- val start,
           IntVal iEnd <- val end,
