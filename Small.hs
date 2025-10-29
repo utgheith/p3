@@ -29,13 +29,7 @@ newtype Reduction m a = Reduction {runRed :: S.StateT m Maybe a}
 
 -- one small step of a subterm; fails unless it was Continue
 step :: (Machine m, Show m, V m ~ Value) => Term -> Reduction m Term
--- step t = [ t' | Continue t' <- reduce t ]
-step t =
-  asum
-    [ [BreakSignal | Continue BreakSignal <- reduce t],
-      [ContinueSignal | Continue ContinueSignal <- reduce t],
-      [t' | Continue t' <- reduce t]
-    ]
+step t = [t' | Continue t' <- reduce t]
 
 -- -- extract a signal; fails unless it was BreakSignal or ContinueSignal
 -- signal :: (Machine m, Show m, V m ~ Value) => Term -> Reduction m Term
@@ -78,6 +72,7 @@ reduce_ = tryRules rules
         reduceIf,
         reduceTry,
         reduceWhile,
+        reduceWhileBody,
         reduceFor,
         reduceRead,
         reduceWrite,
@@ -292,100 +287,82 @@ reduceMerge t =
 reduceSeq :: (Machine m, Show m, V m ~ Value) => Rule m
 reduceSeq t =
   asum
-    [ -- step t1 (signal-aware when t2 is a While)
-      [ res
+    [ -- step t1
+      [ Continue (Seq t1' t2)
         | Seq t1 t2 <- pure t,
-          t1' <- step t1,
-          let res = case (t1', t2) of
-                -- left side signalled while we're sequencing into a loop on the right:
-                (BreakSignal, While {}) -> Happy UnitVal -- break: exit loop
-                (ContinueSignal, While c b m i) -> Continue (While c b m i) -- continue: next iter
-                -- otherwise: propagate signals normally
-                (BreakSignal, _) -> Continue BreakSignal
-                (ContinueSignal, _) -> Continue ContinueSignal
-                -- no signal: keep stepping the sequence
-                _ -> Continue (Seq t1' t2)
+          Continue t1' <- reduce t1
       ],
       -- t1 is done: continue with t2
       [ Continue t2
         | Seq t1 t2 <- pure t,
-          _ <- val t1
+          Happy _ <- reduce t1
+      ],
+      -- propagate loop control signals
+      [ LoopBreak
+        | Seq t1 _ <- pure t,
+          LoopBreak <- reduce t1
+      ],
+      [ LoopContinue
+        | Seq t1 _ <- pure t,
+          LoopContinue <- reduce t1
       ],
       -- fault in t1: propagate
-      [ e
+      [ Sad e
         | Seq t1 _ <- pure t,
-          e <- fault t1
+          Sad e <- reduce t1
       ]
     ]
 
 reduceTry :: (Machine m, Show m, V m ~ Value) => Rule m
-reduceTry t =
+reduceTry term =
   asum
-    [ -- step tTry
-      [ Continue (Try tTry' catchableErrorKindOrAny tCatch)
-        | Try tTry catchableErrorKindOrAny tCatch <- pure t,
-          tTry' <- step tTry
-      ],
-      -- tTry is done: handle according to result
-      [ Happy vTry
-        | Try tTry _ _ <- pure t,
-          vTry <- val tTry
-      ],
-      -- tTry faulted: see if we catch
-      [ Continue tCatch
-        | Try tTry catchableErrorKindOrAny tCatch <- pure t,
-          Sad (resultErrorKind, _) <- fault tTry,
-          errorShouldBeCaught resultErrorKind catchableErrorKindOrAny
-      ],
-      -- tTry faulted: propagate
-      [ Sad e
-        | Try tTry catchableErrorKindOrAny _ <- pure t,
-          Sad e <- fault tTry,
-          let (resultErrorKind, _) = e,
-          not (errorShouldBeCaught resultErrorKind catchableErrorKindOrAny)
-      ]
+    [ do
+        Try tTry catchableErrorKindOrAny tCatch <- pure term
+        res <- reduce tTry
+        case res of
+          Continue tTry' -> return (Continue (Try tTry' catchableErrorKindOrAny tCatch))
+          Happy vTry -> return (Happy vTry)
+          LoopBreak -> return LoopBreak
+          LoopContinue -> return LoopContinue
+          Sad e@(resultErrorKind, _) ->
+            if errorShouldBeCaught resultErrorKind catchableErrorKindOrAny
+              then return (Continue tCatch)
+              else return (Sad e)
     ]
 
 reduceWhile :: (Machine m, Show m, V m ~ Value) => Rule m
 reduceWhile t =
   asum
-    [ -- step condition
-      [ Continue (While cond' body m i)
-        | While cond body m i <- pure t,
-          cond' <- step cond
-      ],
-      -- condition is a value and is false
-      [ Continue Skip
-        | While cond _ _ _ <- pure t,
-          (BoolVal False) <- val cond
-      ],
-      -- condition is a value and is true but body steps
-      [ res
-        | While cond body m i <- pure t,
-          (BoolVal True) <- val cond,
-          body' <- step body,
-          let res = case body' of
-                BreakSignal -> Happy UnitVal
-                ContinueSignal -> Continue (While cond body m i)
-                b -> Continue (Seq b (While cond body m i))
-      ],
-      -- condition is a value and it is true but body is value
-      [ Continue (While cond body m i)
-        | While cond body m i <- pure t,
-          (BoolVal True) <- val cond,
-          _ <- val body
-      ],
-      -- fault in condition: propagate
-      [ e
-        | While cond _ _ _ <- pure t,
-          e <- fault cond
-      ],
-      -- fault in body: propagate
-      [ e
-        | While cond body _ _ <- pure t,
-          (BoolVal True) <- val cond,
-          e <- fault body
-      ]
+    [ do
+        While cond body m i <- pure t
+        cond' <- step cond
+        return (Continue (While cond' body m i)),
+      do
+        While cond _ _ _ <- pure t
+        BoolVal False <- val cond
+        return (Continue Skip),
+      do
+        While cond body m i <- pure t
+        BoolVal True <- val cond
+        return (Continue (WhileBody cond body body m i)),
+      do
+        While cond _ _ _ <- pure t
+        e <- fault cond
+        return e
+    ]
+
+reduceWhileBody :: (Machine m, Show m, V m ~ Value) => Rule m
+reduceWhileBody t =
+  asum
+    [ do
+        WhileBody cond current original m i <- pure t
+        res <- reduce current
+        case res of
+          Continue current' -> return (Continue (WhileBody cond current' original m i))
+          Happy _ -> return (Continue (While cond original m i))
+          LoopBreak -> return (Happy UnitVal)
+          LoopContinue -> return (Continue (While cond original m i))
+          Sad e -> return (Sad e)
     ]
 
 reduceFor :: (Machine m, Show m, V m ~ Value) => Rule m
@@ -426,12 +403,12 @@ reduceFor t =
 reduceRead :: (Machine m, Show m, V m ~ Value) => Rule m
 reduceRead t =
   asum
-    [ -- Read operation
-      [ r
-        | Read (s, _) <- pure t,
-          Happy input <- envR inputVal, -- Can inputVal fail?
-          r <- envR (setVar s input)
-      ]
+    [ do
+        Read (s, _) <- pure t
+        inputResult <- envR inputVal
+        case inputResult of
+          Happy input -> envR (setVar s input)
+          other -> return other
     ]
 
 reduceWrite :: (Machine m, Show m, V m ~ Value) => Rule m
@@ -536,8 +513,8 @@ reduceUnaryOps t =
 reduceBreakContinue :: (Machine m, Show m, V m ~ Value) => Rule m
 reduceBreakContinue t =
   asum
-    [ [Continue BreakSignal | BreakSignal <- pure t],
-      [Continue ContinueSignal | ContinueSignal <- pure t]
+    [ [LoopBreak | BreakSignal <- pure t],
+      [LoopContinue | ContinueSignal <- pure t]
     ]
 
 reduceIncDec :: (Machine m, Show m, V m ~ Value) => Rule m
@@ -654,6 +631,8 @@ applyFunArgList tf rest funVal argVal = do
       [] -> return (Happy v1)
       _ -> reduceArgsAndApply tf rest v1
     Continue t -> return (Continue t)
+    LoopBreak -> return LoopBreak
+    LoopContinue -> return LoopContinue
     Sad msg -> return (Sad msg)
 
 applyFunArg :: (Machine m, Show m, V m ~ Value) => Value -> Value -> Env m
@@ -746,9 +725,7 @@ reduceFully term0 m0 = go m0 term0
         Nothing -> (Left ("stuck term: " ++ show t), st)
         Just (Happy v, st') -> (Right v, st')
         Just (Sad (_, msg), st') -> (Left msg, st')
+        Just (LoopBreak, st') -> (Left "break used outside of loop", st')
+        Just (LoopContinue, st') -> (Left "continue used outside of loop", st')
         Just (Continue t', st') ->
-          -- handle special signals (your AST constructors)
-          case t' of
-            BreakSignal -> (Left "unhandled break signal", st')
-            ContinueSignal -> (Left "unhandled continue signal", st')
-            _ -> go st' t'
+          go st' t'

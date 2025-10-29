@@ -444,7 +444,7 @@ spec =
               )
 
       let (result, _) = reduceFully term initialMachine
-      result `shouldBe` Left "unhandled break signal"
+      result `shouldBe` Left "break used outside of loop"
 
     it "makes continue signals outside of while loops invalid" $ do
       let term =
@@ -456,7 +456,7 @@ spec =
               )
 
       let (result, _) = reduceFully term initialMachine
-      result `shouldBe` Left "unhandled continue signal"
+      result `shouldBe` Left "continue used outside of loop"
 
     it "break inside an if statement exits the while loop" $ do
       let term =
