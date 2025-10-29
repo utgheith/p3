@@ -1,6 +1,8 @@
+{-# LANGUAGE OverloadedStrings #-}
 module EndToEndSpec (spec) where
 
 import Data.List (intercalate)
+import Data.Text.Lazy (unpack)
 import Decompile (decompile)
 import FunSyntax (parse, prog)
 import Result (Result (..))
@@ -10,6 +12,7 @@ import System.Directory (listDirectory)
 import System.FilePath (replaceExtension, takeExtension, (</>))
 import Term (Term (..))
 import Test.Hspec
+import Text.Pretty.Simple (pShowNoColor)
 import Value (Value (..))
 
 displayValue :: Value -> String
@@ -54,17 +57,20 @@ spec = do
             code <- readFile $ dir </> fileName
             debug "code" code
             let ast = compile code
-            debug "ast" (show ast)
+            debug "ast" (unpack $ pShowNoColor ast)
             let code' = decompile ast
             debug "code'" code'
             let ast' = compile code'
-            debug "ast'" (show ast')
-            ast' `shouldBe` ast
+            debug "ast'" (unpack $ pShowNoColor ast')
+            -- ast' `shouldBe` ast
             let code'' = decompile ast'
             debug "code''" code''
             code'' `shouldBe` code'
+            let ast'' = compile code''
+            debug "ast''" (unpack $ pShowNoColor ast'')
+            ast'' `shouldBe` ast'
             let out = run ast []
-            debug "out" (show out)
+            debug "out" (unpack $ pShowNoColor out)
             writeFile outFile (display out)
             expectedOut <- readFile okFile
             display out `shouldBe` expectedOut

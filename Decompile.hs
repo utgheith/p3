@@ -58,7 +58,7 @@ decompile = cata go
     go (LiteralF n) =
       show n
     go (StringLiteralF s) =
-      show s
+      s
     go (ReadF (v, _)) =
       sprintf "read (%s)" [v]
     go (SeqF t1 t2) =
@@ -94,7 +94,7 @@ decompile = cata go
     go (FunF args body) =
       sprintf "fun (%s) {%s}" [intercalate ", " (dispArg <$> args), body]
     go (ApplyFunF fun args) =
-      sprintf "ApplyFun (%s) [%s]" [fun, intercalate ", " args]
+      sprintf "%s(%s)" [fun, intercalate ", " args]
     go (PreIncrementF (varName, _)) =
       sprintf "++ %s" [varName]
     go (PreDecrementF (varName, _)) =

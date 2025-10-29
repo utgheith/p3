@@ -42,6 +42,13 @@ typeSignature =
       [TBool | _ <- keyword "bool"],
       [TString | _ <- keyword "string"],
       [TUnit | _ <- keyword "unit"],
+      [ TFun [] retType
+        | _ <- keyword "fun",
+          _ <- symbol "(",
+          _ <- symbol ")",
+          _ <- symbol "->",
+          retType <- typeSignature
+      ],
       [ TFun paramTypes retType
         | _ <- keyword "fun",
           paramTypes <- between (symbol "(") (symbol ")") (rptDropSep typeSignature (symbol ",")),
@@ -321,8 +328,8 @@ tryCatch =
 
 funCall :: Parser Token Term
 funCall =
-  [ ApplyFun (Var (OnlyStr name)) args
-    | name <- typedIdent,
+  [ ApplyFun (Var (OnlyStr (name, TUnknown))) args
+    | name <- ident,
       _ <- symbol "(",
       args <- rptDropSep term (symbol ","),
       _ <- symbol ")"

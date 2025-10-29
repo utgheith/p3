@@ -25,7 +25,9 @@ dependencies:
 - directory
 - filepath
 - mtl
+- pretty-simple
 - recursion-schemes
+- text
 
 build-tools:
 - ormolu
