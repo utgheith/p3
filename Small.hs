@@ -298,7 +298,7 @@ reduceSeq t =
           t1' <- step t1,
           let res = case (t1', t2) of
                 -- left side signalled while we're sequencing into a loop on the right:
-                (BreakSignal, While {}) -> Happy (IntVal 0) -- break: exit loop
+                (BreakSignal, While {}) -> Happy UnitVal -- break: exit loop
                 (ContinueSignal, While c b m i) -> Continue (While c b m i) -- continue: next iter
                 -- otherwise: propagate signals normally
                 (BreakSignal, _) -> Continue BreakSignal
@@ -365,7 +365,7 @@ reduceWhile t =
           (BoolVal True) <- val cond,
           body' <- step body,
           let res = case body' of
-                BreakSignal -> Happy (IntVal 0)
+                BreakSignal -> Happy UnitVal
                 ContinueSignal -> Continue (While cond body m i)
                 b -> Continue (Seq b (While cond body m i))
       ],
@@ -456,7 +456,7 @@ reduceWrite t =
     ]
 
 reduceSkip :: (Machine m, Show m, V m ~ Value) => Rule m
-reduceSkip t = [Happy (IntVal 0) | Skip <- pure t]
+reduceSkip t = [Happy UnitVal | Skip <- pure t]
 
 reduceBinaryOps :: (Machine m, Show m, V m ~ Value) => Rule m
 reduceBinaryOps t =

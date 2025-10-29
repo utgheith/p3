@@ -15,6 +15,7 @@ displayValue :: Value -> String
 displayValue (IntVal n) = show n
 displayValue (BoolVal b) = show b
 displayValue (StringVal s) = show s
+displayValue UnitVal = "()"
 displayValue (Tuple vals) = "(" ++ intercalate ", " (map displayValue vals) ++ ")"
 displayValue (ClosureVal {}) = "<closure>"
 displayValue (Dictionary {}) = "<dictionary>"
