@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+
 module EndToEndSpec (spec) where
 
 import Data.List (intercalate)
