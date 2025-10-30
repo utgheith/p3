@@ -83,7 +83,11 @@ opt p =
 rpt :: Parser t a -> Parser t [a]
 rpt p =
   catchError
-    (some p)
+    ( do
+        x <- p
+        xs <- rpt p
+        return (x : xs)
+    )
     (const $ return [])
 
 type RepeatResult a b = Maybe (a, [(b, a)])

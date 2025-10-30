@@ -55,8 +55,11 @@ keywords :: S.Set String
 keywords =
   S.fromList
     [ "auto",
+      "break",
       "int",
       "bool",
+      "call",
+      "let",
       "str",
       "unit",
       "metric",
@@ -74,8 +77,7 @@ keywords =
       "catch",
       "true",
       "false", -- force boolean literals to be tokens in the parser
-      "unknown",
-      "break"
+      "unknown"
     ]
 
 -- a lexer combinator, i suppose

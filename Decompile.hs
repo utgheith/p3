@@ -62,7 +62,7 @@ decompile = cata go
     go (ReadF (v, _)) =
       sprintf "read (%s)" [v]
     go (SeqF t1 t2) =
-      sprintf "%s ; %s" [t1, t2]
+      sprintf "%s\n%s" [t1, t2]
     go SkipF =
       "skip"
     go (BinaryOpsF op t1 t2) =
@@ -98,9 +98,9 @@ decompile = cata go
     go (MergeF current index value) =
       sprintf "Merge (%s) (%s) (%s)" [current, index, value]
     go (FunF args body) =
-      sprintf "fun (%s) {%s}" [intercalate ", " (dispArg <$> args), body]
+      sprintf "fun (%s) (%s)" [intercalate ", " (dispArg <$> args), body]
     go (ApplyFunF fun args) =
-      sprintf "%s(%s)" [fun, intercalate ", " args]
+      sprintf "call %s(%s)" [fun, intercalate ", " args]
     go (PreIncrementF (varName, _)) =
       sprintf "++ %s" [varName]
     go (PreDecrementF (varName, _)) =
@@ -114,6 +114,8 @@ decompile = cata go
     go ContinueSignalF =
       "ContinueSignal"
     go (LetF r t) =
-      sprintf "%s = %s;" [r, t]
+      sprintf "let %s = %s" [r, t]
     go (AssertF cond) =
       sprintf "assert(%s)" [cond]
+    go (BlockF term) =
+      sprintf "{ %s }" [term]

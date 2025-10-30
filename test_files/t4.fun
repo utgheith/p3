@@ -1,1 +1,1 @@
-x:int = 54
+let x:int = 54

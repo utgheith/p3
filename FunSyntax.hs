@@ -80,40 +80,37 @@ checkSymbol predicate = satisfy $ \case
   Symbol s | predicate s -> Just s
   _ -> Nothing
 
--- convert list of statements to seq chain
-blockToSeq :: [Term] -> Term
-blockToSeq [] = Skip
-blockToSeq [t] = t
-blockToSeq (t : ts) = Seq t (blockToSeq ts)
-
 ----------
 -- term --
 ----------
 
 term :: Parser Token Term
-term = [t | t <- ternaryExp, _ <- opt $ symbol ";"]
+term = [t | t <- binaryExp precedence] -- [ t |
+-- t <- trace "[term] looking for ternaryExp" ternaryExp
+-- _ <- trace ("[term] looking for opt; after " ++ show t) (opt $ symbol ";")
+-- ]
 
 ------------------- ternary operator --------------------------
 
 -- Ternary operator has lower precedence than binary operators
 -- Right-associative: a ? b : c ? d : e parses as a ? b : (c ? d : e)
-ternaryExp :: Parser Token Term
-ternaryExp =
-  [ If cond trueBranch falseBranch
-    | cond <- binaryExp precedence, -- Only allow binary expressions in condition
-      _ <- symbol "?",
-      trueBranch <- refassign, -- Only allow binary expressions and assignments in true branch
-      _ <- symbol ":",
-      falseBranch <- ternaryExp -- Allow ternary in false branch for right-associativity
-  ]
-    <|> refassign
+-- ternaryExp :: Parser Token Term
+-- ternaryExp =
+--   [ If cond trueBranch falseBranch
+--    | cond <- binaryExp precedence, -- Only allow binary expressions in condition
+--      _ <- symbol "?",
+--      trueBranch <- refassign, -- Only allow binary expressions and assignments in true branch
+--      _ <- symbol ":",
+--      falseBranch <- ternaryExp -- Allow ternary in false branch for right-associativity
+--  ]
+--    <|> refassign
 
 ------------------- assignment --------------------------
 
-refassign :: Parser Token Term
-refassign =
-  [Let ref expr | ref <- reference, _ <- symbol "=", expr <- term]
-    <|> binaryExp precedence
+-- refassign :: Parser Token Term
+-- refassign =
+--  [Let ref expr | ref <- reference, _ <- symbol "=", expr <- term]
+--    <|> binaryExp precedence
 
 reference :: Parser Token Term
 reference = do
@@ -260,16 +257,7 @@ varRef :: Parser Token Term
 varRef = Var <$> reference
 
 block :: Parser Token Term
-block = [blockToSeq ts | _ <- token $ Symbol "{", ts <- rpt term, _ <- token $ Symbol "}"]
-
-ifExpr :: Parser Token Term
-ifExpr =
-  [ If cond thenTerm (fromMaybe Skip elseTerm)
-    | _ <- keyword "if",
-      cond <- term,
-      thenTerm <- term,
-      elseTerm <- opt $ keyword "else" >> term
-  ]
+block = [Block (seqToTerm ts) | _ <- token $ Symbol "{", ts <- rpt term, _ <- token $ Symbol "}"]
 
 varDef :: Parser Token Term
 varDef =
@@ -285,8 +273,17 @@ metric = [t | _ <- keyword "metric", t <- term]
 invariant :: Parser Token Term
 invariant = [t | _ <- keyword "invariant", t <- term]
 
-whileTerm :: Parser Token Term
-whileTerm =
+ifStmt :: Parser Token Term
+ifStmt =
+  [ If cond thenTerm (fromMaybe Skip elseTerm)
+    | _ <- keyword "if",
+      cond <- term,
+      thenTerm <- term,
+      elseTerm <- opt $ keyword "else" >> term
+  ]
+
+whileStmt :: Parser Token Term
+whileStmt =
   [ While cond body m i
     | _ <- keyword "while",
       cond <- term,
@@ -295,8 +292,8 @@ whileTerm =
       body <- term
   ]
 
-forTerm :: Parser Token Term
-forTerm =
+forStmt :: Parser Token Term
+forStmt =
   [ For var start end body m i
     | _ <- keyword "for",
       var <- typedIdent,
@@ -329,7 +326,8 @@ tryCatch =
 funCall :: Parser Token Term
 funCall =
   [ ApplyFun (Var (OnlyStr (name, TUnknown))) args
-    | name <- ident,
+    | _ <- keyword "call",
+      name <- ident,
       _ <- symbol "(",
       args <- rptDropSep term (symbol ","),
       _ <- symbol ")"
@@ -348,39 +346,58 @@ assertStmt = [Assert expr | _ <- keyword "assert", expr <- term]
 breakStmt :: Parser Token Term
 breakStmt = [BreakSignal | _ <- keyword "break"]
 
+letStmt :: Parser Token Term
+letStmt =
+  [ Let lhs expr
+    | _ <- keyword "let",
+      lhs <- reference,
+      _ <- symbol "=",
+      expr <- term
+  ]
+
 unaryExp :: Parser Token Term
 unaryExp =
   oneof
-    [ assertStmt,
+    [ -- terms that start with keywords go first
+      letStmt,
+      tryCatch,
+      assertStmt,
       breakStmt,
-      ifExpr,
+      ifStmt,
+      whileStmt,
+      forStmt,
+      writeStmt,
       block,
       funDef,
+      funCall,
+      -- terms that start with symbols go next
       minus,
       bitnot,
       preIncrement,
       preDecrement,
+      dictionary,
+      -- longer terms first
+      tuple,
+      parens,
+      -- literals
       num,
       string,
       bool,
-      tuple,
-      dictionary,
-      tryCatch,
-      parens,
       varDef,
-      funCall,
       postIncrement,
       postDecrement,
-      varRef,
-      whileTerm,
-      forTerm,
-      writeStmt
+      varRef
     ]
 
 ----------- prog ----------
 
+seqToTerm :: [Term] -> Term
+seqToTerm [] = Skip
+seqToTerm [t] = t
+seqToTerm (t : ts) = Seq t (seqToTerm ts)
+
 prog :: Parser Token Term
-prog = blockToSeq <$> rpt term
+prog = seqToTerm <$> rpt term
 
 ----------- parse ----------
 
