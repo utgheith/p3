@@ -58,7 +58,7 @@ decompile = cata go
     go (LiteralF n) =
       show n
     go (StringLiteralF s) =
-      s
+      "\"" ++ s ++ "\""
     go (ReadF (v, _)) =
       sprintf "read (%s)" [v]
     go (SeqF t1 t2) =
