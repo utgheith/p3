@@ -1,8 +1,8 @@
-x = 10
+let x = 10
 
 fun a() {
    write x
-   z = x + 1
+   let z = x + 1
    write z
    fun b(i) {
        write i
@@ -11,10 +11,10 @@ fun a() {
 }
 
 
-r = a()
+let r = call a()
 
-x = 100
+let x = 100
 
-write(r(2))
+write(call r(2))
 
 

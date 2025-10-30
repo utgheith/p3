@@ -18,7 +18,8 @@ data ErrorKind = Assertion | Arithmetic | Type | Input | VariableNotFound | Argu
 data ErrorKindOrAny = Specific ErrorKind | Any deriving (Eq, Show)
 
 data Term
-  = If Term Term Term
+  = Block Term
+  | If Term Term Term
   | Try Term ErrorKindOrAny Term
   | Let Term Term
   | Literal Integer

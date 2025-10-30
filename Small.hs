@@ -63,6 +63,7 @@ reduce_ = tryRules rules
     rules =
       [ -- rules go here
         reduceAssert,
+        reduceBlock,
         reduceLiteral,
         reduceVar,
         reduceRetrieve,
@@ -111,6 +112,15 @@ reduceAssert t =
       [ e
         | Assert expr <- pure t,
           e <- fault expr
+      ]
+    ]
+
+reduceBlock :: (Machine m, Show m, V m ~ Value) => Rule m
+reduceBlock t =
+  asum
+    [ -- step the block body
+      [ Continue body
+        | Block body <- pure t
       ]
     ]
 

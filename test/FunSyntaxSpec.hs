@@ -48,7 +48,7 @@ spec = do
         parseString "x" `shouldBe` Ok (Var (onlyStr "x"), [])
 
       it "parses variable assignments" $
-        parseString "x = 42" `shouldBe` Ok (Let (onlyStr "x") (Literal 42), [])
+        parseString "let x = 42" `shouldBe` Ok (Let (onlyStr "x") (Literal 42), [])
 
     describe "arithmetic expressions" $ do
       it "parses addition" $
@@ -114,14 +114,14 @@ spec = do
 
     describe "control flow" $ do
       it "parses if statements" $
-        parseString "if (x > 0) { y = 1 } else { y = 0 }" `shouldBe` Ok (If (BinaryOps Gt (Var (onlyStr "x")) (Literal 0)) (Let (onlyStr "y") (Literal 1)) (Let (onlyStr "y") (Literal 0)), [])
+        parseString "if (x > 0) { let y = 1 } else { let y = 0 }" `shouldBe` Ok (If (BinaryOps Gt (Var (onlyStr "x")) (Literal 0)) (Block (Let (onlyStr "y") (Literal 1))) (Block (Let (onlyStr "y") (Literal 0))), [])
 
       it "parses while loops" $
-        parseString "while (x > 0) { x = x - 1 }"
+        parseString "while (x > 0) { let x = x - 1 }"
           `shouldBe` Ok
             ( While
                 (BinaryOps Gt (Var (onlyStr "x")) (Literal 0))
-                (Let (onlyStr "x") (BinaryOps Sub (Var (onlyStr "x")) (Literal 1)))
+                (Block (Let (onlyStr "x") (BinaryOps Sub (Var (onlyStr "x")) (Literal 1))))
                 Nothing
                 Nothing,
               []
@@ -129,13 +129,13 @@ spec = do
 
     describe "functions" $ do
       it "parses function definitions" $
-        parseString "fun f() { write 42 }" `shouldBe` Ok (Let (OnlyStr ("f", TFun [] TUnknown)) (Fun [] (Write (Literal 42))), [])
+        parseString "fun f() { write 42 }" `shouldBe` Ok (Let (OnlyStr ("f", TFun [] TUnknown)) (Fun [] (Block (Write (Literal 42)))), [])
 
       it "parses function calls" $
-        parseString "f()" `shouldBe` Ok (ApplyFun (Var (onlyStr "f")) [], [])
+        parseString "call f()" `shouldBe` Ok (ApplyFun (Var (onlyStr "f")) [], [])
 
       it "parses function calls with arguments" $
-        parseString "f(x, y)" `shouldBe` Ok (ApplyFun (Var (onlyStr "f")) [Var (onlyStr "x"), Var (onlyStr "y")], [])
+        parseString "call f(x, y)" `shouldBe` Ok (ApplyFun (Var (onlyStr "f")) [Var (onlyStr "x"), Var (onlyStr "y")], [])
 
       it "parses method calls" $
         parseString "m.invoke(x, y)" `shouldBe` Ok (ApplyFun (Var (onlyStr "invoke")) $ map (Var . onlyStr) ["m", "x", "y"], [])
@@ -145,7 +145,7 @@ spec = do
 
     describe "tuples" $ do
       it "parses tuple creation" $
-        parseString "x = [1, 2, 3]" `shouldBe` Ok (Let (onlyStr "x") (TupleTerm [Literal 1, Literal 2, Literal 3]), [])
+        parseString "let x = [1, 2, 3]" `shouldBe` Ok (Let (onlyStr "x") (TupleTerm [Literal 1, Literal 2, Literal 3]), [])
 
       it "parses tuple access" $
         parseString "t[0]" `shouldBe` Ok (Var (Bracket (onlyStr "t") (Literal 0)), [])
@@ -175,7 +175,7 @@ spec = do
 
     describe "statement separators" $
       it "separates statements" $
-        parseString "1 + 2; if 3 4 else 5; " `shouldBe` Ok (Seq (BinaryOps Add (Literal 1) (Literal 2)) (If (Literal 3) (Literal 4) (Literal 5)), [])
+        parseString "1 + 2 if 3 4 else 5" `shouldBe` Ok (Seq (BinaryOps Add (Literal 1) (Literal 2)) (If (Literal 3) (Literal 4) (Literal 5)), [])
 
     describe "error cases" $
       it "fails on invalid syntax" $ do
@@ -186,7 +186,7 @@ spec = do
 
   describe "Integration tests" $ do
     it "parses a complete program" $ do
-      let program = "x = 10\n y = x + 5\n write y"
+      let program = "let x = 10\n let y = x + 5\n write y"
       let result = parseString program
       case result of
         Err err -> fail $ "Parse error: " ++ err
@@ -215,7 +215,7 @@ spec = do
                 "fun f(n) {",
                 "    return n * 2",
                 "}",
-                "y = f(x)",
+                "let y = f(x)",
                 "if (y > 15) {",
                 "    write y",
                 "} else {",
