@@ -345,8 +345,37 @@ writeStmt =
 assertStmt :: Parser Token Term
 assertStmt = [Assert expr | _ <- keyword "assert", expr <- term]
 
+breakStmt :: Parser Token Term
+breakStmt = [BreakSignal | _ <- keyword "break"]
+
 unaryExp :: Parser Token Term
-unaryExp = oneof [assertStmt, ifExpr, block, funDef, minus, bitnot, preIncrement, preDecrement, num, string, bool, tuple, dictionary, tryCatch, parens, varDef, funCall, postIncrement, postDecrement, varRef, whileTerm, forTerm, writeStmt]
+unaryExp =
+  oneof
+    [ assertStmt,
+      breakStmt,
+      ifExpr,
+      block,
+      funDef,
+      minus,
+      bitnot,
+      preIncrement,
+      preDecrement,
+      num,
+      string,
+      bool,
+      tuple,
+      dictionary,
+      tryCatch,
+      parens,
+      varDef,
+      funCall,
+      postIncrement,
+      postDecrement,
+      varRef,
+      whileTerm,
+      forTerm,
+      writeStmt
+    ]
 
 ----------- prog ----------
 
