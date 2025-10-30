@@ -32,6 +32,9 @@ data Term
   | OnlyStr TypedName
   | Bracket Term Term
   | While Term Term (Maybe Term) (Maybe Term)
+  | WhileBody Term Term Term (Maybe Term) (Maybe Term)
+  | Scoped Term
+  | ScopedBody Term
   | For TypedName Term Term Term (Maybe Term) (Maybe Term)
   | Write Term
   | BoolLit Bool

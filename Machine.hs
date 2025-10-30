@@ -17,6 +17,8 @@ type Error = (ErrorKind, String)
 data Result a
   = Happy a -- produced an answer
   | Continue Term -- need to keep going
+  | LoopBreak -- break out of the nearest loop
+  | LoopContinue -- continue the nearest loop
   | Sad Error -- error
   deriving (Eq, Show)
 

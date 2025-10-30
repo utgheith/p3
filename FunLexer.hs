@@ -74,7 +74,8 @@ keywords =
       "catch",
       "true",
       "false", -- force boolean literals to be tokens in the parser
-      "unknown"
+      "unknown",
+      "break"
     ]
 
 -- a lexer combinator, i suppose

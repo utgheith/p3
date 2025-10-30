@@ -77,8 +77,14 @@ decompile = cata go
       sprintf "%s(%s)" [t1, t2]
     go (WhileF cond body metric invariant) =
       sprintf "while (%s) %s %s (%s)" [cond, disp "metric" metric, disp "invariant" invariant, body]
+    go (WhileBodyF cond current original metric invariant) =
+      sprintf "while_body (%s) %s %s (%s -> %s)" [cond, disp "metric" metric, disp "invariant" invariant, current, original]
     go (ForF (var, _) start end body metric invariant) =
       sprintf "for %s=(%s);(%s) %s %s {%s}" [var, start, end, disp "metric" metric, disp "invariant" invariant, body]
+    go (ScopedF body) =
+      sprintf "scoped {%s}" [body]
+    go (ScopedBodyF body) =
+      sprintf "scoped_body {%s}" [body]
     go (WriteF t) =
       sprintf "write (%s)" [t]
     go (BoolLitF b) =
