@@ -3,6 +3,7 @@
 module Typer (typer) where
 
 import Data.Functor.Foldable (para)
+import System.IO (Handle, hPutStrLn)
 import Term (BinaryOp (..), Term, TermF (..), UnaryOp (..))
 import TypeSignature (TypeSignature (..))
 
@@ -17,8 +18,12 @@ combine t1 t2 = TSum [t1, t2]
 (-->) True t = t
 (-->) False _ = TUnknown
 
-typer :: Term -> TypeSignature
-typer = para go
+-- TODO: turn this into a real type checker with context, ...
+typer :: Handle -> Term -> IO (Either String TypeSignature)
+typer debugFile term = do
+  _ <- hPutStrLn debugFile "Starting typer"
+  let out = para go term
+  return $ Right out
   where
     go (LiteralF _) = TInt
     go (BoolLitF _) = TBool

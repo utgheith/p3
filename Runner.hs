@@ -8,6 +8,7 @@ import Simulator (Simulator (..), run)
 import System.IO (Handle, hFlush, hPutStrLn)
 import Term (Term (..))
 import Text.Pretty.Simple (pShowNoColor)
+import Typer (typer)
 import Value (displayValue)
 
 -- Runs the full (parse -> decompile)* -> typecheck -> simulate pipeline, with debugging output
@@ -23,15 +24,22 @@ runner outHandle debugHandle code = do
       hPutStrLn outHandle "?compiler error"
       debug "compiler error" err
     Right t -> do
-      case run t [] of
-        (Left err, simulator) -> do
-          hPutStrLn outHandle "?runtime error"
-          debugStr "runtime error" err
-          debugSim simulator
-        (Right val, s@(Simulator _ _ out)) -> do
-          mapM_ (hPutStrLn outHandle . displayValue) out
-          hPutStrLn outHandle $ "Final Value: " ++ displayValue val
-          debugSim s
+      type_or_error <- typer debugHandle t
+      case type_or_error of
+        Left err -> do
+          hPutStrLn outHandle "?type error"
+          debug "type error" err
+        Right tType -> do
+          debugStr "type" (unpack (pShowNoColor tType))
+          case run t [] of
+            (Left err, simulator) -> do
+              hPutStrLn outHandle "?runtime error"
+              debugStr "runtime error" err
+              debugSim simulator
+            (Right val, s@(Simulator _ _ out)) -> do
+              mapM_ (hPutStrLn outHandle . displayValue) out
+              hPutStrLn outHandle $ "Final Value: " ++ displayValue val
+              debugSim s
   where
     debugStr what v = do
       hPutStrLn debugHandle ("\n--- " ++ what ++ " ---")
