@@ -5,8 +5,13 @@
 
 # p3
 
-To test (checked for all pull requests):
+To run unit tests (checked for all pull requests):
 
+```
+    make unit
+```
+
+To run end-to-end tests
 ```
     make test
 ```

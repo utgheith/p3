@@ -1,6 +1,7 @@
 module Value
   ( Value (..),
     Scope (..),
+    displayValue,
     lookupScope,
     insertScope,
     getAllBindings,
@@ -16,6 +17,7 @@ module Value
   )
 where
 
+import Data.List (intercalate)
 import qualified Data.Map as M
 import Sprintf ((%))
 import Term (Term)
@@ -58,6 +60,17 @@ data Value
   | ClosureVal [TypedName] Term Scope
   | Dictionary (M.Map Integer Value)
   deriving (Eq, Show)
+
+displayValue :: Value -> String
+displayValue (IntVal n) = show n
+displayValue (BoolVal b) = show b
+displayValue (StringVal s) = s
+displayValue UnitVal = "()"
+displayValue (Tuple vs) = "(" ++ intercalate ", " (map displayValue vs) ++ ")"
+displayValue (ClosureVal {}) = "<closure>"
+displayValue (Dictionary m) = "{" ++ intercalate ", " (map showEntry (M.toList m)) ++ "}"
+  where
+    showEntry (k, v) = show k ++ ": " ++ displayValue v
 
 data Type
   = IntType

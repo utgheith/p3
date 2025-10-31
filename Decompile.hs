@@ -110,9 +110,9 @@ decompile = cata go
     go (PostDecrementF (varName, _)) =
       sprintf "%s--" [varName]
     go BreakSignalF =
-      "BreakSignal"
+      "break"
     go ContinueSignalF =
-      "ContinueSignal"
+      "continue"
     go (LetF r t) =
       sprintf "let %s = %s" [r, t]
     go (AssertF cond) =
