@@ -1,0 +1,48 @@
+Preview window: 10/31/2025 11/3/2025
+Due: 11/14/2025
+
+Assignment:
+
+     - update the typer (initially in Typer.hs) in order to implement our new
+       typing rules.
+
+     - submit a private test case (<your csid>.ok, <your csid>.fun) in your private
+       repo
+
+     - submit as many public test cases as you want by making a pull request
+
+The public repo:
+
+     - contains the initial spec (FunSyntax.hs and Small.hs)
+
+     - contains the test harness in Haskell
+
+     - contains the shared pool of unit tests (in test) and end end-to-end
+       tests (in *.fun, *.ok)
+
+     - you can always submit pull requests:
+           - tests will be easy to merge
+           - spec changes will be limited to significant bug and/or spec
+             clarifications and would require consensus
+
+Your private repo:
+
+     - will be created on 11/2/2025, once the preview period expires
+     
+     - your implementation should go there
+
+     - you are free to choose your implementation language and specifics
+       provided that:
+
+          (1) you adhere to the spec in the common repo
+          (2) you adhere to the naming conventions for end-to-end tests
+          (3) you adhere to the Makefile interface
+
+
+     - you can start your implementation before the end of the preview window
+       but please make sure you don't push your implementation to the shared repo.
+
+
+
+
+
