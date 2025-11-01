@@ -91,7 +91,7 @@ decompile = cata go
     go (BoolLitF b) =
       if b then "true" else "false"
     go (TupleTermF terms) =
-      sprintf "(%s)" [intercalate ", " terms]
+      sprintf "[%s]" [intercalate ", " terms]
     go NewDictionaryF =
       "#[]"
     go (RetrieveF dict index) =
