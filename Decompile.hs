@@ -1,14 +1,15 @@
 module Decompile (decompile) where
 
+import Data.Char (isSpace)
 import Data.Functor.Foldable (cata)
 import Data.List (intercalate)
 import Sprintf (sprintf)
-import Term (BinaryOp (..), Term, TermF (..))
+import Term (BinaryOp (..), ErrorKindOrAny (..), Term, TermF (..))
 import TypeSignature (TypeSignature (..))
 
 disp :: String -> Maybe String -> String
 disp _ Nothing = ""
-disp label (Just t) = sprintf " %s (%s) " [label, t]
+disp label (Just t) = sprintf " %s %s" [label, t]
 
 dispBinaryOp :: Term.BinaryOp -> String
 dispBinaryOp Add = "+"
@@ -52,9 +53,9 @@ decompile = cata go
   where
     go :: TermF String -> String
     go (IfF cond thenBranch elseBranch) =
-      sprintf "if (%s) {%s} else {%s}" [cond, thenBranch, elseBranch]
+      sprintf "if (%s) %s else %s" [cond, ensureBlock thenBranch, ensureBlock elseBranch]
     go (TryF tryBlock errKindOrAny catchBlock) =
-      sprintf "try {%s} catch (%s) {%s}" [tryBlock, show errKindOrAny, catchBlock]
+      sprintf "try %s catch %s %s" [ensureBlock tryBlock, dispErrorKind errKindOrAny, ensureBlock catchBlock]
     go (LiteralF n) =
       show n
     go (StringLiteralF s) =
@@ -74,13 +75,13 @@ decompile = cata go
     go (OnlyStrF (name, tSig)) =
       sprintf "%s%s" [name, dispOptTypeSig tSig]
     go (BracketF t1 t2) =
-      sprintf "%s(%s)" [t1, t2]
+      sprintf "%s[%s]" [t1, t2]
     go (WhileF cond body metric invariant) =
-      sprintf "while (%s) %s %s (%s)" [cond, disp "metric" metric, disp "invariant" invariant, body]
+      sprintf "while (%s)%s%s %s" [cond, disp "metric" metric, disp "invariant" invariant, body]
     go (WhileBodyF cond current original metric invariant) =
-      sprintf "while_body (%s) %s %s (%s -> %s)" [cond, disp "metric" metric, disp "invariant" invariant, current, original]
+      sprintf "while_body (%s)%s%s (%s -> %s)" [cond, disp "metric" metric, disp "invariant" invariant, current, original]
     go (ForF (var, _) start end body metric invariant) =
-      sprintf "for %s=(%s);(%s) %s %s {%s}" [var, start, end, disp "metric" metric, disp "invariant" invariant, body]
+      sprintf "for %s %s %s%s%s %s" [var, start, end, disp "metric" metric, disp "invariant" invariant, body]
     go (ScopedF body) =
       sprintf "scoped {%s}" [body]
     go (ScopedBodyF body) =
@@ -92,9 +93,9 @@ decompile = cata go
     go (TupleTermF terms) =
       sprintf "(%s)" [intercalate ", " terms]
     go NewDictionaryF =
-      "NewDictionary"
+      "#[]"
     go (RetrieveF dict index) =
-      sprintf "Retrieve (%s) (%s)" [dict, index]
+      sprintf "%s[%s]" [dict, index]
     go (MergeF current index value) =
       sprintf "Merge (%s) (%s) (%s)" [current, index, value]
     go (FunF args body) =
@@ -118,4 +119,15 @@ decompile = cata go
     go (AssertF cond) =
       sprintf "assert(%s)" [cond]
     go (BlockF term) =
-      sprintf "{ %s }" [term]
+      sprintf "{%s}" [term]
+
+    ensureBlock :: String -> String
+    ensureBlock s =
+      let trimmed = dropWhile isSpace s
+       in case trimmed of
+            ('{' : _) -> s
+            _ -> sprintf "{%s}" [s]
+
+dispErrorKind :: ErrorKindOrAny -> String
+dispErrorKind Any = "Any"
+dispErrorKind (Specific k) = show k

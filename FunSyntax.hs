@@ -346,6 +346,9 @@ assertStmt = [Assert expr | _ <- keyword "assert", expr <- term]
 breakStmt :: Parser Token Term
 breakStmt = [BreakSignal | _ <- keyword "break"]
 
+continueStmt :: Parser Token Term
+continueStmt = [ContinueSignal | _ <- keyword "continue"]
+
 letStmt :: Parser Token Term
 letStmt =
   [ Let lhs expr
@@ -363,6 +366,7 @@ unaryExp =
       tryCatch,
       assertStmt,
       breakStmt,
+      continueStmt,
       ifStmt,
       whileStmt,
       forStmt,
