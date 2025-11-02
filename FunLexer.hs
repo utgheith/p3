@@ -71,6 +71,7 @@ keywords =
       "else",
       "while",
       "write",
+      "continue",
       "for",
       "read",
       "try",

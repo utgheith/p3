@@ -26,7 +26,7 @@ spec = do
 
     it "decompiles a try-catch expression" $ do
       let input = "try (1) catch Any (2)"
-      let expected = "try {1} catch (Any) {2}"
+      let expected = "try {1} catch Any {2}"
       case evalStateT (term <* eof) (lexer input) of
         Ok term' -> decompile term' `shouldBe` expected
         Err e -> expectationFailure $ "Parsing failed with: " ++ e

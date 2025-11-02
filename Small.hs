@@ -1,5 +1,6 @@
 {-# LANGUAGE ConstrainedClassMethods #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MonadComprehensions #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TypeFamilies #-}
@@ -12,10 +13,11 @@ module Small (reduceFully) where
 import Control.Applicative (Alternative, asum)
 import Control.Monad (MonadPlus)
 import qualified Control.Monad.State as S
+import Data.Functor.Foldable (cata, embed)
 import qualified Data.Map as M
 -- import Debug.Trace (trace)
 import Machine (Env, Machine (..), Result (..))
-import Term (BinaryOp (..), ErrorKind (..), ErrorKindOrAny (..), Term (..), UnaryOp (..))
+import Term (BinaryOp (..), ErrorKind (..), ErrorKindOrAny (..), Term (..), TermF (..), UnaryOp (..))
 import Value (Scope (..), Value (..), insertScope)
 
 -- Helper for try-catch statement
@@ -447,12 +449,14 @@ reduceFor t =
           end' <- step end
       ],
       -- both start and end are values: desugar to Let + While
-      [ Continue (Scoped (Seq (Let (OnlyStr var) start) (While cond body' m i)))
+      [ Continue (Scoped (Seq (Let (OnlyStr var) start) (While cond loopBody m i)))
         | For var start end body m i <- pure t,
           _ <- val start,
           IntVal iEnd <- val end,
           let cond = BinaryOps Lt (Var (OnlyStr var)) (Literal iEnd),
-          let body' = Seq body (Let (OnlyStr var) (BinaryOps Add (Var (OnlyStr var)) (Literal 1)))
+          let updateTerm = Let (OnlyStr var) (BinaryOps Add (Var (OnlyStr var)) (Literal 1)),
+          let transformedBody = injectContinueUpdate updateTerm body,
+          let loopBody = Seq transformedBody updateTerm
       ],
       -- fault in start: propagate
       [ e
@@ -466,6 +470,12 @@ reduceFor t =
           e <- fault end
       ]
     ]
+
+injectContinueUpdate :: Term -> Term -> Term
+injectContinueUpdate updateTerm =
+  cata $ \case
+    ContinueSignalF -> Seq updateTerm ContinueSignal
+    other -> embed other
 
 reduceRead :: (Machine m, Show m, V m ~ Value) => Rule m
 reduceRead t =
