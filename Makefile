@@ -17,6 +17,7 @@ all :
 
 ${OUTS} : %.out : Makefile ${HS_FILES}
 	stack run sim < ${E2E_DIR}/$*.fun > $*.out 2> $*.err || echo "running $* failed, see $*.err"
+	-cp sim.debug $*.debug
 
 ${DIFFS} : %.diff : ${E2E_DIR}/%.ok %.out Makefile
 	(diff -wB $*.out ${E2E_DIR}/$*.ok > $*.diff 2>&1 || true)

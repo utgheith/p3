@@ -25,6 +25,8 @@ runner outHandle debugHandle code = do
       debug "compiler error" err
     Right t -> do
       type_or_error <- typer debugHandle t
+      hPutStrLn debugHandle "\n--- Typechecking complete ---"
+      hPutStrLn debugHandle (unpack (pShowNoColor type_or_error))
       case type_or_error of
         Left err -> do
           hPutStrLn outHandle "?type error"

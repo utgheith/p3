@@ -11,6 +11,7 @@ data TypeSignature
   | TDictionary TypeSignature
   | TUnknown
   | Poly String
+  | TTypeError String
   deriving (Eq, Show)
 
 type TypedName = (String, TypeSignature)

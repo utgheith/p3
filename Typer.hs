@@ -3,6 +3,7 @@
 module Typer (typer) where
 
 import Data.Functor.Foldable (para)
+import Sprintf (sprintf)
 import System.IO (Handle, hPutStrLn)
 import Term (BinaryOp (..), Term, TermF (..), UnaryOp (..))
 import TypeSignature (TypeSignature (..))
@@ -23,13 +24,18 @@ typer :: Handle -> Term -> IO (Either String TypeSignature)
 typer debugFile term = do
   _ <- hPutStrLn debugFile "Starting typer"
   let out = para go term
-  return $ Right out
+  return $ case out of
+    TTypeError errMsg -> Left errMsg
+    tSig -> Right tSig
   where
     go (LiteralF _) = TInt
     go (BoolLitF _) = TBool
     go (StringLiteralF _) = TString
     go (VarF _) = TUnit
-    go (LetF _ (_, tType)) = tType
+    go (LetF (_, vType) (_, tType)) =
+      if vType == TUnknown || vType == tType
+        then tType
+        else TTypeError (sprintf "Let binding type mismatch: %s vs %s" [show vType, show tType])
     go (BinaryOpsF op (_, t1Type) (_, t2Type)) =
       let both t = t1Type == t && t2Type == t
        in case op of
@@ -62,8 +68,8 @@ typer debugFile term = do
     go (WhileF (_, condType) (_, bodyType) _ _) =
       (condType == TBool) --> combine TUnit bodyType
     -- TODO: lookup in typing context
-    go (OnlyStrF _) =
-      TUnknown
+    go (OnlyStrF (_, t)) =
+      t
     -- TODO: array types?
     go (BracketF _ _) =
       TUnknown

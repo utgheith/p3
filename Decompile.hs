@@ -40,6 +40,7 @@ dispTypeSig (TSum types) = intercalate " | " (map dispTypeSig types)
 dispTypeSig (TDictionary valType) = "[" ++ dispTypeSig valType ++ "]"
 dispTypeSig TUnknown = "auto"
 dispTypeSig (Poly name) = name
+dispTypeSig (TTypeError _) = "auto" -- treat type erros as unknown for display purposes
 
 dispOptTypeSig :: TypeSignature -> String
 dispOptTypeSig TUnknown = ""
