@@ -25,7 +25,7 @@ import Sprintf ((%), (<<))
 --       - the inner monad is Either String
 --
 --    We rely on the fact that 'Either String' has an instance
---       of MonadFail and use 'Left' to indicate failure and
+--       of MonadError and use 'Left' to indicate failure and
 --       'Right' to indicate success. This allows us to use
 --       'do' notation to sequence parsing operations and
 --       have failure propagate automatically. With convenient
