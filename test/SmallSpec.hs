@@ -73,9 +73,12 @@ instance Machine MockMachine where
   subVal _ _ = return $ Sad (Type, "Type error in subtraction")
 
   addVal (IntVal v1) (IntVal v2) = return $ Happy (IntVal (v1 + v2))
+  addVal (StringVal v1) (StringVal v2) = return $ Happy (StringVal (v1 ++ v2))
   addVal _ _ = return $ Sad (Type, "Type error in addition")
 
   mulVal (IntVal v1) (IntVal v2) = return $ Happy (IntVal (v1 * v2))
+  mulVal (StringVal v1) (IntVal v2) = return $ Happy $ StringVal $ concat $ replicate (fromIntegral v2) v1
+  mulVal (IntVal v1) (StringVal v2) = return $ Happy $ StringVal $ concat $ replicate (fromIntegral v1) v2
   mulVal _ _ = return $ Sad (Type, "Type error in multiplication")
 
   divVal (IntVal v1) (IntVal v2) =
@@ -96,20 +99,23 @@ instance Machine MockMachine where
       else return $ Happy (IntVal (v1 ^ v2))
   powVal _ _ = return $ Sad (Type, "Type error in exponentiation")
 
-  negVal (IntVal v) =
-    return $ Happy (IntVal (-v))
+  negVal (IntVal v) = return $ Happy (IntVal (-v))
   negVal _ = return $ Sad (Type, "Type error in neg")
 
   ltVal (IntVal v1) (IntVal v2) = return $ Happy (BoolVal (v1 < v2))
+  ltVal (StringVal v1) (StringVal v2) = return $ Happy (BoolVal (v1 < v2))
   ltVal _ _ = return $ Sad (Type, "Type error in <")
 
   gtVal (IntVal v1) (IntVal v2) = return $ Happy (BoolVal (v1 > v2))
+  gtVal (StringVal v1) (StringVal v2) = return $ Happy (BoolVal (v1 > v2))
   gtVal _ _ = return $ Sad (Type, "Type error in >")
 
   lteVal (IntVal v1) (IntVal v2) = return $ Happy (BoolVal (v1 <= v2))
+  lteVal (StringVal v1) (StringVal v2) = return $ Happy (BoolVal (v1 <= v2))
   lteVal _ _ = return $ Sad (Type, "Type error in <=")
 
   gteVal (IntVal v1) (IntVal v2) = return $ Happy (BoolVal (v1 >= v2))
+  gteVal (StringVal v1) (StringVal v2) = return $ Happy (BoolVal (v1 >= v2))
   gteVal _ _ = return $ Sad (Type, "Type error in >=")
 
   eqVal (IntVal v1) (IntVal v2) = return $ Happy (BoolVal (v1 == v2))
@@ -206,13 +212,13 @@ instance Machine MockMachine where
       loop _ _ _ = error "unreachable hopefully"
   setBracketValue _ _ _ = return $ Sad (Type, "Had a Type Error")
 
-  selectValue (BoolVal True) c _ = c
-  selectValue (BoolVal False) _ t = t
-  selectValue (IntVal n) c t = if n /= 0 then c else t
-  selectValue (StringVal s) c t = if not (null s) then c else t
-  selectValue UnitVal _ t = t -- unit is falsy
-  selectValue (Tuple l) c t = if not (null l) then c else t
-  selectValue ClosureVal {} _ _ = return $ Sad (Type, "Type error in select")
+  selectValue (BoolVal True) e1 _ = e1
+  selectValue (BoolVal False) _ e2 = e2
+  selectValue (IntVal n) e1 e2 = if n /= 0 then e1 else e2 -- backward compat
+  selectValue (StringVal s) e1 e2 = if not (null s) then e1 else e2
+  selectValue UnitVal _ e2 = e2 -- unit is falsy
+  selectValue (Tuple l) e1 e2 = if not (null l) then e1 else e2
+  selectValue (ClosureVal {}) _ _ = return $ Sad (Type, "Type error in select")
   selectValue (Dictionary _) _ _ = return $ Sad (Type, "Type error in select")
 
 checkFailure :: (Either String Value, MockMachine) -> MockMachine -> IO ()
