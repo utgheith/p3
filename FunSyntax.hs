@@ -325,9 +325,9 @@ tryCatch =
 
 funCall :: Parser Token Term
 funCall =
-  [ ApplyFun (Var (OnlyStr (name, TUnknown))) args
+  [ ApplyFun (Var (OnlyStr name)) args
     | _ <- keyword "call",
-      name <- ident,
+      name <- typedIdent,
       _ <- symbol "(",
       args <- rptDropSep term (symbol ","),
       _ <- symbol ")"
