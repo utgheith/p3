@@ -234,12 +234,14 @@ funDef :: Parser Token Term
 funDef =
   -- a named function
 
-  [ Let (OnlyStr (name, TFun (snd <$> params) TUnknown)) (Fun params body)
+  [ Let (OnlyStr (name, TFun (snd <$> params) retType)) (Fun params body)
     | _ <- keyword "fun",
       name <- ident,
       _ <- symbol "(",
       params <- rptDropSep typedIdent (symbol ","),
       _ <- symbol ")",
+      maybeRetType <- opt (symbol "->" >> typeSignature),
+      let retType = fromMaybe TUnknown maybeRetType,
       body <- term
   ]
     <|>
