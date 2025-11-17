@@ -245,6 +245,7 @@ instance Machine Simulator where
              in case returnVal of
                   Right (Tuple rest) -> Right $ Tuple (x : rest)
                   _ -> returnVal
+      loop (Tuple []) (IntVal _) _ = Left (VariableNotFound, "Attempting to set value Out of Bounds")
       loop _ _ _ = error "unreachable hopefully"
   setBracketValue _ _ _ = return $ Sad (Type, "Had a Type Error")
 
