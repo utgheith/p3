@@ -45,7 +45,7 @@ lint :
 
 clean :
 	stack clean
-	-rm -rf *.out *.diff *.result *.err
+	-rm -rf *.out *.diff *.result *.err *.o *.hi
 
 help:
 	@echo Targets
