@@ -1,0 +1,41 @@
+Due:
+    Test .. 12/1/2025
+    Everything else ... 12/7/2025
+
+
+Assignment:
+
+   Part a:
+
+       - [15%] submit, improve, and review as many correct and useful public tests as you want
+               via pull requests https://github.com/utgheith/p3
+       - [15%] submit a correct and useful private test. Has to be different from
+               the public tests
+       - [70%] pass all tests
+
+    Part b:
+
+       - Enable limited static assertions in your implementation of fun from p4.
+            * only work with
+                - literals
+                - assignment statements
+                - initialized variable declarations
+                - sequential composition of the above
+
+
+Test structure:
+
+    You need to supply 2 files per test (they'll be supplied to the verifier together).
+
+        - <test_name>.dfy          can't be edited, contains the test
+        - proofs/test_name>.dfy    can be edited, contains the proofs to be supplied by 
+                                   students
+
+    Rules:
+        - can not change the test file (unless a bug is discovered and the group decides
+          to accept a patch)
+
+        - all functions, methods, predicates, and lemmas in the proof file need to
+          to have the {:induction false}
+
+

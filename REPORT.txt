@@ -1,0 +1,7 @@
+Why do we need loop invariants?
+
+Why do we streets weakest pre-conditions more than strongest port-conditions?
+
+What tools did you use to implement your verifier?
+
+Read about Boogie and z3 (in our context) and explain the difference in your words
