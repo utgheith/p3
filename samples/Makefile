@@ -18,5 +18,5 @@ verify: ${VERIFY_TARGETS};
 
 	
 clean :
-	rm -rf *.verify ${RUN_FILES}
+	rm -rf *.verify ${RUN_FILES} obj/ *.cs *.pdb *.csproj *.dll *.json
 
