@@ -1,7 +1,7 @@
 // Illustrates how to prove that an imperative implementation
 // is functionally equivelant to a functional spec
 
-// Defines factorial
+// Defines factorial, doesn't produce any code; just a spec
 ghost function fact_spec(n: nat): nat {
   if (n == 0) then 1 else n * fact_spec(n-1)
 }
@@ -77,5 +77,10 @@ lemma fact_n1_is_greater_than_or_equal_fact_n(n: nat)
   ensures fact_spec(n+1) >= fact_spec(n)
 {
 
+}
+
+method Main() {
+  var out := fact(5);
+  print out, "\n";
 }
 

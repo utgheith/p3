@@ -1,0 +1,11 @@
+*.cs
+*.dll
+*.json
+*.verify
+*.csproj
+*.pdb
+obj/
+
+
+fact_by_method
+fact_method
