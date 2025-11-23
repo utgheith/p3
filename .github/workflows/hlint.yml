@@ -3,6 +3,9 @@ on: [push, pull_request]
 
 jobs:
   hlint:
+    defaults:
+      run:
+        working-directory: ./fun_spec
     runs-on: ubuntu-latest
     permissions:
       # Needed to upload results to GitHub code scanning.

@@ -11,6 +11,9 @@ permissions:
 
 jobs:
   build:
+    defaults:
+      run:
+        working-directory: ./fun_spec
     runs-on: ubuntu-latest
     steps:
       - name: checkout
