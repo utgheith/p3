@@ -10,6 +10,9 @@ on:
 
 jobs:
   ormolu:
+    defaults:
+      run:
+        working-directory: ./fun_spec
     runs-on: ubuntu-latest
     permissions:
       contents: write
