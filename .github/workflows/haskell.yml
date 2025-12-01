@@ -32,6 +32,8 @@ jobs:
           ghc-version: "9.6.7"
           stack-version: "2.15.7"
 
+      - name: Initialize Stack
+        run: stack init
       - name: Build
         run: stack build --coverage
       - name: Run tests
@@ -39,7 +41,7 @@ jobs:
       - name: Generate Code Coverage Report
         uses: 8c6794b6/hpc-codecov-action@v4
         with:
-          target: p3:test:p3-test
+          target: stack:p3-test
           format: codecov
           out: coverage.json
       - name: Upload coverage reports to Codecov
