@@ -1,0 +1,18 @@
+/home/mjcs27/.ghcup/ghc/9.6.7/lib/ghc-9.6.7/lib/x86_64-linux-ghc-9.6.7/rts-1.0.2/include/ghcversion.h:
+  hash: 215ddac5a644eddece4748021e2caff6400a517822aedd66e9e9caf511124db8
+/home/mjcs27/haskell/p3/.stack-work/dist/x86_64-linux/ghc-9.6.7/build/sim/autogen/Paths_p3.hs:
+  hash: 8c0c312af54f48479f9132cae3ce76be2e68eb9dc5209c688df8b36cc2541106
+/home/mjcs27/haskell/p3/.stack-work/dist/x86_64-linux/ghc-9.6.7/build/sim/autogen/cabal_macros.h:
+  hash: 06eea971f1169b45e6670fdf7f95db895135fef3f03f5dbcf3ba668272a73f2f
+/home/mjcs27/haskell/p3/CHANGELOG.md:
+  hash: a9c6dc92d8b837aa0154029e315f25558ba33be7b68748c196c6ef6f1c367ed5
+/home/mjcs27/haskell/p3/README.md:
+  hash: a3a45c054e67c79de4ddc3df61bb51ffd1e07556940b708d417fb28eecdcf808
+/home/mjcs27/haskell/p3/p3.cabal:
+  hash: 9372e0a8650f2529b0f137303404674aa0ba0f720291e24281f08ef55001bd3c
+/home/mjcs27/haskell/p3/package.yaml:
+  hash: bb20ccada7c17692ff02c398a623833e873b97e1725ccf9acd0f10f0a9bfa475
+/home/mjcs27/haskell/p3/sim/Main.hs:
+  hash: af038efbf7475c5e0271db7418e60b72b601aa37fd379fe11b84685ffb88d981
+/usr/include/stdc-predef.h:
+  hash: cb08cd5d4cc059a90833ac48a284d25016e8d56ded8ad4cd98d8ac59cc5053f3

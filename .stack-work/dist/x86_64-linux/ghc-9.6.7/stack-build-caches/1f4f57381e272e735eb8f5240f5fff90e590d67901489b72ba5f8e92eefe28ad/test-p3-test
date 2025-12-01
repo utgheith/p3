@@ -1,0 +1,28 @@
+/home/mjcs27/.ghcup/ghc/9.6.7/lib/ghc-9.6.7/lib/x86_64-linux-ghc-9.6.7/rts-1.0.2/include/ghcversion.h:
+  hash: 215ddac5a644eddece4748021e2caff6400a517822aedd66e9e9caf511124db8
+/home/mjcs27/haskell/p3/.stack-work/dist/x86_64-linux/ghc-9.6.7/build/p3-test/autogen/Paths_p3.hs:
+  hash: b676cc9ffc84ccec5dec4885486a200aa958fc85cb5732024686de996f1427c2
+/home/mjcs27/haskell/p3/.stack-work/dist/x86_64-linux/ghc-9.6.7/build/p3-test/autogen/cabal_macros.h:
+  hash: 4d43739b9e8f449782b3b95381324687124d84e6bf8822af5f1b1cd883c0f1b1
+/home/mjcs27/haskell/p3/CHANGELOG.md:
+  hash: a9c6dc92d8b837aa0154029e315f25558ba33be7b68748c196c6ef6f1c367ed5
+/home/mjcs27/haskell/p3/README.md:
+  hash: a3a45c054e67c79de4ddc3df61bb51ffd1e07556940b708d417fb28eecdcf808
+/home/mjcs27/haskell/p3/p3.cabal:
+  hash: 9372e0a8650f2529b0f137303404674aa0ba0f720291e24281f08ef55001bd3c
+/home/mjcs27/haskell/p3/package.yaml:
+  hash: bb20ccada7c17692ff02c398a623833e873b97e1725ccf9acd0f10f0a9bfa475
+/home/mjcs27/haskell/p3/test/FunLexerSpec.hs:
+  hash: 00b01c71cbfa11ea0784cbe73dcc785d6002ecade79973c704712b3723bd628d
+/home/mjcs27/haskell/p3/test/FunSyntaxSpec.hs:
+  hash: 98f1a6c483eaf4286238bf5ebe1c1c410c032310731f07f6a9129d481dd55769
+/home/mjcs27/haskell/p3/test/ParserCombinatorsSpec.hs:
+  hash: cca7942b53615ca4aa3e3c7f81c2a8e553df4e7b708c483a6db17e7bd4be91ba
+/home/mjcs27/haskell/p3/test/SmallSpec.hs:
+  hash: 149f3f6848140401be4a1dfd792025e9c838057a9021a892a82bac87a33021c0
+/home/mjcs27/haskell/p3/test/Spec.hs:
+  hash: 2fbd14b119a40eaca54f6255686c7cfbe8ff26a9c18d79ec474a61225232d324
+/home/mjcs27/haskell/p3/test/SprintfSpec.hs:
+  hash: ab7c58384cc814390ebb31d0fb04e2f4856c08fdbb95f229e55fcd5db9750272
+/usr/include/stdc-predef.h:
+  hash: cb08cd5d4cc059a90833ac48a284d25016e8d56ded8ad4cd98d8ac59cc5053f3
