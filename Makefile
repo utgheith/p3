@@ -1,9 +1,10 @@
-
 G ?= generated
 
 ECHO ?= /bin/echo
 
-DFY_FILES = ${wildcard *.dfy}
+TESTCASES_DIR ?= testcases
+
+DFY_FILES = $(notdir $(wildcard $(TESTCASES_DIR)/*.dfy))
 NAMES = ${patsubst %.dfy,%,$(DFY_FILES)}
 PROOF_FILES = ${addprefix proofs/,${DFY_FILES}}
 OUT_FILES = ${patsubst %.dfy,%.out,${DFY_FILES}}
@@ -22,11 +23,11 @@ proofs/%.dfy:
 	mkdir -p proofs
 	touch $@
 
-${RESULT_FILES} : %.result : Makefile %.dfy proofs/%.dfy
-	@${ECHO} -n "verifying $*.dfy ... "
-	@(dafny verify ${DFY_FLAGS} $*.dfy proofs/$*.dfy > $*.out 2> $*.err && ${ECHO} "pass" > $*.result) || ${ECHO} "fail" > $*.result
-	@cat $*.result
+${RESULT_FILES} : %.result : Makefile $(TESTCASES_DIR)/%.dfy proofs/%.dfy
+	@${ECHO} -n "verifying $(TESTCASES_DIR)/$*.dfy ... "
+	@(dafny verify ${DFY_FLAGS} $(TESTCASES_DIR)/$*.dfy proofs/$*.dfy > $(TESTCASES_DIR)/$*.out 2> $(TESTCASES_DIR)/$*.err && ${ECHO} "pass" > $(TESTCASES_DIR)/$*.result) || ${ECHO} "fail" > $(TESTCASES_DIR)/$*.result
+	@cat $(TESTCASES_DIR)/$*.result
 	
 clean :
-	rm -rf *.err *.out *.result
+	rm -rf $(TESTCASES_DIR)/*.err $(TESTCASES_DIR)/*.out $(TESTCASES_DIR)/*.result
 
