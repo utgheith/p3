@@ -1,4 +1,0 @@
-p3-0.1.0.0: unregistering (local file changes: FunLexer.hs FunSyntax.hs ParserCombinators.hs Progs.hs Scope.hs Small.hs Term.hs Value.hs sim/Mai...)
-Progress 0/2            p3> configure (lib + exe + test)
-Progress 0/2            Configuring p3-0.1.0.0...
-Progress 0/2
