@@ -25,6 +25,6 @@ method FibonacciTest(n: nat)
 {
   var r := IterFib(n);
   assert RecFib(n) == r by {
-    IterEqualsRec(n, 0, 0, 1);
+    IterEqualsRec(n);
   }
 }
