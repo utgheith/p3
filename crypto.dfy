@@ -49,23 +49,25 @@ method {:induction false} CryptoTests(plaintext: seq<bool>, key: seq<bool>, othe
     requires |plaintext| == |ciphertext|
     requires IsOtpCipher(plaintext, key, ciphertext)
 {
+    // Decryption preserves ciphertext length
     OtpEncryptPreservesLength(plaintext, key);
+    // Ciphertext has same length as key
     OtpCiphertextKeyLength(plaintext, key);
     OtpDecryptPreservesLength(ciphertext, key);
-
+    // $\text{OtpDecrypt}(\text{OtpEncrypt}(m, k), k) = m$
     OtpEncryptDecryptCorrectness(plaintext, key);
-
+    // $\text{OtpEncrypt}(\text{OtpEncrypt}(m, k), k) = m$
     OtpDoubleEncryptIdentity(plaintext, key);
     assert OtpEncrypt(OtpEncrypt(plaintext, key), key) == plaintext;
-
+    // $\text{OtpEncrypt}(\text{OtpEncrypt}(m, k_1), k_2) = \text{OtpEncrypt}(\text{OtpEncrypt}(m, k_2), k_1)$
     OtpEncryptCommutative(plaintext, key, otherKey);
     assert OtpEncrypt(OtpEncrypt(plaintext, key), otherKey) == OtpEncrypt(OtpEncrypt(plaintext, otherKey), key);
-
+    // $\text{OtpEncrypt}(m, k_1 \oplus k_2) = \text{OtpEncrypt}(\text{OtpEncrypt}(m, k_1), k_2)$
     OtpCombinedKeyEncryption(plaintext, key, otherKey);
-
+    // For any plaintext $m$ and ciphertext $c$, encrypting $m$ with $k = m \oplus c$ yields $c$
     KeyForSound(plaintext, ciphertext);
     assert OtpEncrypt(plaintext, KeyFor(plaintext, ciphertext)) == ciphertext;
-
+    // If $m \oplus k = c$, then $k = m \oplus c$
     KeyForUnique(plaintext, ciphertext, key);
     assert key == KeyFor(plaintext, ciphertext);
 }
