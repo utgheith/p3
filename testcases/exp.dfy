@@ -1,6 +1,6 @@
 // Exponentiation: exp(a, b) = a^b
 function {:induction false} exp(base: nat, exponent: nat): nat
-    requires exponent >= 0
+
     requires base != 0 || exponent != 0
 {
     if base == 0 then 0
@@ -13,7 +13,7 @@ function {:induction false} exp(base: nat, exponent: nat): nat
 // a^x > 0 for a > 0
 method {:induction false} ExpPositiveTest(a: nat, x: nat)
     requires a > 0
-    requires x >= 0
+
 {
     assert exp(a, x) > 0 by {
         ExpPositiveProof(a, x);

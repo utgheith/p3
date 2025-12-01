@@ -1,6 +1,6 @@
 lemma {:induction false} ExpPositiveProof(a: nat, x: nat)
     requires a > 0
-    requires x >= 0
+
     ensures exp(a, x) > 0
     decreases x
 {
