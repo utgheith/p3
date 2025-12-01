@@ -1,4 +1,4 @@
 *.err
 *.out
 *.result
-.stack-work
+.stack-work/
