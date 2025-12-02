@@ -6,7 +6,7 @@ ghost function {:induction false} Prime(p: nat) : bool {
     p >= 2 && forall n: nat :: n > 1 && n < p ==> !Divides(n, p)
 }
 
-method PrimeTest(n: nat) {
+method {:induction false} PrimeTest(n: nat) {
     assert n > 1 ==> exists p :: Prime(p) && Divides(p, n) by {
         if n <= 1 {
 
