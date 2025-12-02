@@ -1,6 +1,5 @@
 lemma {:induction false} ExpPositiveProof(a: nat, x: nat)
     requires a > 0
-
     ensures exp(a, x) > 0
     decreases x
 {
@@ -24,7 +23,7 @@ lemma {:induction false} ExpAddProof(a: nat, x: nat, y: nat)
 }
 
 lemma {:induction false} ExpMulProof(a: nat, b: nat, x: nat)
-    requires (a != 0 || x != 0) && (b != 0 || x != 0)
+    requires (a != 0 && b != 0) || x != 0
     ensures exp(a, x) * exp(b, x) == exp(a * b, x)
     decreases x
 {

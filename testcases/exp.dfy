@@ -20,7 +20,7 @@ method {:induction false} ExpPositiveTest(a: nat, x: nat)
     }
 }
 
-// a^x increases for a > 1 for increasing x.
+// a^x strictly increases for a > 1 with increasing x.
 method {:induction false} ExpIncreasingTest(a: nat, x: nat)
     requires a > 1
 {
@@ -40,7 +40,7 @@ method {:induction false} ExpAddTest(a: nat, x: nat, y: nat)
 
 // a^x * b^x = (a * b)^x
 method {:induction false} ExpMulTest(a: nat, b: nat, x: nat)
-    requires (a != 0 || x != 0) && (b != 0 || x != 0)
+    requires (a != 0 && b != 0) || x != 0
 {
     assert exp(a, x) * exp(b, x) == exp(a * b, x) by {
         ExpMulProof(a, b, x);
