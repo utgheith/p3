@@ -1,4 +1,5 @@
-lemma {:induction false} FastPowEqualsBasicPow(x : int)
+lemma {:induction false} TopDownBottomUpEquivalence(x : int)
+  requires x >= 0
   ensures TopDown(x) == BottomUp(x, x)
 {
   
