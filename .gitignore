@@ -2,3 +2,5 @@
 *.out
 *.result
 .stack-work/
+*.stderr
+*.cabal
