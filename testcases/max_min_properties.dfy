@@ -1,4 +1,4 @@
-// MaxMin.dfy
+// max_min_properties.dfy
 // Basic properties of Max and Min on integers.
 
 function {:induction false} Max(a: int, b: int): int
