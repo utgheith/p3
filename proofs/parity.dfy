@@ -1,5 +1,6 @@
 lemma {:induction false} ParityProof(x: nat, y: nat) 
-    ensures (isEven(x) || isEven(y)) ==> isEven(x * y)
+    requires isEven(x) || isEven(y)
+    ensures isEven(x * y)
 {
     
 }
