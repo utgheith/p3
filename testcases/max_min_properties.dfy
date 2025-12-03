@@ -1,6 +1,3 @@
-// max_min_properties.dfy
-// Basic properties of Max and Min on integers.
-
 function {:induction false} Max(a: int, b: int): int
 {
   if a >= b then a else b
@@ -41,15 +38,22 @@ method {:induction false} Test_MaxMin_Symmetry(a: int, b: int)
   }
 }
 
-// Test 3: ordering + sum identity.
+// Test 3: case-wise behavior (ordering).
 method {:induction false} Test_MaxMin_Relation(a: int, b: int)
 {
-  assert
-    Min(a, b) <= Max(a, b) &&
-    Max(a, b) + Min(a, b) == a + b
-  by
-  {
-    MaxMin_Relation(a, b);
+  if a <= b {
+    assert Max(a, b) == b && Min(a, b) == a
+    by
+    {
+      MaxMin_Relation(a, b);
+    }
+  } else {
+    assert Max(a, b) == a && Min(a, b) == b
+    by
+    {
+      MaxMin_Relation(a, b);
+    }
   }
 }
+
 
