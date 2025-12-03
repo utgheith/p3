@@ -7,7 +7,7 @@ ghost predicate IsPermutation<T(!new)>(a: seq<T>, b: seq<T>) {
   |a| == |b| && forall x :: Count(a, x) == Count(b, x)
 }
 
-function Swap<T>(s: seq<T>, i: nat, j: nat): seq<T>
+ghost function Swap<T>(s: seq<T>, i: nat, j: nat): seq<T>
   requires i < |s| && j < |s|
 {
   s[i := s[j]][j := s[i]]
