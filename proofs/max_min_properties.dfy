@@ -17,7 +17,8 @@ lemma {:induction false} MaxMin_Symmetry(a: int, b: int)
 }
 
 lemma {:induction false} MaxMin_Relation(a: int, b: int)
-  ensures Min(a, b) <= Max(a, b)
-  ensures Max(a, b) + Min(a, b) == a + b
+  ensures a <= b ==> Max(a, b) == b && Min(a, b) == a
+  ensures b <= a ==> Max(a, b) == a && Min(a, b) == b
 {
 }
+
