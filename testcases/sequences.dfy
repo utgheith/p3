@@ -12,3 +12,4 @@ ensures Sequence(n) == n * (n + 1) / 2
         Proof(n);
     }
 }
+
