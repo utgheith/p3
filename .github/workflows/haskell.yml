@@ -12,6 +12,9 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: fun_spec
     steps:
       - name: checkout
         uses: actions/checkout@v4
@@ -22,8 +25,8 @@ jobs:
             ~/.ghcup
             ~/.cabal/store
             ~/.stack
-            .stack-work
-          key: ${{ runner.os }}-stack-${{ hashFiles('stack.yaml', 'package.yaml', 'stack.yaml.lock') }}
+            fun_spec/.stack-work
+          key: ${{ runner.os }}-stack-${{ hashFiles('fun_spec/stack.yaml', 'fun_spec/package.yaml', 'fun_spec/stack.yaml.lock') }}
           restore-keys: |
             ${{ runner.os }}-stack-
       - name: Setup Haskell

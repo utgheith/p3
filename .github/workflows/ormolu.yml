@@ -14,10 +14,11 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - uses: haskell-actions/run-ormolu@v14
         with:
           mode: inplace
+          pattern: 'fun_spec/**/*.hs'
       - name: apply formatting changes
         uses: stefanzweifel/git-auto-commit-action@v4
         if: ${{ always() }}
