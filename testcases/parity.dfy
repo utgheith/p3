@@ -5,8 +5,10 @@ predicate {:induction false} isEven(n: nat)
     else isEven(n - 2)
 }
 
-method {:induction false} ParityTest(x: nat, y: nat) {
-    assert (isEven(x) || isEven(y)) ==> isEven(x * y) by {
+method {:induction false} ParityTest(x: nat, y: nat) 
+    requires isEven(x) || isEven(y)
+{
+    assert isEven(x * y) by {
         ParityProof(x, y);
     }
 }
