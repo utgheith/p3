@@ -5,7 +5,7 @@
 // A sequence is a palindrome if:
 // - length 0 or 1: true
 // - otherwise: first == last AND the middle part is a palindrome.
-predicate {:induction false} IsPalindrome(a: seq<int>): bool
+predicate {:induction false} IsPalindrome(a: seq<int>)
   decreases |a|
 {
   if |a| <= 1 then
@@ -27,7 +27,7 @@ method {:induction false} Test_Palindrome_FirstLast(a: seq<int>)
 // Test 2:
 // If a is a palindrome of length > 1, then its "middle"
 // (drop first and last element) is also a palindrome.
-method {induction: false} Test_Palindrome_Middle(a: seq<int>)
+method {:induction false} Test_Palindrome_Middle(a: seq<int>)
 {
   assert IsPalindrome(a) && |a| > 1 ==> IsPalindrome(a[1 .. |a| - 1]) by {
     Palindrome_Middle(a);
