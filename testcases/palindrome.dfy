@@ -5,12 +5,13 @@
 // A sequence is a palindrome if:
 // - length 0 or 1: true
 // - otherwise: first == last AND the middle part is a palindrome.
-predicate {:induction false, :opaque} IsPalindrome(a: seq<int>)
+predicate {:induction false} IsPalindrome(a: seq<int>)
   decreases |a|
 {
   |a| <= 1 ||
   (a[0] == a[|a| - 1] && IsPalindrome(a[1 .. |a| - 1]))
 }
+
 
 // Test 1:
 // If a is a palindrome, then either its length is <= 1

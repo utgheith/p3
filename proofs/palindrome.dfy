@@ -6,7 +6,8 @@
 lemma {:induction false} Palindrome_FirstLast(a: seq<int>)
   ensures IsPalindrome(a) ==> (|a| <= 1 || a[0] == a[|a| - 1])
 {
-  
+  // TODO replace this with a real proof.
+  assert false;
 }
 
 // Lemma 2:
@@ -15,6 +16,7 @@ lemma {:induction false} Palindrome_FirstLast(a: seq<int>)
 lemma {:induction false} Palindrome_Middle(a: seq<int>)
   ensures IsPalindrome(a) && |a| > 1 ==> IsPalindrome(a[1 .. |a| - 1])
 {
- 
+  // TODO replace this with a real proof.
+  assert false;
 }
 
