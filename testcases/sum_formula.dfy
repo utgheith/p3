@@ -10,7 +10,7 @@ function {:induction false} SumFormula(n: nat): nat
     n * (n + 1) / 2
 }
 
-lemma SumEqualsFormula(n: nat)
+lemma {:induction false} SumEqualsFormula(n: nat)
     ensures Sum(n) == SumFormula(n)
 {
     proof(n);
