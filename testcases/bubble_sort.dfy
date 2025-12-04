@@ -26,6 +26,6 @@ method SortTest(s: seq<int>) {
     assert |Sort(s)| == |s| &&
            forall i: int, j: int ::
              0 <= i < j < |s| ==> Sort(s)[i] <= Sort(s)[j] by {
-        proof(s);
+        sorting_correctness(s);
     }
 }
