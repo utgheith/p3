@@ -1,12 +1,11 @@
 // Proofs for Palindrome.dfy
 
 // Lemma 1:
-// If a is a palindrome, then either its length is <= 1,
+// If a is a palindrome, then either its length is <= 1
 // or its first and last elements are equal.
 lemma {:induction false} Palindrome_FirstLast(a: seq<int>)
   ensures IsPalindrome(a) ==> (|a| <= 1 || a[0] == a[|a| - 1])
 {
-  
   
 }
 
@@ -16,5 +15,6 @@ lemma {:induction false} Palindrome_FirstLast(a: seq<int>)
 lemma {:induction false} Palindrome_Middle(a: seq<int>)
   ensures IsPalindrome(a) && |a| > 1 ==> IsPalindrome(a[1 .. |a| - 1])
 {
-  
+ 
 }
+
